@@ -3,15 +3,15 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import AuthHeader from '$lib/components/AuthHeader.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
-	
-	let { children } = $props();
+
+	let { children, data } = $props();
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<AuthHeader />
+<AuthHeader initialUser={data?.user ?? null} />
 
 <main class="min-h-screen bg-gray-50">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

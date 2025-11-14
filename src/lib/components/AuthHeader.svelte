@@ -1,17 +1,34 @@
 <script lang="ts">
 	import { authClient } from '$lib/auth-client';
 	import { onMount } from 'svelte';
+	import type { User } from 'better-auth';
 
-	let user = $state<any>(null);
-	let loading = $state(true);
+	let { initialUser = null }: { initialUser?: User | null } = $props();
+
+	let user = $state<User | null>(initialUser);
+	let loading = $state(!initialUser);
+	let previousInitialUser = initialUser;
+
+	$effect(() => {
+		if (previousInitialUser !== initialUser) {
+			previousInitialUser = initialUser;
+			user = initialUser ?? null;
+			loading = !initialUser;
+		}
+	});
 	let isOpen = $state(false);
 	let signingIn = $state(false);
 	let showProviderMenu = $state(false);
 
 	onMount(async () => {
+		if (initialUser) {
+			loading = false;
+			return;
+		}
+
 		try {
 			const session = await authClient.getSession();
-			user = session?.data?.user;
+			user = session?.data?.user ?? null;
 		} catch (error) {
 			console.error('Failed to load session:', error);
 		} finally {

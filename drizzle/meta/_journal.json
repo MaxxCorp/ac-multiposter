@@ -5,50 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1762809595244,
-      "tag": "0000_tan_chat",
+      "when": 1763135279760,
+      "tag": "0000_closed_living_mummy",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1762816735879,
-      "tag": "0001_flippant_shotgun",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1762850350093,
-      "tag": "0002_mysterious_supernaut",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1762868432795,
-      "tag": "0003_bumpy_dormammu",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1762869227380,
-      "tag": "0004_superb_reaper",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1762878083716,
-      "tag": "0005_rich_shooting_star",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1762888307831,
-      "tag": "0006_many_maria_hill",
+      "when": 1763138172836,
+      "tag": "0001_glorious_avengers",
       "breakpoints": true
     }
   ]

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb, integer, index } from "drizzle-orm/pg-core";
 import { user } from "./schema";
 
 /**
@@ -24,7 +24,9 @@ export const syncConfig = pgTable("sync_config", {
 		.defaultNow()
 		.$onUpdate(() => new Date())
 		.notNull(),
-});
+}, (table) => ({
+	syncConfigUserIndex: index("sync_config_user_id_idx").on(table.userId),
+}));
 
 /**
  * Tracks individual sync operations for auditing and retry
@@ -43,7 +45,13 @@ export const syncOperation = pgTable("sync_operation", {
 	startedAt: timestamp("started_at").defaultNow().notNull(),
 	completedAt: timestamp("completed_at"),
 	retryCount: integer("retry_count").default(0).notNull(),
-});
+}, (table) => ({
+	syncOperationConfigIndex: index("sync_operation_config_id_idx").on(table.syncConfigId),
+	syncOperationConfigStartedIndex: index("sync_operation_config_started_idx").on(
+		table.syncConfigId,
+		table.startedAt,
+	),
+}));
 
 /**
  * Maps internal events to external provider events
@@ -59,7 +67,13 @@ export const syncMapping = pgTable("sync_mapping", {
 	lastSyncedAt: timestamp("last_synced_at").defaultNow().notNull(),
 	etag: text("etag"), // For conflict detection
 	metadata: jsonb("metadata"), // Provider-specific metadata
-});
+}, (table) => ({
+	syncMappingEventIndex: index("sync_mapping_event_id_idx").on(table.eventId),
+	syncMappingLookupIndex: index("sync_mapping_sync_external_idx").on(
+		table.syncConfigId,
+		table.externalId,
+	),
+}));
 
 /**
  * Webhook subscriptions for push notifications
@@ -74,4 +88,9 @@ export const webhookSubscription = pgTable("webhook_subscription", {
 	channelId: text("channel_id").notNull(), // Unique channel identifier
 	expiresAt: timestamp("expires_at").notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+	webhookSubscriptionConfigIndex: index("webhook_subscription_sync_config_id_idx").on(
+		table.syncConfigId,
+	),
+	webhookSubscriptionExpiresIndex: index("webhook_subscription_expires_at_idx").on(table.expiresAt),
+}));

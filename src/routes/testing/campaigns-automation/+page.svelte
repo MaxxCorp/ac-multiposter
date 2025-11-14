@@ -19,6 +19,8 @@
 
 	let campaigns = $state<HarnessCampaign[]>([]);
 	let isHydrated = $state(false);
+	let editingId = $state<string | null>(null);
+	const isEditing = $derived(Boolean(editingId));
 
 	onMount(() => {
 		isHydrated = true;
@@ -56,6 +58,7 @@
 		nameInput = '';
 		contentInput = '{}';
 		formError = null;
+		editingId = null;
 	}
 
 	function createCampaignRecord(name: string, content: Record<string, any>): HarnessCampaign {
@@ -70,7 +73,7 @@
 		};
 	}
 
-	function addCampaign(event: SubmitEvent) {
+	function upsertCampaign(event: SubmitEvent) {
 		event.preventDefault();
 		formError = null;
 
@@ -82,13 +85,38 @@
 
 		try {
 			const parsedContent = contentInput ? JSON.parse(contentInput) : {};
-			campaigns = [...campaigns, createCampaignRecord(trimmedName, parsedContent)];
+			if (editingId) {
+				campaigns = campaigns.map((campaign) =>
+					campaign.id === editingId
+						? {
+							...campaign,
+							name: trimmedName,
+							content: parsedContent,
+							updatedAt: new Date().toISOString()
+						}
+						: campaign
+				);
+				toast.success('Campaign updated for automation harness');
+			} else {
+				campaigns = [...campaigns, createCampaignRecord(trimmedName, parsedContent)];
+				toast.success('Campaign created for automation harness');
+			}
 			listPage.refresh();
-			toast.success('Campaign created for automation harness');
 			resetForm();
 		} catch (error) {
 			formError = 'Content must be valid JSON.';
 		}
+	}
+
+	function startEditing(target: HarnessCampaign) {
+		editingId = target.id;
+		nameInput = target.name;
+		contentInput = JSON.stringify(target.content ?? {}, null, 2);
+		formError = null;
+	}
+
+	function cancelEditing() {
+		resetForm();
 	}
 
 	async function handleBulkDelete() {
@@ -104,6 +132,9 @@
 			await listPage.handleDelete(id);
 		} finally {
 			deletingIds = new Set([...deletingIds].filter((value) => value !== id));
+			if (editingId === id) {
+				resetForm();
+			}
 		}
 	}
 </script>
@@ -116,7 +147,13 @@
 			database access is required—the data lives entirely in memory.
 		</p>
 
-		<form class="grid gap-4" onsubmit={addCampaign} data-testid="campaign-create-form">
+		<form class="grid gap-4" onsubmit={upsertCampaign} data-testid="campaign-create-form">
+			{#if isEditing}
+				<div class="rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 flex items-center justify-between" data-testid="campaign-edit-banner">
+					<span>Editing existing campaign</span>
+					<button type="button" class="text-yellow-900 underline" onclick={cancelEditing} data-testid="campaign-cancel-edit">Cancel</button>
+				</div>
+			{/if}
 			<label class="block text-sm font-medium text-gray-700">
 				<span>Campaign Name</span>
 				<input
@@ -151,7 +188,7 @@
 					class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
 					data-testid="campaign-submit"
 				>
-					Add Campaign
+					{isEditing ? 'Save Campaign' : 'Add Campaign'}
 				</button>
 				<button
 					type="button"
@@ -217,17 +254,33 @@
 							{/snippet}
 
 							{#snippet actions()}
-								<button
-									type="button"
-									onclick={(event) => {
-										event.stopPropagation();
-										void handleDelete(campaign.id);
-									}}
-									disabled={deletingIds.has(campaign.id)}
-									class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									{deletingIds.has(campaign.id) ? 'Deleting...' : 'Delete'}
-								</button>
+								<div class="flex flex-col gap-2">
+									<button
+										type="button"
+										data-testid="campaign-edit-button"
+										data-campaign-id={campaign.id}
+										onclick={(event) => {
+											event.stopPropagation();
+											startEditing(campaign);
+										}}
+										class="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600"
+									>
+										Edit
+									</button>
+									<button
+										type="button"
+										data-testid="campaign-delete-button"
+										data-campaign-id={campaign.id}
+										onclick={(event) => {
+											event.stopPropagation();
+											void handleDelete(campaign.id);
+										}}
+										disabled={deletingIds.has(campaign.id)}
+										class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+									>
+										{deletingIds.has(campaign.id) ? 'Deleting...' : 'Delete'}
+									</button>
+								</div>
 							{/snippet}
 						</ListCard>
 					</div>

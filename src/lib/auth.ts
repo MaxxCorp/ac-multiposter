@@ -12,15 +12,27 @@ export const auth = betterAuth({
     baseURL: env.BETTER_AUTH_URL || "http://localhost:5173",
     basePath: "/api/auth",
     trustHost: true,
+    session: {
+        cookieCache: {
+            enabled: false,
+        },
+        // TODO: reenable, once going to PROD
+        // cookieCache: {
+        // 	enabled: true,
+        // 	maxAge: 5 * 60,
+        // },
+    },
     user: {
         additionalFields: {
             roles: {
-                type: "string",
+                type: "json",
                 required: false,
+                input: false,
             },
             claims: {
-                type: "string",
+                type: "json",
                 required: false,
+                input: false,
             },
         },
     },

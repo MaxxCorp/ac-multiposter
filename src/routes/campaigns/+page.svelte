@@ -85,6 +85,7 @@
 				onDelete={handleDelete}
 				deleteLabel="Delete"
 				highlight={campaign.id === highlightedId}
+				cardNavigationEnabled={false}
 			>
 				{#snippet title()}
 					<a 

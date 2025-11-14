@@ -18,24 +18,33 @@
 		onDelete?: (id: string) => Promise<void>;
 		deleteLabel?: string;
 		highlight?: boolean;
+		cardNavigationEnabled?: boolean;
 	}
 
-	let { 
-		id, 
-		href, 
-		selected = false, 
-		onToggle, 
-		title, 
-		subtitle, 
-		content, 
+	let {
+		id,
+		href,
+		selected = false,
+		onToggle,
+		title,
+		subtitle,
+		content,
 		metadata,
 		actions,
 		badge,
 		editHref,
 		onDelete,
 		deleteLabel = 'Delete',
-		highlight = false
+		highlight = false,
+		cardNavigationEnabled = true
 	}: Props = $props();
+
+	const isCardNavigable = cardNavigationEnabled && Boolean(href);
+	const navigationLabel = isCardNavigable
+		? typeof title === 'string'
+			? `Open details for ${title}`
+			: 'Open details'
+		: undefined;
 	
 	let deleting = $state(false);
 	
@@ -54,7 +63,7 @@
 		}
 	}
 	function handleCardClick(event?: MouseEvent) {
-		if (!href) return;
+		if (!isCardNavigable || !href) return;
 
 		if (event?.defaultPrevented) return;
 
@@ -70,18 +79,21 @@
 	}
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex: composite card must remain focusable despite nested interactive regions -->
 <div
-	class={`bg-white shadow rounded-lg p-6 flex items-start gap-4 cursor-pointer hover:bg-gray-50 transition-shadow ${highlight ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}
-	onclick={handleCardClick}
-	role="link"
-	aria-label="Open details"
-	tabindex="0"
-	onkeydown={(e) => {
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			handleCardClick();
+	class={`relative bg-white shadow rounded-lg p-6 flex items-start gap-4 ${isCardNavigable ? 'cursor-pointer hover:bg-gray-50' : ''} transition-shadow ${highlight ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}
+	onclick={isCardNavigable ? handleCardClick : undefined}
+	role={isCardNavigable ? 'link' : undefined}
+	aria-label={navigationLabel}
+	tabindex={isCardNavigable ? 0 : undefined}
+	onkeydown={isCardNavigable
+		? (e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				handleCardClick();
+			}
 		}
-	}}
+		: undefined}
 >
 	{#if onToggle}
 		<input

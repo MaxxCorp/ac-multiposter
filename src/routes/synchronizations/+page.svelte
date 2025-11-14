@@ -119,6 +119,7 @@
 							configsPromise = list(); // Refresh the list
 						}}
 						deleteLabel="Delete"
+						cardNavigationEnabled={false}
 					>
 					{#snippet title()}
 						<a 

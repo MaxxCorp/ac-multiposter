@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb, integer, index } from "drizzle-orm/pg-core";
 import { user } from "./schema";
 
 /**
@@ -192,7 +192,9 @@ export const event = pgTable("event", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-});
+}, (table) => ({
+  eventUserIndex: index("event_user_id_idx").on(table.userId),
+}));
 
 export type Event = typeof event.$inferSelect;
 export type NewEvent = typeof event.$inferInsert;

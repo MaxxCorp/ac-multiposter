@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
-	import { untrack } from 'svelte';
 	import { getCampaign } from './view.remote';
 	import { updateCampaign } from './update.remote';
 	import { deleteCampaigns } from './delete.remote';
@@ -15,16 +14,36 @@
 	const campaignId = $derived($page.params.id || '');
 	const shouldAutoEdit = $derived($page.url.searchParams.get('edit') === '1');
 	const campaignPromise = $derived(getCampaign(campaignId));
-
-	let lastHandledUpdateResult: typeof updateCampaign.result | undefined = updateCampaign.result;
-	let completedUpdateSubmissions = $state(0);
-	let handledUpdateSubmission = $state(0);
-	let lastUpdatePendingCount = $state(updateCampaign.pending);
+	const updateForm = updateCampaign;
 
 	let isEditMode = $state(false);
 	let isDeleting = $state(false);
 	let loadedCampaign = $state<Campaign | null>(null);
 	let autoEditCampaignId = $state<string | null>(null);
+
+	const handleUpdateEnhance: Parameters<typeof updateForm.enhance>[0] = async ({ submit }) => {
+		try {
+			await submit();
+			const result = updateForm.result;
+			if (result?.success) {
+				toast.success('Campaign updated successfully!');
+				isEditMode = false;
+				const updatedId = result.campaign?.id ?? result.updatedCampaign?.id;
+				const target = updatedId ? `/campaigns?focus=${encodeURIComponent(updatedId)}` : '/campaigns';
+				await goto(target);
+				return;
+			}
+
+			if (result?.error) {
+				toast.error(`Failed to update campaign: ${result.error}`);
+			} else {
+				toast.error('Failed to update campaign. Please try again.');
+			}
+		} catch (error) {
+			toast.error('An unexpected error occurred while updating the campaign.');
+			throw error;
+		}
+	};
 
 	function clearEditParam() {
 		if (!$page.url.searchParams.has('edit')) return;
@@ -39,7 +58,7 @@
 
 	function startEdit(campaign: Campaign) {
 		// Pre-populate the form with current values
-		updateCampaign.fields.set({
+		updateForm.fields.set({
 			id: campaign.id,
 			name: campaign.name,
 			content: JSON.stringify(campaign.content, null, 2)
@@ -50,38 +69,6 @@
 	function cancelEdit() {
 		isEditMode = false;
 	}
-
-	$effect(() => {
-		const pending = updateCampaign.pending;
-		if (pending === 0 && lastUpdatePendingCount > 0) {
-			completedUpdateSubmissions += 1;
-		}
-		lastUpdatePendingCount = pending;
-	});
-
-	$effect(() => {
-		const result = updateCampaign.result;
-		if (!result || result === lastHandledUpdateResult) return;
-		if (
-			completedUpdateSubmissions === 0 ||
-			handledUpdateSubmission === completedUpdateSubmissions
-		)
-			return;
-		handledUpdateSubmission = completedUpdateSubmissions;
-		lastHandledUpdateResult = result;
-		
-		untrack(() => {
-			if (result.success) {
-				toast.success('Campaign updated successfully!');
-				isEditMode = false;
-				const updatedId = result.campaign?.id ?? result.updatedCampaign?.id;
-				const target = updatedId ? `/campaigns?focus=${encodeURIComponent(updatedId)}` : '/campaigns';
-				goto(target);
-			} else if (result.error) {
-				toast.error(`Failed to update campaign: ${result.error}`);
-			}
-		});
-	});
 
 	$effect(() => {
 		const currentPromise = campaignPromise;
@@ -192,7 +179,8 @@
 						<div class="bg-white shadow rounded-lg p-6">
 							<h2 class="text-xl font-semibold mb-4">Edit Campaign</h2>
 							<CampaignForm
-								form={updateCampaign}
+								form={updateForm}
+								enhance={handleUpdateEnhance}
 								mode="edit"
 								includeIdField
 								onCancel={cancelEdit}
