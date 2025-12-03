@@ -14,9 +14,17 @@ export const GET = async (event: RequestEvent) => {
     const stream = new ReadableStream({
         start(controller) {
             const encoder = new TextEncoder();
+            let isClosed = false;
 
             const send = (event: string, data: any) => {
-                controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+                if (!isClosed) {
+                    try {
+                        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+                    } catch (error) {
+                        // Stream already closed, mark as closed to prevent further attempts
+                        isClosed = true;
+                    }
+                }
             };
 
             const onEventCreated = (payload: EventPayload) => {
@@ -43,10 +51,19 @@ export const GET = async (event: RequestEvent) => {
 
             // Keep connection alive
             const interval = setInterval(() => {
-                controller.enqueue(encoder.encode(': keep-alive\n\n'));
+                if (!isClosed) {
+                    try {
+                        controller.enqueue(encoder.encode(': keep-alive\n\n'));
+                    } catch (error) {
+                        // Stream closed, stop trying
+                        isClosed = true;
+                        clearInterval(interval);
+                    }
+                }
             }, 30000);
 
             return () => {
+                isClosed = true;
                 clearInterval(interval);
                 globalEvents.off('event-created', onEventCreated);
                 globalEvents.off('event-updated', onEventUpdated);

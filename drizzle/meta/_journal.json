@@ -15,6 +15,20 @@
       "when": 1763138172836,
       "tag": "0001_glorious_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764759880744,
+      "tag": "0002_certain_darkstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764771612012,
+      "tag": "0003_melodic_bloodaxe",
+      "breakpoints": true
     }
   ]
 }

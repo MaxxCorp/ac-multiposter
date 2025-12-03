@@ -86,7 +86,6 @@ export const create = command(createSyncSchema, async (input: CreateSyncInput) =
 	// Setup webhook for push notifications if direction is pull or bidirectional
 	if (input.direction === 'pull' || input.direction === 'bidirectional') {
 		try {
-			console.log(`[CreateSync] Setting up webhook for config: ${newConfigId}`);
 			await syncService.setupWebhook(newConfigId);
 		} catch (error: any) {
 			console.error(`[CreateSync] Failed to setup webhook:`, error);

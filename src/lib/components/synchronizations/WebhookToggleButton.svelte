@@ -18,9 +18,10 @@
     let loading = $state(true);
 
     // Only show for providers that support webhooks and directions that need it
-    const supportsWebhooks =
+    const supportsWebhooks = $derived.by(() =>
         providerType === "google-calendar" &&
-        (direction === "pull" || direction === "bidirectional");
+        (direction === "pull" || direction === "bidirectional")
+    );
 
     $effect(() => {
         if (supportsWebhooks) {

@@ -1,13 +1,11 @@
 <script lang="ts">
-    import type { Component } from 'svelte';
-    import type { IconProps } from '@lucide/svelte';
-
+    // Loosen icon typing to accept any Svelte component
     interface Props {
-        icon: Component<IconProps>;
-        title: string;
-        description: string;
-        actionLabel: string;
-        actionHref: string;
+      icon?: any;
+      title: string;
+      description: string;
+      actionLabel: string;
+      actionHref: string;
     }
 
     let { icon: Icon, title, description, actionLabel, actionHref }: Props = $props();

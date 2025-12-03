@@ -36,6 +36,7 @@ export const eventBaseSchema = z.object({
 	guestsCanInviteOthers: z.optional(z.boolean()),
 	guestsCanModify: z.optional(z.boolean()),
 	guestsCanSeeOtherGuests: z.optional(z.boolean()),
+	resourceIds: z.optional(z.array(z.string())), // Resource IDs to associate with event
 });
 
 /**
@@ -87,4 +88,5 @@ export const updateEventSchema = z.object({
 	guestsCanInviteOthers: z.optional(z.boolean()),
 	guestsCanModify: z.optional(z.boolean()),
 	guestsCanSeeOtherGuests: z.optional(z.boolean()),
+	resourceIds: z.optional(z.array(z.string())), // Resource IDs to associate with event
 });

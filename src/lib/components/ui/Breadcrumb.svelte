@@ -11,9 +11,9 @@
 
 	let { feature, current, segments }: Props = $props();
 
-	// If feature is provided, use it to get the feature metadata
-	const featureMeta = feature ? FEATURES.find(f => f.key === feature) : null;
-	const breadcrumbSegments = segments || (featureMeta ? [{ label: featureMeta.title, href: featureMeta.href }] : []);
+	// Derive segments reactively in Svelte 5
+	const featureMeta = $derived.by(() => (feature ? FEATURES.find((f) => f.key === feature) : null));
+	const breadcrumbSegments = $derived.by(() => segments ?? (featureMeta ? [{ label: featureMeta.title, href: featureMeta.href }] : []));
 </script>
 
 <nav class="mb-4 text-sm" aria-label="Breadcrumb">

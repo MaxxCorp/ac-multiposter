@@ -11,14 +11,6 @@ export async function POST(event: RequestEvent) {
 	const resourceState = event.request.headers.get('X-Goog-Resource-State');
 	const channelToken = event.request.headers.get('X-Goog-Channel-Token');
 
-	// Log webhook notification for debugging
-	console.log('Google Calendar webhook received:', {
-		channelId,
-		resourceId,
-		resourceState,
-		channelToken
-	});
-
 	// Verify the channel token matches a known sync config ID
 	// (We set the token to the config ID in the provider)
 	if (!channelToken) {

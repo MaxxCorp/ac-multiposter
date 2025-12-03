@@ -49,7 +49,7 @@
 	];
 </script>
 
-<form on:submit|preventDefault={onSubmit} class="space-y-6">
+<form onsubmit={(e) => { e.preventDefault(); onSubmit(); }} class="space-y-6">
 	<!-- Provider Selection -->
 	<DashboardCard>
 		<h2 class="text-xl font-semibold mb-4">Select Calendar Provider</h2>
@@ -65,7 +65,7 @@
 						: provider.available
 						? 'border-gray-200 hover:border-gray-300'
 						: 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'}"
-					on:click={() => provider.available && (selectedProvider = provider.id)}
+					onclick={() => provider.available && (selectedProvider = provider.id)}
 				>
 					<div class="flex items-start gap-3">
 						<div

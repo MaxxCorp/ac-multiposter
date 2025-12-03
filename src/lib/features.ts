@@ -58,6 +58,34 @@ export const FEATURES: readonly FeatureMeta[] = [
     borderClass: 'border-emerald-100',
     buttonClass: 'bg-emerald-600 hover:bg-emerald-700',
     order: 3
+  },
+  {
+    key: 'locations',
+    title: 'Locations',
+    description: 'Manage physical locations where resources can be found or events take place.',
+    href: '/locations',
+    buttonText: 'Manage Locations',
+    claim: 'locations',
+    icon: 'mapPin',
+    gradientFrom: 'from-orange-50',
+    gradientTo: 'to-amber-50',
+    borderClass: 'border-orange-100',
+    buttonClass: 'bg-orange-600 hover:bg-orange-700',
+    order: 4
+  },
+  {
+    key: 'resources',
+    title: 'Resources',
+    description: 'Manage bookable resources like rooms, equipment, and inventory items.',
+    href: '/resources',
+    buttonText: 'Manage Resources',
+    claim: 'resources',
+    icon: 'box',
+    gradientFrom: 'from-teal-50',
+    gradientTo: 'to-cyan-50',
+    borderClass: 'border-teal-100',
+    buttonClass: 'bg-teal-600 hover:bg-teal-700',
+    order: 5
   }
 ] as const;
 

@@ -20,10 +20,10 @@ export interface Event {
 	eventType: string;
 	status: string;
 	startDate: string | null;
-	startDateTime: Date | null;
+	startDateTime: string | null; // ISO string when serialized
 	startTimeZone: string | null;
 	endDate: string | null;
-	endDateTime: Date | null;
+	endDateTime: string | null; // ISO string when serialized
 	endTimeZone: string | null;
 	endTimeUnspecified: boolean | null;
 	recurrence: string[] | null;
@@ -98,6 +98,7 @@ export interface Event {
 	sequence: number | null;
 	createdAt: string;
 	updatedAt: string;
+	resourceIds?: string[]; // Optional: Associated resource IDs
 }
 
 /**

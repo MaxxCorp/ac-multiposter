@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { event } from '$lib/server/db/schema';
+import { event, eventResource } from '$lib/server/db/schema';
 import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { syncService } from '$lib/server/sync/service';
@@ -8,7 +8,7 @@ import { eventSchema } from '$lib/validations/event';
 
 /**
  * Form function for creating a new event
- * Uses shared Zod schema with manual date/time validation (zod/mini doesn't support refine)
+ * Uses shared Zod schema with manual date/time validation (zod/mini doesn't support refine())
  */
 export const createEvent = form(eventSchema, async (data) => {
 	try {
@@ -71,6 +71,16 @@ export const createEvent = form(eventSchema, async (data) => {
 		const row = result[0];
 		if (!row) {
 			throw new Error('Failed to create event');
+		}
+
+		// Associate resources with the event if provided
+		if (data.resourceIds && data.resourceIds.length > 0) {
+			await db.insert(eventResource).values(
+				data.resourceIds.map(resourceId => ({
+					eventId: id,
+					resourceId,
+				}))
+			);
 		}
 
 		// Trigger sync to external providers (non-blocking)

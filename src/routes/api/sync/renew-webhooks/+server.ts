@@ -28,9 +28,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			}
 		}
 
-		console.log('[RenewWebhooks][POST] Starting webhook renewal process...');
 		await syncService.renewWebhooks();
-		console.log('[RenewWebhooks][POST] Webhook renewal completed successfully');
 
 		return json({ success: true, message: 'Webhooks renewed successfully' });
 	} catch (error: any) {
@@ -66,9 +64,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			}
 		}
 
-		console.log('[RenewWebhooks][GET] Starting webhook renewal process...');
 		await syncService.renewWebhooks();
-		console.log('[RenewWebhooks][GET] Webhook renewal completed successfully');
 
 		return json({ success: true, message: 'Webhooks renewed successfully' });
 	} catch (error: any) {

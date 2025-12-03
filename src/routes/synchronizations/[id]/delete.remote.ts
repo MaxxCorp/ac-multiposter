@@ -26,7 +26,6 @@ export const remove = command(z.string(), async (id: string) => {
 	// Cancel webhook if one exists
 	if (existing.webhookId) {
 		try {
-			console.log(`[DeleteSync] Canceling webhook for config: ${id}`);
 			await syncService.cancelWebhook(id);
 		} catch (error: any) {
 			console.error(`[DeleteSync] Failed to cancel webhook:`, error);
@@ -61,7 +60,6 @@ export const removeBulk = command(z.array(z.string()), async (ids: string[]) => 
 	for (const config of configs) {
 		if (config.webhookId) {
 			try {
-				console.log(`[BulkDeleteSync] Canceling webhook for config: ${config.id}`);
 				await syncService.cancelWebhook(config.id);
 			} catch (error: any) {
 				console.error(`[BulkDeleteSync] Failed to cancel webhook for ${config.id}:`, error);

@@ -4,6 +4,8 @@
 	import { readEvent } from "./read.remote";
 	import { updateEvent } from "./update.remote";
 	import { deleteEvents } from "./delete.remote";
+	import { listResourcesWithHierarchy, type ResourceWithHierarchy } from "../../resources/list-with-hierarchy.remote";
+	import { listLocations } from "../../locations/list.remote";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
@@ -13,59 +15,118 @@
 	import { Button } from "$lib/components/ui/button";
 	import { handleDelete } from "$lib/hooks/handleDelete.svelte";
 
-	// Form state
+	const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+	// Await the event data in the template
+	const eventQuery = readEvent(page.params.id || "");
+
+	// Resource and location state
+	let resourcesPromise = listResourcesWithHierarchy();
+	let locationsPromise = listLocations();
+	let selectedResourceIds = $state<string[]>([]);
+	let useFreeTextLocation = $state(false);
+	let selectedLocationId = $state<string>("");
+	let freeTextLocation = $state<string>("");
+
+	// Form state - user interactions
 	let isAllDay = $state(false);
 	let hasEndTime = $state(false);
 	let useDefaultReminders = $state(true);
 	let reminders = $state<Array<{ method: string; minutes: number }>>([
 		{ method: "popup", minutes: 10 },
 	]);
+	let initialized = $state(false); // Track if form has been initialized
 
 	// Helper fields for date/time input
 	let startDateInput = $state("");
 	let startTimeInput = $state("");
 	let endDateInput = $state("");
 	let endTimeInput = $state("");
-	let timeZone = $state("");
+	let timeZone = $state(browserTimezone);
 
-	// Schema fields - these match updateEventSchema
-	let startDate = $state("");
-	let startDateTime = $state("");
-	let startTimeZone = $state("");
-	let endDate = $state("");
-	let endDateTime = $state("");
-	let endTimeZone = $state("");
+	// Derive schema fields from user inputs
+	const startDate = $derived(isAllDay ? startDateInput : "");
+	const endDate = $derived(isAllDay && hasEndTime ? endDateInput : "");
+	const startDateTime = $derived(!isAllDay && startDateInput && startTimeInput ? `${startDateInput}T${startTimeInput}:00` : "");
+	const endDateTime = $derived(!isAllDay && hasEndTime && endDateInput && endTimeInput ? `${endDateInput}T${endTimeInput}:00` : "");
+	const startTimeZone = $derived(!isAllDay && timeZone ? timeZone : "");
+	const endTimeZone = $derived(!isAllDay && timeZone ? timeZone : "");
 
-	const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-	// Use $effect to sync UI state to schema fields
+	// Initialize form from loaded event data
 	$effect(() => {
+		eventQuery.then((event) => {
+			if (!event || initialized) return; // Already initialized
+			
+			isAllDay = !event.startDateTime && !!event.startDate;
+			hasEndTime = !!(event.endDateTime || event.endDate);
+			timeZone = event.startTimeZone || browserTimezone;
+			
+			// Initialize resources
+			if (event.resourceIds) {
+				selectedResourceIds = event.resourceIds;
+			}
+			
+			// Initialize location mode
+			if (event.location) {
+				freeTextLocation = event.location;
+				// Check if location matches any saved location
+				locationsPromise.then((locations) => {
+					const matchingLocation = locations.find(l => {
+						const locationStr = [l.name, l.roomId, l.address].filter(Boolean).join(', ');
+						return locationStr === event.location || l.name === event.location;
+					});
+					if (matchingLocation) {
+						selectedLocationId = matchingLocation.id;
+						useFreeTextLocation = false;
+					} else {
+						useFreeTextLocation = true;
+					}
+				});
+			}
+		
+		// Initialize date/time inputs based on event type
 		if (isAllDay) {
-			// For all-day events, use date fields and clear datetime
-			startDate = startDateInput;
-			endDate = hasEndTime ? endDateInput : "";
-			startDateTime = "";
-			endDateTime = "";
+			// All-day event: use startDate/endDate
+			startDateInput = event.startDate || "";
+			endDateInput = event.endDate || "";
 		} else {
-			// For timed events, compute datetime and clear date fields
-			startDateTime =
-				startDateInput && startTimeInput
-					? `${startDateInput}T${startTimeInput}:00`
-					: "";
-			endDateTime =
-				hasEndTime && endDateInput && endTimeInput
-					? `${endDateInput}T${endTimeInput}:00`
-					: "";
-			startDate = "";
-			endDate = "";
-		}
+			// Timed event: use startDateTime/endDateTime
+			if (event.startDateTime) {
+				const startParsed = parseDateTime(event.startDateTime);
+				const endParsed = parseDateTime(event.endDateTime);
+				startDateInput = startParsed.date;
+				startTimeInput = startParsed.time;
+				endDateInput = endParsed.date;
+				endTimeInput = endParsed.time;
+			}
+		}if (event.reminders) {
+				useDefaultReminders = event.reminders.useDefault ?? true;
+				if (event.reminders.overrides?.length) {
+					reminders = event.reminders.overrides;
+				}
+			}
+			
+			initialized = true; // Mark as initialized
+		});
 	});
 
-	// Sync timezone fields
+	// Prefill location from first selected resource
 	$effect(() => {
-		if (!isAllDay && timeZone) {
-			startTimeZone = timeZone;
-			endTimeZone = timeZone;
+		if (selectedResourceIds.length > 0 && !useFreeTextLocation && !selectedLocationId) {
+			Promise.all([resourcesPromise, locationsPromise]).then(([resources, locations]) => {
+				const firstResource = resources.find((r) => r.id === selectedResourceIds[0]);
+				if (firstResource?.locationId) {
+					selectedLocationId = firstResource.locationId;
+					// Also set the location text immediately
+					const selectedLocation = locations.find(l => l.id === firstResource.locationId);
+					if (selectedLocation) {
+						const locationParts = [selectedLocation.name];
+						if (selectedLocation.roomId) locationParts.push(selectedLocation.roomId);
+						if (selectedLocation.address) locationParts.push(selectedLocation.address);
+						freeTextLocation = locationParts.join(', ');
+					}
+				}
+			});
 		}
 	});
 
@@ -77,52 +138,21 @@
 		reminders = reminders.filter((_, i) => i !== index);
 	}
 
-	// Initialize form state from event data
-	function initializeForm(event: any) {
-		timeZone = event.startTimeZone || browserTimezone;
-
-		// Determine if all-day event
-		isAllDay = !event.startDateTime && !!event.startDate;
-		hasEndTime = !!event.endDateTime || !!event.endDate;
-
-		if (event.startDate) {
-			// All-day event
-			startDateInput = event.startDate;
-			if (event.endDate) {
-				endDateInput = event.endDate;
-			}
-		} else if (event.startDateTime) {
-			// Timed event
-			const dt = new Date(event.startDateTime);
-			startDateInput = dt.toISOString().split("T")[0];
-			startTimeInput = dt.toTimeString().slice(0, 5);
-
-			if (event.endDateTime) {
-				const endDt = new Date(event.endDateTime);
-				endDateInput = endDt.toISOString().split("T")[0];
-				endTimeInput = endDt.toTimeString().slice(0, 5);
-			}
-		}
-
-		// Set reminders
-		if (event.reminders) {
-			useDefaultReminders = event.reminders.useDefault ?? true;
-			if (event.reminders.overrides?.length) {
-				reminders = event.reminders.overrides;
-			}
-		}
+	// Helper to parse datetime for inputs
+	function parseDateTime(dt: string | Date | null | undefined): { date: string; time: string } {
+		if (!dt) return { date: "", time: "" };
+		const isoString = typeof dt === 'string' ? dt : new Date(dt).toISOString();
+		const [date, timeWithZone] = isoString.split("T");
+		const time = timeWithZone?.substring(0, 5) || "";
+		return { date, time };
 	}
 </script>
 
 <div class="container mx-auto px-4 py-8">
-	{#await readEvent(page.params.id || "")}
+	{#await eventQuery}
 		<LoadingSection message="Loading event..." />
 	{:then event}
 		{#if event}
-			{@html (() => {
-				initializeForm(event);
-				return "";
-			})()}
 			<div class="max-w-4xl mx-auto">
 				<Breadcrumb feature="events" current={event.summary} />
 				<div class="bg-white shadow rounded-lg p-6 space-y-4">
@@ -315,23 +345,103 @@
 							></textarea>
 						</div>
 
-						<!-- Location -->
+					<!-- Resources Section -->
+					{#await resourcesPromise then resources}
+					<div>
+						<span class="block text-sm font-medium text-gray-700 mb-2">
+							Resources (Optional)
+						</span>
+							<div class="space-y-1 border rounded-md p-4 max-h-64 overflow-y-auto bg-gray-50">
+								{#each resources as resource}
+									<label 
+										class="flex items-center gap-2 py-1 px-2 hover:bg-white rounded transition-colors"
+										style="padding-left: {resource.level * 24 + 8}px"
+									>
+										{#if resource.level > 0}
+											<span class="text-gray-400 text-xs mr-1">└─</span>
+										{/if}
+										<input
+											{...updateEvent.fields.resourceIds.as('checkbox', resource.id)}
+											class="w-4 h-4 text-blue-600 flex-shrink-0"
+											checked={selectedResourceIds.includes(resource.id)}
+											onclick={() => {
+												if (selectedResourceIds.includes(resource.id)) {
+													selectedResourceIds = selectedResourceIds.filter(id => id !== resource.id);
+												} else {
+													selectedResourceIds = [...selectedResourceIds, resource.id];
+												}
+											}}
+										/>
+										<span class="text-sm" class:font-semibold={resource.level === 0} class:text-gray-600={resource.level > 0}>
+											{resource.name}
+										</span>
+										<span class="text-xs text-gray-500">({resource.type})</span>
+									</label>
+								{/each}
+								{#if resources.length === 0}
+									<p class="text-sm text-gray-500">No resources available</p>
+								{/if}
+							</div>
+						</div>
+					{/await}						<!-- Location Section -->
 						<div>
-							<label
-								for="location"
-								class="block text-sm font-medium text-gray-700 mb-1"
-							>
+							<span class="block text-sm font-medium text-gray-700 mb-2">
 								Location
-							</label>
-							<input
-								{...updateEvent.fields.location.as("text")}
-								id="location"
-								value={updateEvent.fields.location.value() ??
-									event.location}
-								placeholder="Conference Room A"
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-								onblur={() => updateEvent.validate()}
-							/>
+							</span>
+							<div class="flex items-center gap-2 mb-2">
+								<input
+									id="useFreeTextLocation"
+									type="checkbox"
+									checked={useFreeTextLocation}
+									onclick={() => (useFreeTextLocation = !useFreeTextLocation)}
+									class="w-4 h-4 text-blue-600"
+								/>
+								<label for="useFreeTextLocation" class="text-sm text-gray-700">
+									Use custom location text
+								</label>
+							</div>
+							{#if useFreeTextLocation}
+								<input
+									{...updateEvent.fields.location.as("text")}
+									id="location"
+									value={updateEvent.fields.location.value() ?? freeTextLocation}
+									oninput={(e) => (freeTextLocation = e.currentTarget.value)}
+									placeholder="Enter custom location"
+									class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+									onblur={() => updateEvent.validate()}
+								/>
+							{:else}
+								{#await locationsPromise then locations}
+									<select
+										id="locationSelect"
+										value={selectedLocationId}
+										onchange={async (e) => {
+											selectedLocationId = e.currentTarget.value;
+											const selectedLocation = locations.find(l => l.id === selectedLocationId);
+											if (selectedLocation) {
+												const locationParts = [selectedLocation.name];
+												if (selectedLocation.roomId) locationParts.push(selectedLocation.roomId);
+												if (selectedLocation.address) locationParts.push(selectedLocation.address);
+												freeTextLocation = locationParts.join(', ');
+											}
+										}}
+										class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
+									>
+										<option value="">-- Select a location --</option>
+										{#each locations as location}
+											<option value={location.id}>
+												{location.name}{#if location.roomId} - {location.roomId}{/if}
+											</option>
+										{/each}
+									</select>
+									<!-- Hidden input to pass the constructed location string -->
+									{#if selectedLocationId}
+										<input
+											{...updateEvent.fields.location.as("hidden", freeTextLocation)}
+										/>
+									{/if}
+								{/await}
+							{/if}
 						</div>
 
 						<!-- All Day Event Toggle -->

@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, boolean, jsonb, integer, index } from "drizzle-orm/pg-core";
-import { user } from "./schema";
+import { user } from "./auth-schema";
 
 /**
  * Sync provider configurations - each represents a configured sync connection

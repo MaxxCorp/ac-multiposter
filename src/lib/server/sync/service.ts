@@ -82,7 +82,6 @@ export class SyncService {
 	 * Handles bidirectional sync (pull from provider, push local changes)
 	 */
 	async syncEvents(configId: string): Promise<SyncResult> {
-		console.log(`[SyncService] Starting sync for config: ${configId}`);
 		const result: SyncResult = {
 			success: true,
 			pulled: 0,
@@ -94,7 +93,6 @@ export class SyncService {
 
 		try {
 			// Get sync config
-			console.log(`[SyncService] Fetching sync config from database...`);
 			const [configRow] = await db
 				.select()
 				.from(syncConfigTable)
@@ -106,19 +104,9 @@ export class SyncService {
 			}
 
 			const config = this.rowToConfig(configRow);
-			console.log(`[SyncService] Config loaded:`, {
-				id: config.id,
-				providerType: config.providerType,
-				direction: config.direction,
-				enabled: config.enabled,
-				lastSyncAt: config.lastSyncAt,
-				syncToken: config.syncToken ? 'present' : 'absent',
-				credentials: config.credentials ? 'present' : 'absent'
-			});
 
 			// Create operation record
 			operationId = crypto.randomUUID();
-			console.log(`[SyncService] Creating operation record: ${operationId}`);
 			await db.insert(syncOperationTable).values({
 				id: operationId,
 				syncConfigId: configId,
@@ -129,30 +117,23 @@ export class SyncService {
 			});
 
 			// Initialize provider
-			console.log(`[SyncService] Initializing provider: ${config.providerType}`);
 			const provider = await this.getProviderInstance(config);
-			console.log(`[SyncService] Provider initialized successfully`);
 
 			// Pull events from provider
 			if (config.direction === 'pull' || config.direction === 'bidirectional') {
-				console.log(`[SyncService] Starting pull operation...`);
 				const pullResult = await this.pullFromProvider(config, provider);
 				result.pulled = pullResult.pulled;
 				result.errors.push(...pullResult.errors);
-				console.log(`[SyncService] Pull completed: ${pullResult.pulled} events, ${pullResult.errors.length} errors`);
 			}
 
 			// Push local changes to provider
 			if (config.direction === 'push' || config.direction === 'bidirectional') {
-				console.log(`[SyncService] Starting push operation...`);
 				const pushResult = await this.pushToProvider(config, provider);
 				result.pushed = pushResult.pushed;
 				result.errors.push(...pushResult.errors);
-				console.log(`[SyncService] Push completed: ${pushResult.pushed} events, ${pushResult.errors.length} errors`);
 			}
 
 			// Update operation status
-			console.log(`[SyncService] Updating operation status...`);
 			await db
 				.update(syncOperationTable)
 				.set({
@@ -163,7 +144,6 @@ export class SyncService {
 				.where(eq(syncOperationTable.id, operationId));
 
 			// Update sync config with last sync time
-			console.log(`[SyncService] Updating sync config...`);
 			await db
 				.update(syncConfigTable)
 				.set({
@@ -173,7 +153,6 @@ export class SyncService {
 				.where(eq(syncConfigTable.id, configId));
 
 			result.success = result.errors.length === 0;
-			console.log(`[SyncService] Sync completed successfully:`, result);
 			return result;
 		} catch (error: any) {
 			console.error(`[SyncService] Sync failed with error:`, error);
@@ -183,7 +162,6 @@ export class SyncService {
 
 			// Update operation as failed if we created one
 			if (operationId) {
-				console.log(`[SyncService] Marking operation as failed: ${operationId}`);
 				await db
 					.update(syncOperationTable)
 					.set({
@@ -208,17 +186,11 @@ export class SyncService {
 		const result = { pulled: 0, errors: [] as SyncResult['errors'] };
 
 		try {
-			console.log(`[SyncService] Pulling events from provider, syncToken: ${config.syncToken ? 'present' : 'absent'}`);
-
 			// Pull events using sync token if available
 			const { events, nextSyncToken } = await provider.pullEvents(config.syncToken);
 
-			console.log(`[SyncService] Received ${events.length} events from provider`);
-			console.log(`[SyncService] Next sync token: ${nextSyncToken ? 'present' : 'absent'}`);
-
 			for (const externalEvent of events) {
 				try {
-					console.log(`[SyncService] Processing event: ${externalEvent.externalId} - ${externalEvent.summary}`);
 					await this.processExternalEvent(config, externalEvent);
 					result.pulled++;
 				} catch (error: any) {
@@ -232,7 +204,6 @@ export class SyncService {
 
 			// Store new sync token for incremental syncs
 			if (nextSyncToken) {
-				console.log(`[SyncService] Storing new sync token`);
 				await db
 					.update(syncConfigTable)
 					.set({ syncToken: nextSyncToken })
@@ -350,8 +321,6 @@ export class SyncService {
 
 		if (externalEvent.status === 'cancelled') {
 			if (mapping) {
-				console.log(`[SyncService] Received cancellation for external event ${externalEvent.externalId}, deleting local event ${mapping.eventId}`);
-
 				// Delete the local event
 				// Note: This might trigger a delete hook if we had one, but we don't.
 				// However, we should be careful not to trigger a push-back loop if we add one later.
@@ -366,15 +335,12 @@ export class SyncService {
 					eventId: mapping.eventId,
 					source: 'sync'
 				});
-			} else {
-				console.log(`[SyncService] Received cancellation for unknown external event ${externalEvent.externalId}, ignoring`);
 			}
 			return;
 		}
 
 		if (mapping) {
 			// Update existing event
-			console.log(`[SyncService] Updating existing local event ${mapping.eventId} from external ${externalEvent.externalId}`);
 
 			// Get current event to check timestamps
 			const [currentEvent] = await db
@@ -387,8 +353,6 @@ export class SyncService {
 				// This prevents echo loops in bidirectional sync
 				const timeSinceUpdate = Date.now() - currentEvent.updatedAt.getTime();
 				if (timeSinceUpdate < 30000) {
-					console.log(`[SyncService] Skipping update for ${mapping.eventId} - recently modified locally (${timeSinceUpdate}ms ago)`);
-
 					// Still update the mapping timestamp to prevent re-processing
 					await db
 						.update(syncMappingTable)
@@ -420,14 +384,6 @@ export class SyncService {
 			// Before creating a new event, check if we already have a local event with similar properties
 			// that was just created (within last 30 seconds). This prevents duplicates when:
 			// 1. User creates event locally → pushes to Google → webhook fires → tries to pull back
-			console.log(`[SyncService] Checking for recently created local events before creating new one`);
-			console.log(`[SyncService] External event details:`, {
-				summary: externalEvent.summary,
-				startDateTime: externalEvent.startDateTime,
-				startDate: externalEvent.startDate,
-				externalId: externalEvent.externalId
-			});
-
 			const recentEvents = await db
 				.select()
 				.from(eventTable)
@@ -438,16 +394,9 @@ export class SyncService {
 					)
 				);
 
-			console.log(`[SyncService] Found ${recentEvents.length} candidates with same summary`);
-
 			// Check if any recent event matches this external event
 			for (const recentEvent of recentEvents) {
 				const timeSinceCreation = Date.now() - recentEvent.createdAt.getTime();
-				console.log(`[SyncService] Checking candidate ${recentEvent.id}:`, {
-					timeSinceCreation,
-					startDateTime: recentEvent.startDateTime,
-					startDate: recentEvent.startDate
-				});
 
 				// If we find a very recently created event with same summary and similar time
 				if (timeSinceCreation < 60000) { // Increased window to 60s
@@ -473,10 +422,10 @@ export class SyncService {
 						startTimesMatch = recentEvent.startDate === externalDate;
 					}
 
-					console.log(`[SyncService] Match result for ${recentEvent.id}:`, { startTimesMatch });
+
 
 					if (startTimesMatch) {
-						console.log(`[SyncService] Found matching recent local event ${recentEvent.id}, creating mapping instead of duplicate`);
+
 
 						// Create mapping to link this local event to the external one
 						await db.insert(syncMappingTable).values({
@@ -495,7 +444,6 @@ export class SyncService {
 			}
 
 			// Create new event - no matching local event found
-			console.log(`[SyncService] Creating new local event from external ${externalEvent.externalId}`);
 			const internalEvent = this.mapExternalToInternal(externalEvent, config.userId);
 			const [newEvent] = await db.insert(eventTable).values(internalEvent).returning();
 
@@ -547,8 +495,6 @@ export class SyncService {
 	 * Setup webhook for a sync config
 	 */
 	async setupWebhook(configId: string): Promise<void> {
-		console.log(`[SyncService] Setting up webhook for config: ${configId}`);
-
 		const [configRow] = await db.select().from(syncConfigTable).where(eq(syncConfigTable.id, configId));
 
 		if (!configRow) {
@@ -559,7 +505,6 @@ export class SyncService {
 		const provider = await this.getProviderInstance(config);
 
 		if (!provider.supportsWebhooks) {
-			console.log(`[SyncService] Provider ${config.providerType} does not support webhooks`);
 			return;
 		}
 
@@ -571,8 +516,6 @@ export class SyncService {
 		const baseUrl = env.BETTER_AUTH_URL || 'https://localhost:5173';
 		const callbackUrl = `${baseUrl}/api/sync/webhook/${config.providerType}`;
 
-		console.log(`[SyncService] Creating webhook subscription with callback: ${callbackUrl}`);
-
 		// Setup new webhook
 		if (provider.setupWebhook) {
 			const subscription = await provider.setupWebhook(callbackUrl);
@@ -583,12 +526,6 @@ export class SyncService {
 					.update(syncConfigTable)
 					.set({ webhookId: subscription.id })
 					.where(eq(syncConfigTable.id, configId));
-
-				console.log(`[SyncService] Webhook setup completed:`, {
-					subscriptionId: subscription.id,
-					channelId: subscription.channelId,
-					expiresAt: subscription.expiresAt
-				});
 			}
 		}
 	}
@@ -598,8 +535,6 @@ export class SyncService {
 	 * Remove webhook for a sync config
 	 */
 	async removeWebhook(configId: string): Promise<void> {
-		console.log(`[SyncService] Removing webhook for config: ${configId}`);
-
 		const [configRow] = await db.select().from(syncConfigTable).where(eq(syncConfigTable.id, configId));
 		if (!configRow) return;
 
@@ -663,8 +598,6 @@ export class SyncService {
 	 * Should be called periodically (e.g., daily cron job)
 	 */
 	async renewWebhooks(): Promise<void> {
-		console.log(`[SyncService] Checking for expiring webhooks...`);
-
 		const expiringDate = new Date();
 		expiringDate.setHours(expiringDate.getHours() + 24);
 
@@ -673,11 +606,8 @@ export class SyncService {
 			.from(webhookSubscriptionTable)
 			.where(lt(webhookSubscriptionTable.expiresAt, expiringDate));
 
-		console.log(`[SyncService] Found ${expiring.length} expiring webhooks`);
-
 		for (const subscription of expiring) {
 			try {
-				console.log(`[SyncService] Renewing webhook: ${subscription.id}`);
 
 				const [configRow] = await db
 					.select()
@@ -685,7 +615,6 @@ export class SyncService {
 					.where(eq(syncConfigTable.id, subscription.syncConfigId));
 
 				if (!configRow || !configRow.enabled) {
-					console.log(`[SyncService] Sync config disabled or not found, deleting webhook: ${subscription.id}`);
 					await db
 						.delete(webhookSubscriptionTable)
 						.where(eq(webhookSubscriptionTable.id, subscription.id));
@@ -696,7 +625,6 @@ export class SyncService {
 				const provider = await this.getProviderInstance(config);
 
 				if (!provider.supportsWebhooks || !provider.renewWebhook) {
-					console.log(`[SyncService] Provider does not support webhook renewal`);
 					continue;
 				}
 
@@ -716,15 +644,11 @@ export class SyncService {
 						.update(syncConfigTable)
 						.set({ webhookId: newSubscription.id })
 						.where(eq(syncConfigTable.id, config.id));
-
-					console.log(`[SyncService] Webhook renewed: ${subscription.id}, new expiry: ${newSubscription.expiresAt}`);
 				}
 			} catch (error: any) {
 				console.error(`[SyncService] Failed to renew webhook for subscription ${subscription.id}:`, error);
 			}
 		}
-
-		console.log(`[SyncService] Webhook renewal completed`);
 	}
 
 	/**
@@ -999,8 +923,6 @@ export class SyncService {
 	 * Stops receiving push notifications from the provider
 	 */
 	async cancelWebhook(configId: string): Promise<void> {
-		console.log(`[SyncService] Canceling webhook for config: ${configId}`);
-
 		try {
 			// Get sync config
 			const [configRow] = await db
@@ -1009,7 +931,6 @@ export class SyncService {
 				.where(eq(syncConfigTable.id, configId));
 
 			if (!configRow || !configRow.webhookId) {
-				console.log(`[SyncService] No webhook found for config: ${configId}`);
 				return;
 			}
 
@@ -1022,7 +943,6 @@ export class SyncService {
 				.where(eq(webhookSubscriptionTable.id, configRow.webhookId));
 
 			if (!subscription) {
-				console.log(`[SyncService] Webhook subscription not found: ${configRow.webhookId}`);
 				return;
 			}
 
@@ -1031,7 +951,6 @@ export class SyncService {
 
 			// Cancel webhook with provider
 			if (provider.supportsWebhooks && provider.cancelWebhook) {
-				console.log(`[SyncService] Stopping webhook channel: ${subscription.channelId}`);
 				await provider.cancelWebhook(subscription);
 			}
 
@@ -1045,8 +964,6 @@ export class SyncService {
 				.update(syncConfigTable)
 				.set({ webhookId: null })
 				.where(eq(syncConfigTable.id, configId));
-
-			console.log(`[SyncService] Webhook canceled successfully`);
 		} catch (error: any) {
 			console.error(`[SyncService] Failed to cancel webhook:`, error);
 			// Don't throw - webhook may have already expired or been deleted

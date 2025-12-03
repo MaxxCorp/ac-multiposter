@@ -20,7 +20,7 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 	if (data.startDate && data.endDate && data.endDate < data.startDate) {
 		throw new Error('End date must be the same as or after the start date');
 	}
-	
+
 	if (data.startDateTime && data.endDateTime) {
 		const startDateTime = new Date(data.startDateTime);
 		const endDateTime = new Date(data.endDateTime);
@@ -31,7 +31,7 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 
 	// Build update object with only provided fields
 	const updateData: any = {};
-	
+
 	if (data.summary !== undefined) updateData.summary = data.summary;
 	if (data.description !== undefined) updateData.description = data.description;
 	if (data.location !== undefined) updateData.location = data.location;
@@ -58,6 +58,24 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 		.update(event)
 		.set(updateData)
 		.where(and(eq(event.id, data.id), eq(event.userId, user.id)));
+
+	// Update event-resource associations if resourceIds are provided
+	if (data.resourceIds !== undefined) {
+		const { eventResource } = await import('$lib/server/db/schema');
+
+		// Delete existing associations
+		await db.delete(eventResource).where(eq(eventResource.eventId, data.id));
+
+		// Create new associations if any
+		if (data.resourceIds.length > 0) {
+			await db.insert(eventResource).values(
+				data.resourceIds.map(resourceId => ({
+					eventId: data.id,
+					resourceId,
+				}))
+			);
+		}
+	}
 
 	// Trigger sync to external providers (non-blocking)
 	syncService.syncSpecificEvents(user.id, [data.id]).catch((error) => {
