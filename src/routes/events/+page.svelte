@@ -11,10 +11,13 @@
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
 	import { handleDelete } from "$lib/hooks/handleDelete.svelte";
 	import EmptyState from "$lib/components/ui/EmptyState.svelte";
+	import { toast } from "svelte-sonner";
+	import { invalidateAll } from "$app/navigation";
 
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
 	let initializedItems = $state<Event[]>([]);
 	let selectedIds = $state<Set<string>>(new Set());
+	let eventSource: EventSource | null = null;
 
 	function isSelected(id: string) {
 		return selectedIds.has(id);
@@ -57,6 +60,40 @@
 		}
 		return "Time not specified";
 	}
+
+	function setupSSE() {
+		if (eventSource) {
+			eventSource.close();
+		}
+
+		eventSource = new EventSource("/api/events/sse");
+
+		eventSource.addEventListener("event-created", () => {
+			toast.info("New event created remotely");
+			invalidateAll();
+		});
+
+		eventSource.addEventListener("event-updated", () => {
+			toast.info("Event updated remotely");
+			invalidateAll();
+		});
+
+		eventSource.addEventListener("event-deleted", () => {
+			toast.info("Event deleted remotely");
+			invalidateAll();
+		});
+
+		eventSource.onerror = (error) => {
+			console.error("SSE connection error:", error);
+			eventSource?.close();
+		};
+	}
+
+	$effect(() => {
+		return () => {
+			eventSource?.close();
+		};
+	});
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -92,6 +129,7 @@
 			{:then items}
 				{@html (() => {
 					initializedItems = items;
+					setupSSE();
 					return "";
 				})()}
 

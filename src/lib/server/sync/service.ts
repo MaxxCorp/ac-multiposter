@@ -19,6 +19,7 @@ import { eq, and, isNull, lt, inArray, desc } from 'drizzle-orm';
 import { GoogleCalendarProvider } from './providers/google-calendar';
 import crypto from 'crypto';
 import { env } from '$env/dynamic/private';
+import { globalEvents } from '../events';
 
 /**
  * Central sync service orchestrator
@@ -358,6 +359,13 @@ export class SyncService {
 
 				// Mapping should be deleted by cascade if foreign key exists, but let's be safe
 				await db.delete(syncMappingTable).where(eq(syncMappingTable.id, mapping.id));
+
+				// Emit event-deleted event for real-time updates
+				globalEvents.emit('event-deleted', {
+					userId: config.userId,
+					eventId: mapping.eventId,
+					source: 'sync'
+				});
 			} else {
 				console.log(`[SyncService] Received cancellation for unknown external event ${externalEvent.externalId}, ignoring`);
 			}
@@ -401,6 +409,13 @@ export class SyncService {
 				.update(syncMappingTable)
 				.set({ etag: externalEvent.etag ?? null, lastSyncedAt: new Date() })
 				.where(eq(syncMappingTable.id, mapping.id));
+
+			// Emit event-updated event for real-time updates
+			globalEvents.emit('event-updated', {
+				userId: config.userId,
+				eventId: mapping.eventId,
+				source: 'sync'
+			});
 		} else {
 			// Before creating a new event, check if we already have a local event with similar properties
 			// that was just created (within last 30 seconds). This prevents duplicates when:
@@ -492,6 +507,13 @@ export class SyncService {
 				providerId: config.providerId,
 				etag: externalEvent.etag ?? null,
 				lastSyncedAt: new Date()
+			});
+
+			// Emit event-created event for real-time updates
+			globalEvents.emit('event-created', {
+				userId: config.userId,
+				eventId: newEvent.id,
+				source: 'sync'
 			});
 		}
 	}

@@ -32,3 +32,9 @@ pnpm-workspace.yaml
 .pnpm-store
 
 .github
+
+# local dev experiments
+src/routes/test1
+
+# vscode
+.vscode
