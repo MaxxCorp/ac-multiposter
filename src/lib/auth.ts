@@ -14,13 +14,9 @@ export const auth = betterAuth({
     trustHost: true,
     session: {
         cookieCache: {
-            enabled: false,
+            enabled: true,
+            maxAge: 30 * 60, // 30 minutes
         },
-        // TODO: reenable, once going to PROD
-        // cookieCache: {
-        // 	enabled: true,
-        // 	maxAge: 5 * 60,
-        // },
     },
     user: {
         additionalFields: {
@@ -36,8 +32,8 @@ export const auth = betterAuth({
             },
         },
     },
-    socialProviders: { 
-        google: { 
+    socialProviders: {
+        google: {
             clientId: env.GOOGLE_CLIENT_ID || "",
             clientSecret: env.GOOGLE_CLIENT_SECRET || "",
             scope: [
