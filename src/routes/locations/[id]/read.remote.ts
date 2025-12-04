@@ -5,7 +5,7 @@ import { location } from "$lib/server/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "$lib/authorization";
 
-export const getLocation = query(z.string(), async (id: string) => {
+export const readLocation = query(z.string(), async (id: string) => {
     const user = getAuthenticatedUser();
     const [item] = await db
         .select()

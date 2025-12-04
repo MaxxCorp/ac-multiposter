@@ -5,7 +5,7 @@ import { resource, resourceRelation } from "$lib/server/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "$lib/authorization";
 
-export const getResource = query(z.string(), async (id: string) => {
+export const readResource = query(z.string(), async (id: string) => {
     const user = getAuthenticatedUser();
     const [item] = await db
         .select()

@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser, ensureAccess } from "$lib/authorization";
 import { updateLocationSchema } from "$lib/validations/location";
 import { listLocations } from '../list.remote';
-import { getLocation } from './get.remote';
+import { readLocation } from './read.remote';
 
 export const updateLocation = form(updateLocationSchema, async (data) => {
     try {
@@ -25,7 +25,7 @@ export const updateLocation = form(updateLocationSchema, async (data) => {
             })
             .where(and(eq(location.id, data.id), eq(location.userId, user.id)));
 
-        await getLocation(data.id).refresh();
+        await readLocation(data.id).refresh();
         await listLocations().refresh();
         return { success: true };
     } catch (error: any) {

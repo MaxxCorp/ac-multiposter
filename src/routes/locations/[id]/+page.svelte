@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
-    import { getLocation } from "./get.remote";
+    import { readLocation } from "./read.remote";
     import { updateLocation } from "./update.remote";
     import { deleteLocation } from "./delete.remote";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
@@ -15,7 +15,7 @@
 </script>
 
 <div class="container mx-auto px-4 py-8">
-    {#await getLocation(page.params.id || "")}
+    {#await readLocation(page.params.id || "")}
         <LoadingSection message="Loading location..." />
     {:then location}
         {#if location}

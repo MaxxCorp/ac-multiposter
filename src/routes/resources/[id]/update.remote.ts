@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser, ensureAccess } from "$lib/authorization";
 import { updateResourceSchema } from "$lib/validations/resource";
 import { listResources } from '../list.remote';
-import { getResource } from './get.remote';
+import { readResource } from './read.remote';
 
 export const updateResource = form(updateResourceSchema, async (data) => {
     try {
@@ -50,7 +50,7 @@ export const updateResource = form(updateResourceSchema, async (data) => {
             );
         }
 
-        await getResource(data.id).refresh();
+        await readResource(data.id).refresh();
         await listResources().refresh();
         return { success: true };
     } catch (error: any) {
