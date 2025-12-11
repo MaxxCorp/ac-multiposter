@@ -29,6 +29,20 @@
       "when": 1764771612012,
       "tag": "0003_melodic_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765490124975,
+      "tag": "0004_premium_demogoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1765491023167,
+      "tag": "0005_bright_proudstar",
+      "breakpoints": true
     }
   ]
 }

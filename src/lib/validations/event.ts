@@ -8,6 +8,8 @@ export const eventBaseSchema = z.object({
 	summary: z.string().check(z.minLength(1, 'Event title is required')),
 	description: z.optional(z.string()),
 	location: z.optional(z.string()),
+	categoryBerlinDotDe: z.optional(z.string()), // Berlin.de event category
+	ticketPrice: z.optional(z.string()), // Ticket price information
 	startDate: z.optional(z.string()), // yyyy-mm-dd for all-day events
 	startDateTime: z.optional(z.string()), // ISO 8601 string for timed events
 	startTimeZone: z.optional(z.string()),
@@ -60,6 +62,8 @@ export const updateEventSchema = z.object({
 	summary: z.string().check(z.minLength(1, 'Event title is required')),
 	description: z.optional(z.string()),
 	location: z.optional(z.string()),
+	categoryBerlinDotDe: z.optional(z.string()), // Berlin.de event category
+	ticketPrice: z.optional(z.string()), // Ticket price information
 	startDate: z.optional(z.string()),
 	startDateTime: z.optional(z.string()),
 	startTimeZone: z.optional(z.string()),

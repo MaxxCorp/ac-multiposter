@@ -2,7 +2,10 @@
 	import { goto } from "$app/navigation";
 	import { createEvent } from "./create.remote";
 	import { listEvents } from "../list.remote";
-	import { listResourcesWithHierarchy, type ResourceWithHierarchy } from "../../resources/list-with-hierarchy.remote";
+	import {
+		listResourcesWithHierarchy,
+		type ResourceWithHierarchy,
+	} from "../../resources/list-with-hierarchy.remote";
 	import { listLocations } from "../../locations/list.remote";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import { toast } from "svelte-sonner";
@@ -69,20 +72,28 @@
 	// Prefill location from first selected resource
 	$effect(() => {
 		if (selectedResourceIds.length > 0 && !useFreeTextLocation) {
-			Promise.all([resourcesPromise, locationsPromise]).then(([resources, locations]) => {
-				const firstResource = resources.find((r) => r.id === selectedResourceIds[0]);
-				if (firstResource?.locationId && !selectedLocationId) {
-					selectedLocationId = firstResource.locationId;
-					// Also set the location text immediately
-					const selectedLocation = locations.find(l => l.id === firstResource.locationId);
-					if (selectedLocation) {
-						const locationParts = [selectedLocation.name];
-						if (selectedLocation.roomId) locationParts.push(selectedLocation.roomId);
-						if (selectedLocation.address) locationParts.push(selectedLocation.address);
-						freeTextLocation = locationParts.join(', ');
+			Promise.all([resourcesPromise, locationsPromise]).then(
+				([resources, locations]) => {
+					const firstResource = resources.find(
+						(r) => r.id === selectedResourceIds[0],
+					);
+					if (firstResource?.locationId && !selectedLocationId) {
+						selectedLocationId = firstResource.locationId;
+						// Also set the location text immediately
+						const selectedLocation = locations.find(
+							(l) => l.id === firstResource.locationId,
+						);
+						if (selectedLocation) {
+							const locationParts = [selectedLocation.name];
+							if (selectedLocation.roomId)
+								locationParts.push(selectedLocation.roomId);
+							if (selectedLocation.address)
+								locationParts.push(selectedLocation.address);
+							freeTextLocation = locationParts.join(", ");
+						}
 					}
-				}
-			});
+				},
+			);
 		}
 	});
 
@@ -220,35 +231,63 @@
 					<span class="block text-sm font-medium text-gray-700 mb-2">
 						Resources (Optional)
 					</span>
-					<div class="space-y-1 border rounded-md p-4 max-h-64 overflow-y-auto bg-gray-50">
+					<div
+						class="space-y-1 border rounded-md p-4 max-h-64 overflow-y-auto bg-gray-50"
+					>
 						{#each resources as resource}
-							<label 
+							<label
 								class="flex items-center gap-2 py-1 px-2 hover:bg-white rounded transition-colors"
-								style="padding-left: {resource.level * 24 + 8}px"
+								style="padding-left: {resource.level * 24 +
+									8}px"
 							>
 								{#if resource.level > 0}
-									<span class="text-gray-400 text-xs mr-1">└─</span>
+									<span class="text-gray-400 text-xs mr-1"
+										>└─</span
+									>
 								{/if}
 								<input
-									{...createEvent.fields.resourceIds.as('checkbox', resource.id)}
+									{...createEvent.fields.resourceIds.as(
+										"checkbox",
+										resource.id,
+									)}
 									class="w-4 h-4 text-blue-600 flex-shrink-0"
-									checked={selectedResourceIds.includes(resource.id)}
+									checked={selectedResourceIds.includes(
+										resource.id,
+									)}
 									onclick={() => {
-										if (selectedResourceIds.includes(resource.id)) {
-											selectedResourceIds = selectedResourceIds.filter(id => id !== resource.id);
+										if (
+											selectedResourceIds.includes(
+												resource.id,
+											)
+										) {
+											selectedResourceIds =
+												selectedResourceIds.filter(
+													(id) => id !== resource.id,
+												);
 										} else {
-											selectedResourceIds = [...selectedResourceIds, resource.id];
+											selectedResourceIds = [
+												...selectedResourceIds,
+												resource.id,
+											];
 										}
 									}}
 								/>
-								<span class="text-sm" class:font-semibold={resource.level === 0} class:text-gray-600={resource.level > 0}>
+								<span
+									class="text-sm"
+									class:font-semibold={resource.level === 0}
+									class:text-gray-600={resource.level > 0}
+								>
 									{resource.name}
 								</span>
-								<span class="text-xs text-gray-500">({resource.type})</span>
+								<span class="text-xs text-gray-500"
+									>({resource.type})</span
+								>
 							</label>
 						{/each}
 						{#if resources.length === 0}
-							<p class="text-sm text-gray-500">No resources available</p>
+							<p class="text-sm text-gray-500">
+								No resources available
+							</p>
 						{/if}
 					</div>
 				</div>
@@ -264,26 +303,31 @@
 						id="useFreeTextLocation"
 						type="checkbox"
 						checked={useFreeTextLocation}
-						onclick={() => (useFreeTextLocation = !useFreeTextLocation)}
+						onclick={() =>
+							(useFreeTextLocation = !useFreeTextLocation)}
 						class="w-4 h-4 text-blue-600"
 					/>
-					<label for="useFreeTextLocation" class="text-sm text-gray-700">
+					<label
+						for="useFreeTextLocation"
+						class="text-sm text-gray-700"
+					>
 						Use custom location text
 					</label>
 				</div>
 				{#if useFreeTextLocation}
 					<input
 						id="location"
-					{...createEvent.fields.location.as("text")}
-					value={freeTextLocation}
-					oninput={(e) => (freeTextLocation = e.currentTarget.value)}
-					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(createEvent.fields.location.issues()
-						?.length ?? 0) > 0
-						? 'border-red-500'
-						: 'border-gray-300'}"
-					placeholder="Enter custom location"
-					onblur={() => createEvent.validate()}
-				/>
+						{...createEvent.fields.location.as("text")}
+						value={freeTextLocation}
+						oninput={(e) =>
+							(freeTextLocation = e.currentTarget.value)}
+						class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(createEvent.fields.location.issues()
+							?.length ?? 0) > 0
+							? 'border-red-500'
+							: 'border-gray-300'}"
+						placeholder="Enter custom location"
+						onblur={() => createEvent.validate()}
+					/>
 					{#each createEvent.fields.location.issues() ?? [] as issue}
 						<p class="mt-1 text-sm text-red-600">{issue.message}</p>
 					{/each}
@@ -294,14 +338,24 @@
 							value={selectedLocationId}
 							onchange={async (e) => {
 								selectedLocationId = e.currentTarget.value;
-								const selectedLocation = locations.find(l => l.id === selectedLocationId);
+								const selectedLocation = locations.find(
+									(l) => l.id === selectedLocationId,
+								);
 								if (selectedLocation) {
 									// Build location string from selected location
-									const locationParts = [selectedLocation.name];
-									if (selectedLocation.roomId) locationParts.push(selectedLocation.roomId);
-									if (selectedLocation.address) locationParts.push(selectedLocation.address);
+									const locationParts = [
+										selectedLocation.name,
+									];
+									if (selectedLocation.roomId)
+										locationParts.push(
+											selectedLocation.roomId,
+										);
+									if (selectedLocation.address)
+										locationParts.push(
+											selectedLocation.address,
+										);
 									// Use a hidden input to pass the location string to the form
-									freeTextLocation = locationParts.join(', ');
+									freeTextLocation = locationParts.join(", ");
 								}
 							}}
 							class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
@@ -309,18 +363,100 @@
 							<option value="">-- Select a location --</option>
 							{#each locations as location}
 								<option value={location.id}>
-									{location.name}{#if location.roomId} - {location.roomId}{/if}
+									{location.name}{#if location.roomId}
+										- {location.roomId}{/if}
 								</option>
 							{/each}
 						</select>
 						<!-- Hidden input to pass the constructed location string -->
 						{#if selectedLocationId}
 							<input
-								{...createEvent.fields.location.as("hidden", freeTextLocation)}
+								{...createEvent.fields.location.as(
+									"hidden",
+									freeTextLocation,
+								)}
 							/>
 						{/if}
 					{/await}
 				{/if}
+			</div>
+
+			<!-- Berlin.de Category -->
+			<div>
+				<label
+					for="categoryBerlinDotDe"
+					class="block text-sm font-medium text-gray-700 mb-1"
+				>
+					Berlin.de Category
+				</label>
+				<select
+					{...createEvent.fields.categoryBerlinDotDe.as("select")}
+					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(createEvent.fields.categoryBerlinDotDe.issues()
+						?.length ?? 0) > 0
+						? 'border-red-500'
+						: 'border-gray-300'}"
+					onblur={() => createEvent.validate()}
+				>
+					<option value="">-- Bitte wählen --</option>
+					<option value="Ausstellungen">Ausstellungen</option>
+					<option value="Bälle & Galas">Bälle & Galas</option>
+					<option value="Bildung & Vorträge"
+						>Bildung & Vorträge</option
+					>
+					<option value="Festivals">Festivals</option>
+					<option value="Jazz & Blues">Jazz & Blues</option>
+					<option value="Kabarett & Comedy">Kabarett & Comedy</option>
+					<option value="Kinderveranstaltungen"
+						>Kinderveranstaltungen</option
+					>
+					<option value="Klassische Konzerte"
+						>Klassische Konzerte</option
+					>
+					<option value="Literatur">Literatur</option>
+					<option value="Musical">Musical</option>
+					<option value="Oper & Tanz">Oper & Tanz</option>
+					<option value="Pop, Rock & HipHop"
+						>Pop, Rock & HipHop</option
+					>
+					<option value="Schlager & Volksmusik"
+						>Schlager & Volksmusik</option
+					>
+					<option value="Show">Show</option>
+					<option value="Sport">Sport</option>
+					<option value="Theater">Theater</option>
+					<option value="Vermischtes">Vermischtes</option>
+					<option value="Volksfeste & Straßenfeste"
+						>Volksfeste & Straßenfeste</option
+					>
+					<option value="Wirtschaft">Wirtschaft</option>
+					<option value="Wissenschaft">Wissenschaft</option>
+				</select>
+				{#each createEvent.fields.categoryBerlinDotDe.issues() ?? [] as issue}
+					<p class="mt-1 text-sm text-red-600">{issue.message}</p>
+				{/each}
+			</div>
+
+			<!-- Ticket Price -->
+			<div>
+				<label
+					for="ticketPrice"
+					class="block text-sm font-medium text-gray-700 mb-1"
+				>
+					Ticket Price
+				</label>
+				<input
+					id="ticketPrice"
+					{...createEvent.fields.ticketPrice.as("text")}
+					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(createEvent.fields.ticketPrice.issues()
+						?.length ?? 0) > 0
+						? 'border-red-500'
+						: 'border-gray-300'}"
+					placeholder="e.g., Free, €15, €10-€20"
+					onblur={() => createEvent.validate()}
+				/>
+				{#each createEvent.fields.ticketPrice.issues() ?? [] as issue}
+					<p class="mt-1 text-sm text-red-600">{issue.message}</p>
+				{/each}
 			</div>
 		</div>
 

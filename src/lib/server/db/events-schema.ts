@@ -25,6 +25,10 @@ export const event = pgTable("event", {
   location: text("location"),
   colorId: text("color_id"),
 
+  // Custom event metadata
+  categoryBerlinDotDe: text("categoryBerlinDotDe"), // Berlin.de event category
+  ticketPrice: text("ticketPrice"), // Ticket price information
+
   // Event type and status
   eventType: text("event_type").default("default").notNull(), // default, birthday, focusTime, outOfOffice, workingLocation, fromGmail
   status: text("status").default("confirmed").notNull(), // confirmed, tentative, cancelled

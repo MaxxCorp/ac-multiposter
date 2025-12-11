@@ -4,7 +4,10 @@
 	import { readEvent } from "./read.remote";
 	import { updateEvent } from "./update.remote";
 	import { deleteEvents } from "./delete.remote";
-	import { listResourcesWithHierarchy, type ResourceWithHierarchy } from "../../resources/list-with-hierarchy.remote";
+	import {
+		listResourcesWithHierarchy,
+		type ResourceWithHierarchy,
+	} from "../../resources/list-with-hierarchy.remote";
 	import { listLocations } from "../../locations/list.remote";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
@@ -47,8 +50,16 @@
 	// Derive schema fields from user inputs
 	const startDate = $derived(isAllDay ? startDateInput : "");
 	const endDate = $derived(isAllDay && hasEndTime ? endDateInput : "");
-	const startDateTime = $derived(!isAllDay && startDateInput && startTimeInput ? `${startDateInput}T${startTimeInput}:00` : "");
-	const endDateTime = $derived(!isAllDay && hasEndTime && endDateInput && endTimeInput ? `${endDateInput}T${endTimeInput}:00` : "");
+	const startDateTime = $derived(
+		!isAllDay && startDateInput && startTimeInput
+			? `${startDateInput}T${startTimeInput}:00`
+			: "",
+	);
+	const endDateTime = $derived(
+		!isAllDay && hasEndTime && endDateInput && endTimeInput
+			? `${endDateInput}T${endTimeInput}:00`
+			: "",
+	);
 	const startTimeZone = $derived(!isAllDay && timeZone ? timeZone : "");
 	const endTimeZone = $derived(!isAllDay && timeZone ? timeZone : "");
 
@@ -56,24 +67,29 @@
 	$effect(() => {
 		eventQuery.then((event) => {
 			if (!event || initialized) return; // Already initialized
-			
+
 			isAllDay = !event.startDateTime && !!event.startDate;
 			hasEndTime = !!(event.endDateTime || event.endDate);
 			timeZone = event.startTimeZone || browserTimezone;
-			
+
 			// Initialize resources
 			if (event.resourceIds) {
 				selectedResourceIds = event.resourceIds;
 			}
-			
+
 			// Initialize location mode
 			if (event.location) {
 				freeTextLocation = event.location;
 				// Check if location matches any saved location
 				locationsPromise.then((locations) => {
-					const matchingLocation = locations.find(l => {
-						const locationStr = [l.name, l.roomId, l.address].filter(Boolean).join(', ');
-						return locationStr === event.location || l.name === event.location;
+					const matchingLocation = locations.find((l) => {
+						const locationStr = [l.name, l.roomId, l.address]
+							.filter(Boolean)
+							.join(", ");
+						return (
+							locationStr === event.location ||
+							l.name === event.location
+						);
 					});
 					if (matchingLocation) {
 						selectedLocationId = matchingLocation.id;
@@ -83,50 +99,63 @@
 					}
 				});
 			}
-		
-		// Initialize date/time inputs based on event type
-		if (isAllDay) {
-			// All-day event: use startDate/endDate
-			startDateInput = event.startDate || "";
-			endDateInput = event.endDate || "";
-		} else {
-			// Timed event: use startDateTime/endDateTime
-			if (event.startDateTime) {
-				const startParsed = parseDateTime(event.startDateTime);
-				const endParsed = parseDateTime(event.endDateTime);
-				startDateInput = startParsed.date;
-				startTimeInput = startParsed.time;
-				endDateInput = endParsed.date;
-				endTimeInput = endParsed.time;
+
+			// Initialize date/time inputs based on event type
+			if (isAllDay) {
+				// All-day event: use startDate/endDate
+				startDateInput = event.startDate || "";
+				endDateInput = event.endDate || "";
+			} else {
+				// Timed event: use startDateTime/endDateTime
+				if (event.startDateTime) {
+					const startParsed = parseDateTime(event.startDateTime);
+					const endParsed = parseDateTime(event.endDateTime);
+					startDateInput = startParsed.date;
+					startTimeInput = startParsed.time;
+					endDateInput = endParsed.date;
+					endTimeInput = endParsed.time;
+				}
 			}
-		}if (event.reminders) {
+			if (event.reminders) {
 				useDefaultReminders = event.reminders.useDefault ?? true;
 				if (event.reminders.overrides?.length) {
 					reminders = event.reminders.overrides;
 				}
 			}
-			
+
 			initialized = true; // Mark as initialized
 		});
 	});
 
 	// Prefill location from first selected resource
 	$effect(() => {
-		if (selectedResourceIds.length > 0 && !useFreeTextLocation && !selectedLocationId) {
-			Promise.all([resourcesPromise, locationsPromise]).then(([resources, locations]) => {
-				const firstResource = resources.find((r) => r.id === selectedResourceIds[0]);
-				if (firstResource?.locationId) {
-					selectedLocationId = firstResource.locationId;
-					// Also set the location text immediately
-					const selectedLocation = locations.find(l => l.id === firstResource.locationId);
-					if (selectedLocation) {
-						const locationParts = [selectedLocation.name];
-						if (selectedLocation.roomId) locationParts.push(selectedLocation.roomId);
-						if (selectedLocation.address) locationParts.push(selectedLocation.address);
-						freeTextLocation = locationParts.join(', ');
+		if (
+			selectedResourceIds.length > 0 &&
+			!useFreeTextLocation &&
+			!selectedLocationId
+		) {
+			Promise.all([resourcesPromise, locationsPromise]).then(
+				([resources, locations]) => {
+					const firstResource = resources.find(
+						(r) => r.id === selectedResourceIds[0],
+					);
+					if (firstResource?.locationId) {
+						selectedLocationId = firstResource.locationId;
+						// Also set the location text immediately
+						const selectedLocation = locations.find(
+							(l) => l.id === firstResource.locationId,
+						);
+						if (selectedLocation) {
+							const locationParts = [selectedLocation.name];
+							if (selectedLocation.roomId)
+								locationParts.push(selectedLocation.roomId);
+							if (selectedLocation.address)
+								locationParts.push(selectedLocation.address);
+							freeTextLocation = locationParts.join(", ");
+						}
 					}
-				}
-			});
+				},
+			);
 		}
 	});
 
@@ -139,9 +168,13 @@
 	}
 
 	// Helper to parse datetime for inputs
-	function parseDateTime(dt: string | Date | null | undefined): { date: string; time: string } {
+	function parseDateTime(dt: string | Date | null | undefined): {
+		date: string;
+		time: string;
+	} {
 		if (!dt) return { date: "", time: "" };
-		const isoString = typeof dt === 'string' ? dt : new Date(dt).toISOString();
+		const isoString =
+			typeof dt === "string" ? dt : new Date(dt).toISOString();
 		const [date, timeWithZone] = isoString.split("T");
 		const time = timeWithZone?.substring(0, 5) || "";
 		return { date, time };
@@ -345,47 +378,86 @@
 							></textarea>
 						</div>
 
-					<!-- Resources Section -->
-					{#await resourcesPromise then resources}
-					<div>
-						<span class="block text-sm font-medium text-gray-700 mb-2">
-							Resources (Optional)
-						</span>
-							<div class="space-y-1 border rounded-md p-4 max-h-64 overflow-y-auto bg-gray-50">
-								{#each resources as resource}
-									<label 
-										class="flex items-center gap-2 py-1 px-2 hover:bg-white rounded transition-colors"
-										style="padding-left: {resource.level * 24 + 8}px"
-									>
-										{#if resource.level > 0}
-											<span class="text-gray-400 text-xs mr-1">└─</span>
-										{/if}
-										<input
-											{...updateEvent.fields.resourceIds.as('checkbox', resource.id)}
-											class="w-4 h-4 text-blue-600 flex-shrink-0"
-											checked={selectedResourceIds.includes(resource.id)}
-											onclick={() => {
-												if (selectedResourceIds.includes(resource.id)) {
-													selectedResourceIds = selectedResourceIds.filter(id => id !== resource.id);
-												} else {
-													selectedResourceIds = [...selectedResourceIds, resource.id];
-												}
-											}}
-										/>
-										<span class="text-sm" class:font-semibold={resource.level === 0} class:text-gray-600={resource.level > 0}>
-											{resource.name}
-										</span>
-										<span class="text-xs text-gray-500">({resource.type})</span>
-									</label>
-								{/each}
-								{#if resources.length === 0}
-									<p class="text-sm text-gray-500">No resources available</p>
-								{/if}
+						<!-- Resources Section -->
+						{#await resourcesPromise then resources}
+							<div>
+								<span
+									class="block text-sm font-medium text-gray-700 mb-2"
+								>
+									Resources (Optional)
+								</span>
+								<div
+									class="space-y-1 border rounded-md p-4 max-h-64 overflow-y-auto bg-gray-50"
+								>
+									{#each resources as resource}
+										<label
+											class="flex items-center gap-2 py-1 px-2 hover:bg-white rounded transition-colors"
+											style="padding-left: {resource.level *
+												24 +
+												8}px"
+										>
+											{#if resource.level > 0}
+												<span
+													class="text-gray-400 text-xs mr-1"
+													>└─</span
+												>
+											{/if}
+											<input
+												{...updateEvent.fields.resourceIds.as(
+													"checkbox",
+													resource.id,
+												)}
+												class="w-4 h-4 text-blue-600 flex-shrink-0"
+												checked={selectedResourceIds.includes(
+													resource.id,
+												)}
+												onclick={() => {
+													if (
+														selectedResourceIds.includes(
+															resource.id,
+														)
+													) {
+														selectedResourceIds =
+															selectedResourceIds.filter(
+																(id) =>
+																	id !==
+																	resource.id,
+															);
+													} else {
+														selectedResourceIds = [
+															...selectedResourceIds,
+															resource.id,
+														];
+													}
+												}}
+											/>
+											<span
+												class="text-sm"
+												class:font-semibold={resource.level ===
+													0}
+												class:text-gray-600={resource.level >
+													0}
+											>
+												{resource.name}
+											</span>
+											<span class="text-xs text-gray-500"
+												>({resource.type})</span
+											>
+										</label>
+									{/each}
+									{#if resources.length === 0}
+										<p class="text-sm text-gray-500">
+											No resources available
+										</p>
+									{/if}
+								</div>
 							</div>
-						</div>
-					{/await}						<!-- Location Section -->
+						{/await}
+						<!-- Location Section -->
 						<div>
-							<span class="block text-sm font-medium text-gray-700 mb-2">
+							<span
+								class="block text-sm font-medium text-gray-700 mb-2"
+							>
 								Location
 							</span>
 							<div class="flex items-center gap-2 mb-2">
@@ -393,10 +465,15 @@
 									id="useFreeTextLocation"
 									type="checkbox"
 									checked={useFreeTextLocation}
-									onclick={() => (useFreeTextLocation = !useFreeTextLocation)}
+									onclick={() =>
+										(useFreeTextLocation =
+											!useFreeTextLocation)}
 									class="w-4 h-4 text-blue-600"
 								/>
-								<label for="useFreeTextLocation" class="text-sm text-gray-700">
+								<label
+									for="useFreeTextLocation"
+									class="text-sm text-gray-700"
+								>
 									Use custom location text
 								</label>
 							</div>
@@ -404,8 +481,11 @@
 								<input
 									{...updateEvent.fields.location.as("text")}
 									id="location"
-									value={updateEvent.fields.location.value() ?? freeTextLocation}
-									oninput={(e) => (freeTextLocation = e.currentTarget.value)}
+									value={updateEvent.fields.location.value() ??
+										freeTextLocation}
+									oninput={(e) =>
+										(freeTextLocation =
+											e.currentTarget.value)}
 									placeholder="Enter custom location"
 									class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 									onblur={() => updateEvent.validate()}
@@ -416,32 +496,153 @@
 										id="locationSelect"
 										value={selectedLocationId}
 										onchange={async (e) => {
-											selectedLocationId = e.currentTarget.value;
-											const selectedLocation = locations.find(l => l.id === selectedLocationId);
+											selectedLocationId =
+												e.currentTarget.value;
+											const selectedLocation =
+												locations.find(
+													(l) =>
+														l.id ===
+														selectedLocationId,
+												);
 											if (selectedLocation) {
-												const locationParts = [selectedLocation.name];
-												if (selectedLocation.roomId) locationParts.push(selectedLocation.roomId);
-												if (selectedLocation.address) locationParts.push(selectedLocation.address);
-												freeTextLocation = locationParts.join(', ');
+												const locationParts = [
+													selectedLocation.name,
+												];
+												if (selectedLocation.roomId)
+													locationParts.push(
+														selectedLocation.roomId,
+													);
+												if (selectedLocation.address)
+													locationParts.push(
+														selectedLocation.address,
+													);
+												freeTextLocation =
+													locationParts.join(", ");
 											}
 										}}
 										class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
 									>
-										<option value="">-- Select a location --</option>
+										<option value=""
+											>-- Select a location --</option
+										>
 										{#each locations as location}
 											<option value={location.id}>
-												{location.name}{#if location.roomId} - {location.roomId}{/if}
+												{location.name}{#if location.roomId}
+													- {location.roomId}{/if}
 											</option>
 										{/each}
 									</select>
 									<!-- Hidden input to pass the constructed location string -->
 									{#if selectedLocationId}
 										<input
-											{...updateEvent.fields.location.as("hidden", freeTextLocation)}
+											{...updateEvent.fields.location.as(
+												"hidden",
+												freeTextLocation,
+											)}
 										/>
 									{/if}
 								{/await}
 							{/if}
+						</div>
+
+						<!-- Berlin.de Category -->
+						<div>
+							<label
+								for="categoryBerlinDotDe"
+								class="block text-sm font-medium text-gray-700 mb-1"
+							>
+								Berlin.de Category
+							</label>
+							<select
+								{...updateEvent.fields.categoryBerlinDotDe.as(
+									"select",
+								)}
+								value={updateEvent.fields.categoryBerlinDotDe.value() ??
+									event.categoryBerlinDotDe ??
+									""}
+								class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(updateEvent.fields.categoryBerlinDotDe.issues()
+									?.length ?? 0) > 0
+									? 'border-red-500'
+									: 'border-gray-300'}"
+								onblur={() => updateEvent.validate()}
+							>
+								<option value="">-- Bitte wählen --</option>
+								<option value="Ausstellungen"
+									>Ausstellungen</option
+								>
+								<option value="Bälle & Galas"
+									>Bälle & Galas</option
+								>
+								<option value="Bildung & Vorträge"
+									>Bildung & Vorträge</option
+								>
+								<option value="Festivals">Festivals</option>
+								<option value="Jazz & Blues"
+									>Jazz & Blues</option
+								>
+								<option value="Kabarett & Comedy"
+									>Kabarett & Comedy</option
+								>
+								<option value="Kinderveranstaltungen"
+									>Kinderveranstaltungen</option
+								>
+								<option value="Klassische Konzerte"
+									>Klassische Konzerte</option
+								>
+								<option value="Literatur">Literatur</option>
+								<option value="Musical">Musical</option>
+								<option value="Oper & Tanz">Oper & Tanz</option>
+								<option value="Pop, Rock & HipHop"
+									>Pop, Rock & HipHop</option
+								>
+								<option value="Schlager & Volksmusik"
+									>Schlager & Volksmusik</option
+								>
+								<option value="Show">Show</option>
+								<option value="Sport">Sport</option>
+								<option value="Theater">Theater</option>
+								<option value="Vermischtes">Vermischtes</option>
+								<option value="Volksfeste & Straßenfeste"
+									>Volksfeste & Straßenfeste</option
+								>
+								<option value="Wirtschaft">Wirtschaft</option>
+								<option value="Wissenschaft"
+									>Wissenschaft</option
+								>
+							</select>
+							{#each updateEvent.fields.categoryBerlinDotDe.issues() ?? [] as issue}
+								<p class="mt-1 text-sm text-red-600">
+									{issue.message}
+								</p>
+							{/each}
+						</div>
+
+						<!-- Ticket Price -->
+						<div>
+							<label
+								for="ticketPrice"
+								class="block text-sm font-medium text-gray-700 mb-1"
+							>
+								Ticket Price
+							</label>
+							<input
+								id="ticketPrice"
+								{...updateEvent.fields.ticketPrice.as("text")}
+								value={updateEvent.fields.ticketPrice.value() ??
+									event.ticketPrice ??
+									""}
+								class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(updateEvent.fields.ticketPrice.issues()
+									?.length ?? 0) > 0
+									? 'border-red-500'
+									: 'border-gray-300'}"
+								placeholder="e.g., Free, €15, €10-€20"
+								onblur={() => updateEvent.validate()}
+							/>
+							{#each updateEvent.fields.ticketPrice.issues() ?? [] as issue}
+								<p class="mt-1 text-sm text-red-600">
+									{issue.message}
+								</p>
+							{/each}
 						</div>
 
 						<!-- All Day Event Toggle -->
