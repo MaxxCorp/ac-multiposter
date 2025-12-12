@@ -11,14 +11,10 @@
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
 	import { handleDelete } from "$lib/hooks/handleDelete.svelte";
 	import EmptyState from "$lib/components/ui/EmptyState.svelte";
-	import { toast } from "svelte-sonner";
-	import { invalidateAll } from "$app/navigation";
 
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
 	let resolvedItems = $state<Event[]>([]);
 	let selectedIds = $state<Set<string>>(new Set());
-	let eventSource: EventSource | null = null;
-	let sseSetup = false;
 
 	function isSelected(id: string) {
 		return selectedIds.has(id);
@@ -62,64 +58,107 @@
 		return "Time not specified";
 	}
 
-	// Track when items are resolved and setup SSE
-	$effect(() => {
-		let sseTimeout: ReturnType<typeof setTimeout> | null = null;
+	// Track when items are resolved and setup SSE for real-time updates
+	let abortController: AbortController | null = null;
+	let sseSetupAttempted = false;
 
+	async function setupSSEWithFetch() {
+		console.log("[SSE Client] Attempting to connect with fetch...");
+
+		abortController = new AbortController();
+
+		try {
+			const response = await fetch("/api/events/sse", {
+				credentials: "include", // This ensures cookies are sent
+				signal: abortController.signal,
+				headers: {
+					Accept: "text/event-stream",
+				},
+			});
+
+			console.log("[SSE Client] Response status:", response.status);
+
+			if (!response.ok) {
+				console.error(
+					"[SSE Client] Failed with status:",
+					response.status,
+				);
+				return;
+			}
+
+			if (!response.body) {
+				console.error("[SSE Client] No response body");
+				return;
+			}
+
+			console.log("[SSE Client] Connection opened successfully");
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = "";
+
+			while (true) {
+				const { done, value } = await reader.read();
+
+				if (done) {
+					console.log("[SSE Client] Stream closed");
+					break;
+				}
+
+				buffer += decoder.decode(value, { stream: true });
+
+				// Process complete SSE messages
+				const lines = buffer.split("\n\n");
+				buffer = lines.pop() || ""; // Keep incomplete message in buffer
+
+				for (const message of lines) {
+					if (message.startsWith(":")) continue; // Ignore heartbeats
+
+					const eventMatch = message.match(/^event: (.+)$/m);
+					const dataMatch = message.match(/^data: (.+)$/m);
+
+					if (eventMatch && dataMatch) {
+						const eventType = eventMatch[1];
+						console.log("[SSE Client] Received event:", eventType);
+
+						if (
+							[
+								"event-created",
+								"event-updated",
+								"event-deleted",
+							].includes(eventType)
+						) {
+							itemsPromise = listEvents();
+						}
+					}
+				}
+			}
+		} catch (error: unknown) {
+			if (error instanceof Error && error.name === "AbortError") {
+				console.log("[SSE Client] Connection aborted");
+			} else if (
+				error instanceof TypeError &&
+				error.message.includes("input stream")
+			) {
+				// This happens during HMR reloads - ignore silently
+				console.log(
+					"[SSE Client] Stream interrupted (likely HMR reload)",
+				);
+			} else {
+				console.error("[SSE Client] Error:", error);
+			}
+		}
+	}
+
+	$effect(() => {
 		itemsPromise
 			.then((items) => {
 				resolvedItems = items;
 
-				// Only setup SSE once, with a small delay to avoid HMR-related issues
-				if (!sseSetup) {
-					sseSetup = true;
-
-					// Delay SSE connection slightly to avoid issues during page load
-					sseTimeout = setTimeout(() => {
-						if (eventSource) {
-							eventSource.close();
-						}
-
-						try {
-							eventSource = new EventSource("/api/events/sse", {
-								withCredentials: true,
-							});
-
-							eventSource.addEventListener(
-								"event-created",
-								() => {
-									toast.info("New event created remotely");
-									itemsPromise = listEvents();
-								},
-							);
-
-							eventSource.addEventListener(
-								"event-updated",
-								() => {
-									toast.info("Event updated remotely");
-									itemsPromise = listEvents();
-								},
-							);
-
-							eventSource.addEventListener(
-								"event-deleted",
-								() => {
-									toast.info("Event deleted remotely");
-									itemsPromise = listEvents();
-								},
-							);
-
-							eventSource.onerror = () => {
-								// SSE connection failed - this is OK, just disable real-time updates
-								eventSource?.close();
-								eventSource = null;
-								sseSetup = false;
-							};
-						} catch {
-							// SSE not available - gracefully degrade
-							sseSetup = false;
-						}
-					}, 500);
+				// Try to setup SSE once after items are loaded
+				if (!sseSetupAttempted) {
+					sseSetupAttempted = true;
+					setupSSEWithFetch();
 				}
 			})
 			.catch(() => {
@@ -127,9 +166,11 @@
 			});
 
 		return () => {
-			if (sseTimeout) clearTimeout(sseTimeout);
-			eventSource?.close();
-			eventSource = null;
+			if (abortController) {
+				console.log("[SSE Client] Cleaning up connection");
+				abortController.abort();
+				abortController = null;
+			}
 		};
 	});
 </script>
