@@ -6,6 +6,7 @@ export const user = pgTable("user", {
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").default(false).notNull(),
     image: text("image"),
+    phoneNumber: text("phone_number"),
     roles: jsonb("roles").$type<string[]>(),
     claims: jsonb("claims").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

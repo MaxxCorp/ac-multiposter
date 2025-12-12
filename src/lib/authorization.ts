@@ -1,7 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import type { UserWithRolesAndClaims } from './auth.d';
 
-export type Feature = 'synchronizations' | 'events' | 'campaigns' | 'locations' | 'resources';
+export type Feature = 'synchronizations' | 'events' | 'campaigns' | 'locations' | 'resources' | 'users';
 
 /**
  * Get the authenticated user from the request event locals.

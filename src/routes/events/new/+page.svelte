@@ -1,17 +1,16 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
 	import { createEvent } from "./create.remote";
-	import { listEvents } from "../list.remote";
 	import {
 		listResourcesWithHierarchy,
 		type ResourceWithHierarchy,
 	} from "../../resources/list-with-hierarchy.remote";
 	import { listLocations } from "../../locations/list.remote";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
-	import { toast } from "svelte-sonner";
-	import { createEventSchema } from "$lib/validations/event";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
 	import { Button } from "$lib/components/ui/button";
+	import { toast } from "svelte-sonner";
+	import { createEventSchema } from "$lib/validations/event";
 
 	// Form state
 	let isAllDay = $state(false);
@@ -69,48 +68,64 @@
 
 	const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-	// Prefill location from first selected resource
-	$effect(() => {
-		if (selectedResourceIds.length > 0 && !useFreeTextLocation) {
-			Promise.all([resourcesPromise, locationsPromise]).then(
-				([resources, locations]) => {
-					const firstResource = resources.find(
-						(r) => r.id === selectedResourceIds[0],
-					);
-					if (firstResource?.locationId && !selectedLocationId) {
-						selectedLocationId = firstResource.locationId;
-						// Also set the location text immediately
-						const selectedLocation = locations.find(
-							(l) => l.id === firstResource.locationId,
-						);
-						if (selectedLocation) {
-							const locationParts = [selectedLocation.name];
-							if (selectedLocation.roomId)
-								locationParts.push(selectedLocation.roomId);
-							if (selectedLocation.street) {
-								let s = selectedLocation.street;
-								if (selectedLocation.houseNumber)
-									s += ` ${selectedLocation.houseNumber}`;
-								if (selectedLocation.addressSuffix)
-									s += `, ${selectedLocation.addressSuffix}`;
-								locationParts.push(s);
-							}
-							if (selectedLocation.zip || selectedLocation.city) {
-								locationParts.push(
-									`${selectedLocation.zip ?? ""} ${selectedLocation.city ?? ""}`.trim(),
-								);
-							}
-							if (selectedLocation.state)
-								locationParts.push(selectedLocation.state);
-							if (selectedLocation.country)
-								locationParts.push(selectedLocation.country);
-							freeTextLocation = locationParts.join(", ");
-						}
-					}
-				},
+	async function checkLocationPrefill(currentResourceIds: string[]) {
+		if (
+			currentResourceIds.length > 0 &&
+			!useFreeTextLocation &&
+			!selectedLocationId
+		) {
+			const [resources, locations] = await Promise.all([
+				resourcesPromise,
+				locationsPromise,
+			]);
+			const firstResource = resources.find(
+				(r) => r.id === currentResourceIds[0],
 			);
+
+			if (firstResource?.locationId && !selectedLocationId) {
+				selectedLocationId = firstResource.locationId;
+				// Also set the location text immediately
+				const selectedLocation = locations.find(
+					(l) => l.id === firstResource.locationId,
+				);
+				if (selectedLocation) {
+					const locationParts = [selectedLocation.name];
+					if (selectedLocation.roomId)
+						locationParts.push(selectedLocation.roomId);
+					if (selectedLocation.street) {
+						let s = selectedLocation.street;
+						if (selectedLocation.houseNumber)
+							s += ` ${selectedLocation.houseNumber}`;
+						if (selectedLocation.addressSuffix)
+							s += `, ${selectedLocation.addressSuffix}`;
+						locationParts.push(s);
+					}
+					if (selectedLocation.zip || selectedLocation.city) {
+						locationParts.push(
+							`${selectedLocation.zip ?? ""} ${selectedLocation.city ?? ""}`.trim(),
+						);
+					}
+					if (selectedLocation.state)
+						locationParts.push(selectedLocation.state);
+					if (selectedLocation.country)
+						locationParts.push(selectedLocation.country);
+					freeTextLocation = locationParts.join(", ");
+				}
+			}
 		}
-	});
+	}
+
+	function toggleResource(resourceId: string) {
+		if (selectedResourceIds.includes(resourceId)) {
+			selectedResourceIds = selectedResourceIds.filter(
+				(id) => id !== resourceId,
+			);
+		} else {
+			const newIds = [...selectedResourceIds, resourceId];
+			selectedResourceIds = newIds;
+			checkLocationPrefill(newIds);
+		}
+	}
 
 	function addReminder() {
 		reminders = [...reminders, { method: "popup", minutes: 10 }];
@@ -126,11 +141,10 @@
 
 	<h1 class="text-3xl font-bold mb-6">Create New Event</h1>
 
-	<!-- Form with form object spread for remote function -->
 	<form
 		{...createEvent
 			.preflight(createEventSchema)
-			.enhance(async ({ submit, form }) => {
+			.enhance(async ({ submit }) => {
 				try {
 					const result: any = await submit();
 					if (result?.error) {
@@ -142,14 +156,14 @@
 					}
 					toast.success("Successfully Saved!");
 					await goto("/events");
-				} catch (error: unknown) {
-					const err = error as { message?: string };
-					toast.error(err?.message || "Oh no! Something went wrong");
+				} catch (error: any) {
+					toast.error(
+						error?.message || "Oh no! Something went wrong",
+					);
 				}
 			})}
 		class="space-y-4"
 	>
-		<!-- Hidden computed fields -->
 		{#if computedStartDateTime}
 			<input
 				{...createEvent.fields.startDateTime.as(
@@ -157,7 +171,6 @@
 					computedStartDateTime,
 				)}
 			/>
-			{@html `<script>console.log('startDateTime:', ${JSON.stringify(computedStartDateTime)});<\/script>`}
 		{/if}
 		{#if computedEndDateTime}
 			<input
@@ -166,7 +179,6 @@
 					computedEndDateTime,
 				)}
 			/>
-			{@html `<script>console.log('endDateTime:', ${JSON.stringify(computedEndDateTime)});<\/script>`}
 		{/if}
 
 		<input
@@ -191,7 +203,6 @@
 			tabindex="-1"
 		/>
 
-		<!-- Basic Information -->
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
 			<h2 class="text-xl font-semibold mb-4">Basic Information</h2>
 
@@ -240,7 +251,6 @@
 				{/each}
 			</div>
 
-			<!-- Resources Section -->
 			{#await resourcesPromise then resources}
 				<div>
 					<span class="block text-sm font-medium text-gray-700 mb-2">
@@ -269,23 +279,7 @@
 									checked={selectedResourceIds.includes(
 										resource.id,
 									)}
-									onclick={() => {
-										if (
-											selectedResourceIds.includes(
-												resource.id,
-											)
-										) {
-											selectedResourceIds =
-												selectedResourceIds.filter(
-													(id) => id !== resource.id,
-												);
-										} else {
-											selectedResourceIds = [
-												...selectedResourceIds,
-												resource.id,
-											];
-										}
-									}}
+									onclick={() => toggleResource(resource.id)}
 								/>
 								<span
 									class="text-sm"
@@ -308,7 +302,6 @@
 				</div>
 			{/await}
 
-			<!-- Location Section -->
 			<div>
 				<span class="block text-sm font-medium text-gray-700 mb-2">
 					Location
@@ -357,7 +350,6 @@
 									(l) => l.id === selectedLocationId,
 								);
 								if (selectedLocation) {
-									// Build location string from selected location
 									const locationParts = [
 										selectedLocation.name,
 									];
@@ -401,7 +393,6 @@
 										);
 									}
 
-									// Use a hidden input to pass the location string to the form
 									freeTextLocation = locationParts.join(", ");
 								}
 							}}
@@ -415,7 +406,6 @@
 								</option>
 							{/each}
 						</select>
-						<!-- Hidden input to pass the constructed location string -->
 						{#if selectedLocationId}
 							<input
 								{...createEvent.fields.location.as(
@@ -428,7 +418,6 @@
 				{/if}
 			</div>
 
-			<!-- Berlin.de Category -->
 			<div>
 				<label
 					for="categoryBerlinDotDe"
@@ -483,7 +472,6 @@
 				{/each}
 			</div>
 
-			<!-- Ticket Price -->
 			<div>
 				<label
 					for="ticketPrice"
@@ -507,7 +495,6 @@
 			</div>
 		</div>
 
-		<!-- Date & Time -->
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
 			<h2 class="text-xl font-semibold mb-4">Date & Time</h2>
 
@@ -663,7 +650,6 @@
 			{/if}
 		</div>
 
-		<!-- Reminders -->
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
 			<h2 class="text-xl font-semibold mb-4">Reminders</h2>
 
@@ -750,7 +736,6 @@
 			{/if}
 		</div>
 
-		<!-- Guest Permissions -->
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
 			<h2 class="text-xl font-semibold mb-4">Guest Permissions</h2>
 			<div class="space-y-2">
@@ -800,11 +785,10 @@
 			</div>
 		</div>
 
-		<!-- Actions -->
-		<div class="flex gap-3 mt-6 justify-end">
+		<div class="flex gap-3">
 			<AsyncButton
 				type="submit"
-				loadingLabel="Creating..."
+				loadingLabel="Saving..."
 				loading={createEvent.pending}
 			>
 				Create Event

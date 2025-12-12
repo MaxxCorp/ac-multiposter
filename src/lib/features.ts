@@ -86,6 +86,20 @@ export const FEATURES: readonly FeatureMeta[] = [
     borderClass: 'border-teal-100',
     buttonClass: 'bg-teal-600 hover:bg-teal-700',
     order: 5
+  },
+  {
+    key: 'users',
+    title: 'Users',
+    description: 'Manage users, roles, and access permissions.',
+    href: '/users',
+    buttonText: 'Manage Users',
+    claim: 'users',
+    icon: 'users',
+    gradientFrom: 'from-rose-50',
+    gradientTo: 'to-red-50',
+    borderClass: 'border-rose-100',
+    buttonClass: 'bg-rose-600 hover:bg-rose-700',
+    order: 6
   }
 ] as const;
 

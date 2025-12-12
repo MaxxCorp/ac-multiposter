@@ -15,9 +15,10 @@
 	import { invalidateAll } from "$app/navigation";
 
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
-	let initializedItems = $state<Event[]>([]);
+	let resolvedItems = $state<Event[]>([]);
 	let selectedIds = $state<Set<string>>(new Set());
 	let eventSource: EventSource | null = null;
+	let sseSetup = false;
 
 	function isSelected(id: string) {
 		return selectedIds.has(id);
@@ -61,37 +62,74 @@
 		return "Time not specified";
 	}
 
-	function setupSSE() {
-		if (eventSource) {
-			eventSource.close();
-		}
-
-		eventSource = new EventSource("/api/events/sse");
-
-		eventSource.addEventListener("event-created", () => {
-			toast.info("New event created remotely");
-			invalidateAll();
-		});
-
-		eventSource.addEventListener("event-updated", () => {
-			toast.info("Event updated remotely");
-			invalidateAll();
-		});
-
-		eventSource.addEventListener("event-deleted", () => {
-			toast.info("Event deleted remotely");
-			invalidateAll();
-		});
-
-		eventSource.onerror = (error) => {
-			console.error("SSE connection error:", error);
-			eventSource?.close();
-		};
-	}
-
+	// Track when items are resolved and setup SSE
 	$effect(() => {
+		let sseTimeout: ReturnType<typeof setTimeout> | null = null;
+
+		itemsPromise
+			.then((items) => {
+				resolvedItems = items;
+
+				// Only setup SSE once, with a small delay to avoid HMR-related issues
+				if (!sseSetup) {
+					sseSetup = true;
+
+					// Delay SSE connection slightly to avoid issues during page load
+					sseTimeout = setTimeout(() => {
+						if (eventSource) {
+							eventSource.close();
+						}
+
+						try {
+							eventSource = new EventSource("/api/events/sse", {
+								withCredentials: true,
+							});
+
+							eventSource.addEventListener(
+								"event-created",
+								() => {
+									toast.info("New event created remotely");
+									itemsPromise = listEvents();
+								},
+							);
+
+							eventSource.addEventListener(
+								"event-updated",
+								() => {
+									toast.info("Event updated remotely");
+									itemsPromise = listEvents();
+								},
+							);
+
+							eventSource.addEventListener(
+								"event-deleted",
+								() => {
+									toast.info("Event deleted remotely");
+									itemsPromise = listEvents();
+								},
+							);
+
+							eventSource.onerror = () => {
+								// SSE connection failed - this is OK, just disable real-time updates
+								eventSource?.close();
+								eventSource = null;
+								sseSetup = false;
+							};
+						} catch {
+							// SSE not available - gracefully degrade
+							sseSetup = false;
+						}
+					}, 500);
+				}
+			})
+			.catch(() => {
+				// Error handling is done in the {#await} block
+			});
+
 		return () => {
+			if (sseTimeout) clearTimeout(sseTimeout);
 			eventSource?.close();
+			eventSource = null;
 		};
 	});
 </script>
@@ -107,8 +145,8 @@
 				<div class="flex-1 flex justify-end">
 					<BulkActionToolbar
 						selectedCount={selectedIds.size}
-						totalCount={initializedItems.length}
-						onSelectAll={() => selectAll(initializedItems)}
+						totalCount={resolvedItems.length}
+						onSelectAll={() => selectAll(resolvedItems)}
 						onDeselectAll={deselectAll}
 						onDelete={async () => {
 							await handleDelete({
@@ -127,12 +165,6 @@
 			{#await itemsPromise}
 				<LoadingSection message="Loading events..." />
 			{:then items}
-				{@html (() => {
-					initializedItems = items;
-					setupSSE();
-					return "";
-				})()}
-
 				<div class="grid gap-4">
 					{#if items.length === 0}
 						<EmptyState
