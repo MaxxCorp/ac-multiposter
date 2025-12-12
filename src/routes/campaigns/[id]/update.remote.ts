@@ -12,18 +12,18 @@ export const updateCampaign = form(updateCampaignSchema, async (data) => {
 	try {
 		const user = getAuthenticatedUser();
 		ensureAccess(user, 'campaigns');
-		
+
 		// Get current campaign
 		const current = await readCampaign(data.id);
 		if (!current) {
 			throw new Error('Campaign not found');
 		}
-		
+
 		const name = data.name ?? current.name;
-		const content = data.content ? 
-			(typeof data.content === 'string' ? JSON.parse(data.content) : data.content) : 
+		const content = data.content ?
+			(typeof data.content === 'string' ? JSON.parse(data.content) : data.content) :
 			current.content;
-		
+
 		const result = await db
 			.update(campaign)
 			.set({
@@ -38,20 +38,13 @@ export const updateCampaign = form(updateCampaignSchema, async (data) => {
 		if (!updated) {
 			throw new Error('Failed to update campaign');
 		}
-		
-		const updatedCampaign: Campaign = {
-			id: updated.id,
-			userId: updated.userId,
-			name: updated.name,
-			content: updated.content as Record<string, any>,
-			createdAt: updated.createdAt.toISOString(),
-			updatedAt: updated.updatedAt.toISOString(),
-		};
-		
+
+		const updatedCampaign: Campaign = updated;
+
 		// Update both queries
 		await readCampaign(data.id).set(updatedCampaign);
 		await listCampaigns().refresh();
-		
+
 		return { updatedCampaign, campaign: updatedCampaign, success: true };
 	} catch (error: any) {
 		// Rethrow SvelteKit redirect errors

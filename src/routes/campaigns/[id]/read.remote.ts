@@ -13,12 +13,7 @@ export const readCampaign = query(z.string(), async (campaignId: string): Promis
 		featureName: 'campaigns',
 		id: campaignId,
 		transform: (row) => ({
-			id: row.id,
-			userId: row.userId,
-			name: row.name,
-			content: row.content as Record<string, any>,
-			createdAt: row.createdAt.toISOString(),
-			updatedAt: row.updatedAt.toISOString(),
+			...row,
 		}),
 	});
 

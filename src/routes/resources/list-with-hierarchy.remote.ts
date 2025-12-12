@@ -1,22 +1,15 @@
+import { type InferSelectModel } from 'drizzle-orm';
 import { query } from '$app/server';
 import { resource, resourceRelation } from '$lib/server/db/schema';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { db } from '$lib/server/db';
 import { eq } from 'drizzle-orm';
 
-export interface ResourceWithHierarchy {
-    id: string;
-    userId: string;
-    locationId: string | null;
-    name: string;
-    description: string | null;
-    type: string;
-    createdAt: Date;
-    updatedAt: Date;
+export type ResourceWithHierarchy = InferSelectModel<typeof resource> & {
     parentIds: string[];
     childIds: string[];
     level: number; // Depth in hierarchy (0 = root)
-}
+};
 
 /**
  * Query: List all resources with their parent-child relationships
@@ -57,7 +50,7 @@ export const listResourcesWithHierarchy = query(async (): Promise<ResourceWithHi
     relations.forEach(rel => {
         const parentIds = parentMap.get(rel.childResourceId);
         if (parentIds) parentIds.push(rel.parentResourceId);
-        
+
         const childIds = childMap.get(rel.parentResourceId);
         if (childIds) childIds.push(rel.childResourceId);
     });

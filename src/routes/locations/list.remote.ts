@@ -1,25 +1,9 @@
+import { type InferSelectModel } from 'drizzle-orm';
 import { query } from '$app/server';
 import { location } from '$lib/server/db/schema';
 import { listQuery } from '$lib/server/db/query-helpers';
 
-export interface Location {
-    id: string;
-    userId: string;
-    name: string;
-    street: string | null;
-    houseNumber: string | null;
-    addressSuffix: string | null;
-    zip: string | null;
-    city: string | null;
-    state: string | null;
-    country: string | null;
-    roomId: string | null;
-    latitude: number | null;
-    longitude: number | null;
-    what3words: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-}
+export type Location = InferSelectModel<typeof location>;
 
 /**
  * Query: List all locations for the current user
