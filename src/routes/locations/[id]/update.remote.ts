@@ -16,7 +16,13 @@ export const updateLocation = form(updateLocationSchema, async (data) => {
             .update(location)
             .set({
                 name: data.name,
-                address: data.address,
+                street: data.street,
+                houseNumber: data.houseNumber,
+                addressSuffix: data.addressSuffix,
+                zip: data.zip,
+                city: data.city,
+                state: data.state,
+                country: data.country,
                 roomId: data.roomId,
                 latitude: data.latitude,
                 longitude: data.longitude,

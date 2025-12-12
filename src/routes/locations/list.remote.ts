@@ -6,7 +6,13 @@ export interface Location {
     id: string;
     userId: string;
     name: string;
-    address: string | null;
+    street: string | null;
+    houseNumber: string | null;
+    addressSuffix: string | null;
+    zip: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
     roomId: string | null;
     latitude: number | null;
     longitude: number | null;
@@ -23,16 +29,7 @@ export const listLocations = query(async (): Promise<Location[]> => {
         table: location,
         featureName: 'locations',
         transform: (row) => ({
-            id: row.id,
-            userId: row.userId,
-            name: row.name,
-            address: row.address,
-            roomId: row.roomId,
-            latitude: row.latitude,
-            longitude: row.longitude,
-            what3words: row.what3words,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
+            ...row,
         }),
     });
     return results;

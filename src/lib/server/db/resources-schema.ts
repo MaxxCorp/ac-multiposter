@@ -12,7 +12,13 @@ export const location = pgTable("location", {
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    address: text("address"),
+    street: text("street"),
+    houseNumber: text("house_number"),
+    addressSuffix: text("address_suffix"), // Adresszusatz
+    zip: text("zip"),
+    city: text("city"),
+    state: text("state"),
+    country: text("country"),
     roomId: text("room_id"), // Specific room identifier (e.g., "Conference Room A")
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),

@@ -114,17 +114,116 @@
 
                         <label class="block">
                             <span class="text-sm font-medium text-gray-700 mb-2"
-                                >Address</span
+                                >Street</span
                             >
                             <input
-                                {...updateLocation.fields.address.as("text")}
+                                {...updateLocation.fields.street.as("text")}
                                 class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Enter address"
-                                value={updateLocation.fields.address.value() ??
-                                    location.address ??
+                                placeholder="Street name"
+                                value={updateLocation.fields.street.value() ??
+                                    location.street ??
                                     ""}
                             />
                         </label>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="block">
+                                <span
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                    >House Number</span
+                                >
+                                <input
+                                    {...updateLocation.fields.houseNumber.as(
+                                        "text",
+                                    )}
+                                    class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="e.g. 10A"
+                                    value={updateLocation.fields.houseNumber.value() ??
+                                        location.houseNumber ??
+                                        ""}
+                                />
+                            </label>
+                            <label class="block">
+                                <span
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                    >Address Suffix</span
+                                >
+                                <input
+                                    {...updateLocation.fields.addressSuffix.as(
+                                        "text",
+                                    )}
+                                    class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="e.g. Backyard, 2nd floor"
+                                    value={updateLocation.fields.addressSuffix.value() ??
+                                        location.addressSuffix ??
+                                        ""}
+                                />
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <label class="block">
+                                <span
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                    >ZIP Code</span
+                                >
+                                <input
+                                    {...updateLocation.fields.zip.as("text")}
+                                    class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Postal code"
+                                    value={updateLocation.fields.zip.value() ??
+                                        location.zip ??
+                                        ""}
+                                />
+                            </label>
+                            <label class="block col-span-2">
+                                <span
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                    >City</span
+                                >
+                                <input
+                                    {...updateLocation.fields.city.as("text")}
+                                    class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="City name"
+                                    value={updateLocation.fields.city.value() ??
+                                        location.city ??
+                                        ""}
+                                />
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="block">
+                                <span
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                    >State/Region</span
+                                >
+                                <input
+                                    {...updateLocation.fields.state.as("text")}
+                                    class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="State"
+                                    value={updateLocation.fields.state.value() ??
+                                        location.state ??
+                                        ""}
+                                />
+                            </label>
+                            <label class="block">
+                                <span
+                                    class="text-sm font-medium text-gray-700 mb-2"
+                                    >Country</span
+                                >
+                                <input
+                                    {...updateLocation.fields.country.as(
+                                        "text",
+                                    )}
+                                    class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Country"
+                                    value={updateLocation.fields.country.value() ??
+                                        location.country ??
+                                        ""}
+                                />
+                            </label>
+                        </div>
 
                         <label class="block">
                             <span class="text-sm font-medium text-gray-700 mb-2"

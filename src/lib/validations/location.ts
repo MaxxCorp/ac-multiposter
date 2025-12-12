@@ -2,7 +2,13 @@ import { z } from "zod";
 
 export const createLocationSchema = z.object({
     name: z.string().min(1, "Name is required"),
-    address: z.string().optional(),
+    street: z.string().optional(),
+    houseNumber: z.string().optional(),
+    addressSuffix: z.string().optional(),
+    zip: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
     roomId: z.string().optional(),
     latitude: z.number().optional(),
     longitude: z.number().optional(),

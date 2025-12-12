@@ -87,8 +87,23 @@
 							const locationParts = [selectedLocation.name];
 							if (selectedLocation.roomId)
 								locationParts.push(selectedLocation.roomId);
-							if (selectedLocation.address)
-								locationParts.push(selectedLocation.address);
+							if (selectedLocation.street) {
+								let s = selectedLocation.street;
+								if (selectedLocation.houseNumber)
+									s += ` ${selectedLocation.houseNumber}`;
+								if (selectedLocation.addressSuffix)
+									s += `, ${selectedLocation.addressSuffix}`;
+								locationParts.push(s);
+							}
+							if (selectedLocation.zip || selectedLocation.city) {
+								locationParts.push(
+									`${selectedLocation.zip ?? ""} ${selectedLocation.city ?? ""}`.trim(),
+								);
+							}
+							if (selectedLocation.state)
+								locationParts.push(selectedLocation.state);
+							if (selectedLocation.country)
+								locationParts.push(selectedLocation.country);
 							freeTextLocation = locationParts.join(", ");
 						}
 					}
@@ -350,10 +365,42 @@
 										locationParts.push(
 											selectedLocation.roomId,
 										);
-									if (selectedLocation.address)
-										locationParts.push(
-											selectedLocation.address,
+
+									const addressParts = [];
+									if (selectedLocation.street) {
+										let streetPart =
+											selectedLocation.street;
+										if (selectedLocation.houseNumber) {
+											streetPart += ` ${selectedLocation.houseNumber}`;
+										}
+										if (selectedLocation.addressSuffix) {
+											streetPart += `, ${selectedLocation.addressSuffix}`;
+										}
+										addressParts.push(streetPart);
+									}
+									if (
+										selectedLocation.zip ||
+										selectedLocation.city
+									) {
+										addressParts.push(
+											`${selectedLocation.zip ?? ""} ${selectedLocation.city ?? ""}`.trim(),
 										);
+									}
+									if (selectedLocation.state)
+										addressParts.push(
+											selectedLocation.state,
+										);
+									if (selectedLocation.country)
+										addressParts.push(
+											selectedLocation.country,
+										);
+
+									if (addressParts.length > 0) {
+										locationParts.push(
+											addressParts.join(", "),
+										);
+									}
+
 									// Use a hidden input to pass the location string to the form
 									freeTextLocation = locationParts.join(", ");
 								}

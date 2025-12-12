@@ -83,9 +83,19 @@
 				// Check if location matches any saved location
 				locationsPromise.then((locations) => {
 					const matchingLocation = locations.find((l) => {
-						const locationStr = [l.name, l.roomId, l.address]
-							.filter(Boolean)
-							.join(", ");
+						const parts = [l.name];
+						if (l.roomId) parts.push(l.roomId);
+						if (l.street) {
+							let s = l.street;
+							if (l.houseNumber) s += ` ${l.houseNumber}`;
+							if (l.addressSuffix) s += `, ${l.addressSuffix}`;
+							parts.push(s);
+						}
+						if (l.zip || l.city)
+							parts.push(`${l.zip ?? ""} ${l.city ?? ""}`.trim());
+						if (l.state) parts.push(l.state);
+						if (l.country) parts.push(l.country);
+						const locationStr = parts.filter(Boolean).join(", ");
 						return (
 							locationStr === event.location ||
 							l.name === event.location
@@ -149,8 +159,23 @@
 							const locationParts = [selectedLocation.name];
 							if (selectedLocation.roomId)
 								locationParts.push(selectedLocation.roomId);
-							if (selectedLocation.address)
-								locationParts.push(selectedLocation.address);
+							if (selectedLocation.street) {
+								let s = selectedLocation.street;
+								if (selectedLocation.houseNumber)
+									s += ` ${selectedLocation.houseNumber}`;
+								if (selectedLocation.addressSuffix)
+									s += `, ${selectedLocation.addressSuffix}`;
+								locationParts.push(s);
+							}
+							if (selectedLocation.zip || selectedLocation.city) {
+								locationParts.push(
+									`${selectedLocation.zip ?? ""} ${selectedLocation.city ?? ""}`.trim(),
+								);
+							}
+							if (selectedLocation.state)
+								locationParts.push(selectedLocation.state);
+							if (selectedLocation.country)
+								locationParts.push(selectedLocation.country);
 							freeTextLocation = locationParts.join(", ");
 						}
 					}
@@ -512,10 +537,48 @@
 													locationParts.push(
 														selectedLocation.roomId,
 													);
-												if (selectedLocation.address)
-													locationParts.push(
-														selectedLocation.address,
+
+												const addressParts = [];
+												if (selectedLocation.street) {
+													let streetPart =
+														selectedLocation.street;
+													if (
+														selectedLocation.houseNumber
+													) {
+														streetPart += ` ${selectedLocation.houseNumber}`;
+													}
+													if (
+														selectedLocation.addressSuffix
+													) {
+														streetPart += `, ${selectedLocation.addressSuffix}`;
+													}
+													addressParts.push(
+														streetPart,
 													);
+												}
+												if (
+													selectedLocation.zip ||
+													selectedLocation.city
+												) {
+													addressParts.push(
+														`${selectedLocation.zip ?? ""} ${selectedLocation.city ?? ""}`.trim(),
+													);
+												}
+												if (selectedLocation.state)
+													addressParts.push(
+														selectedLocation.state,
+													);
+												if (selectedLocation.country)
+													addressParts.push(
+														selectedLocation.country,
+													);
+
+												if (addressParts.length > 0) {
+													locationParts.push(
+														addressParts.join(", "),
+													);
+												}
+
 												freeTextLocation =
 													locationParts.join(", ");
 											}

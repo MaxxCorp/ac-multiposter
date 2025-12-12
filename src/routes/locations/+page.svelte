@@ -111,11 +111,47 @@
 											</div>
 										</div>
 										<div class="mt-2 text-gray-600">
-											{#if location.address}
-												<p>{location.address}</p>
+											<p>
+												{[
+													[
+														location.street,
+														location.houseNumber,
+													]
+														.filter(Boolean)
+														.join(" "),
+													location.addressSuffix,
+												]
+													.filter(Boolean)
+													.join(", ")}
+											</p>
+											{#if location.zip || location.city}
+												<p>
+													{[
+														location.zip,
+														location.city,
+													]
+														.filter(Boolean)
+														.join(" ")}
+												</p>
+											{/if}
+											{#if location.state || location.country}
+												<p
+													class="text-sm text-gray-500"
+												>
+													{[
+														location.state,
+														location.country,
+													]
+														.filter(Boolean)
+														.join(", ")}
+												</p>
 											{/if}
 											{#if location.roomId}
-												<p class="text-sm text-gray-500">Room: {location.roomId}</p>
+												<p
+													class="text-sm text-gray-500"
+												>
+													Room: {location.roomId}
+												</p>
 											{/if}
 										</div>
 										<div class="mt-3">
@@ -152,7 +188,8 @@
 													});
 												if (success) {
 													deselectAll();
-													itemsPromise = listLocations();
+													itemsPromise =
+														listLocations();
 												}
 											}}
 										>

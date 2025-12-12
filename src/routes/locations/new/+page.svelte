@@ -59,14 +59,83 @@
 
                 <label class="block">
                     <span class="text-sm font-medium text-gray-700 mb-2"
-                        >Address</span
+                        >Street</span
                     >
                     <input
-                        {...createLocation.fields.address.as("text")}
+                        {...createLocation.fields.street.as("text")}
                         class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter address"
+                        placeholder="Street name"
                     />
                 </label>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700 mb-2"
+                            >House Number</span
+                        >
+                        <input
+                            {...createLocation.fields.houseNumber.as("text")}
+                            class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="e.g. 10A"
+                        />
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700 mb-2"
+                            >Address Suffix</span
+                        >
+                        <input
+                            {...createLocation.fields.addressSuffix.as("text")}
+                            class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="e.g. Backyard, 2nd floor"
+                        />
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700 mb-2"
+                            >ZIP Code</span
+                        >
+                        <input
+                            {...createLocation.fields.zip.as("text")}
+                            class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Postal code"
+                        />
+                    </label>
+                    <label class="block col-span-2">
+                        <span class="text-sm font-medium text-gray-700 mb-2"
+                            >City</span
+                        >
+                        <input
+                            {...createLocation.fields.city.as("text")}
+                            class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="City name"
+                        />
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700 mb-2"
+                            >State/Region</span
+                        >
+                        <input
+                            {...createLocation.fields.state.as("text")}
+                            class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="State"
+                        />
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-medium text-gray-700 mb-2"
+                            >Country</span
+                        >
+                        <input
+                            {...createLocation.fields.country.as("text")}
+                            class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Country"
+                        />
+                    </label>
+                </div>
 
                 <label class="block">
                     <span class="text-sm font-medium text-gray-700 mb-2"
