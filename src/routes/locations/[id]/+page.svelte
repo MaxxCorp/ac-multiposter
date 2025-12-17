@@ -292,6 +292,21 @@
                             />
                         </label>
 
+                        <label class="block">
+                            <span class="text-sm font-medium text-gray-700 mb-2"
+                                >Inclusivity Support</span
+                            >
+                            <textarea
+                                {...updateLocation.fields.inclusivitySupport.as("text")}
+                                class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Accessibility and inclusivity information"
+                                rows="3"
+                                value={updateLocation.fields.inclusivitySupport.value() ??
+                                    location.inclusivitySupport ??
+                                    ""}
+                            ></textarea>
+                        </label>
+
                         <div class="flex gap-3 mt-6">
                             <AsyncButton
                                 type="submit"

@@ -23,6 +23,7 @@ export const location = pgTable("location", {
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     what3words: text("what3words"), // e.g., "filled.count.soap"
+    inclusivitySupport: text("inclusivity_support"), // Accessibility and inclusivity information
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()

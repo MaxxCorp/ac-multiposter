@@ -4,7 +4,7 @@
 
 export type SyncDirection = 'pull' | 'push' | 'bidirectional';
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'paused';
-export type ProviderType = 'google-calendar' | 'microsoft-calendar' | 'webhook' | 'custom';
+export type ProviderType = 'google-calendar' | 'microsoft-calendar' | 'webhook' | 'custom' | 'berlin-de-main-calendar';
 
 /**
  * Configuration for a sync provider instance

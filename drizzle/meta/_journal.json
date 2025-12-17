@@ -50,6 +50,13 @@
       "when": 1765535123928,
       "tag": "0006_nosy_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1765539913310,
+      "tag": "0007_next_tigra",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ export const createLocationSchema = z.object({
     latitude: z.number().optional(),
     longitude: z.number().optional(),
     what3words: z.string().optional(),
+    inclusivitySupport: z.string().optional(),
 });
 
 export const updateLocationSchema = createLocationSchema.extend({

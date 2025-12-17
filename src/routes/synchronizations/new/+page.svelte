@@ -15,12 +15,21 @@
 	import { toast } from "svelte-sonner";
 
 	let selectedProvider = $state<
-		"google-calendar" | "microsoft-calendar" | null
+		"google-calendar" | "microsoft-calendar" | "berlin-de-main-calendar" | null
 	>(null);
 	let providerId = $state("");
 	let direction = $state<"pull" | "push" | "bidirectional">("bidirectional");
 	let calendarId = $state("primary");
 	let syncIntervalMinutes = $state(60);
+	let company = $state("");
+	let fieldMappings = $state<Record<string, string>>({});
+
+	// Set default direction based on provider
+	$effect(() => {
+		if (selectedProvider === "berlin-de-main-calendar") {
+			direction = "push";
+		}
+	});
 	let isSubmitting = $state(false);
 	let error = $state<string | null>(null);
 
@@ -34,6 +43,10 @@
 			settings: {
 				calendarId: calendarId || "primary",
 				syncIntervalMinutes,
+				...(selectedProvider === "berlin-de-main-calendar" && {
+					company,
+					fieldMappings
+				})
 			},
 		};
 
@@ -72,6 +85,13 @@
 			description: "Sync with Outlook/Microsoft 365",
 			icon: Calendar,
 			available: false,
+		},
+		{
+			id: "berlin-de-main-calendar" as const,
+			name: "Berlin.de (Main Calendar)",
+			description: "Push events to main Berlin.de event calendar",
+			icon: Calendar,
+			available: true,
 		},
 	];
 
@@ -214,6 +234,27 @@
 						</div>
 					{/if}
 
+					{#if selectedProvider === "berlin-de-main-calendar"}
+						<div>
+							<label
+								for="company"
+								class="block text-sm font-medium text-gray-700 mb-1"
+							>
+								Company (Firma)
+							</label>
+							<input
+								type="text"
+								id="company"
+								bind:value={company}
+								placeholder="Your organization name"
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+							/>
+							<p class="text-xs text-gray-500 mt-1">
+								Company name to include in event submissions
+							</p>
+						</div>
+					{/if}
+
 					<div>
 						<label
 							for="syncInterval"
@@ -246,13 +287,14 @@
 							class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors {direction ===
 							dir.value
 								? 'border-blue-600 bg-blue-50'
-								: 'border-gray-200 hover:border-gray-300'}"
+								: 'border-gray-200 hover:border-gray-300'} {selectedProvider === 'berlin-de-main-calendar' && dir.value !== 'push' ? 'opacity-50 cursor-not-allowed' : ''}"
 						>
 							<input
 								type="radio"
 								name="direction"
 								value={dir.value}
 								bind:group={direction}
+								disabled={selectedProvider === 'berlin-de-main-calendar' && dir.value !== 'push'}
 								class="mt-1"
 							/>
 							<Icon
@@ -265,6 +307,11 @@
 								<div class="text-sm text-gray-600">
 									{dir.description}
 								</div>
+								{#if selectedProvider === 'berlin-de-main-calendar' && dir.value !== 'push'}
+									<div class="text-xs text-orange-600 mt-1">
+										Not supported for Berlin.de
+									</div>
+								{/if}
 							</div>
 						</label>
 					{/each}

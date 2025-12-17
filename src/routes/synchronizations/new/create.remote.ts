@@ -10,23 +10,27 @@ import type { SyncDirection } from '$lib/server/sync/types';
 import { syncService } from '$lib/server/sync/service';
 
 export interface CreateSyncInput {
-	providerType: 'google-calendar' | 'microsoft-calendar';
+	providerType: 'google-calendar' | 'microsoft-calendar' | 'berlin-de-main-calendar';
 	providerId: string;
 	direction: SyncDirection;
 	settings?: {
 		calendarId?: string;
 		syncIntervalMinutes?: number;
+		company?: string;
+		fieldMappings?: Record<string, string>;
 	};
 }
 
 const createSyncSchema = z.object({
-	providerType: z.enum(['google-calendar', 'microsoft-calendar']),
+	providerType: z.enum(['google-calendar', 'microsoft-calendar', 'berlin-de-main-calendar']),
 	providerId: z.string(),
 	direction: z.enum(['pull', 'push', 'bidirectional']),
 	settings: z.optional(
 		z.object({
 			calendarId: z.optional(z.string()),
-			syncIntervalMinutes: z.optional(z.number())
+			syncIntervalMinutes: z.optional(z.number()),
+			company: z.optional(z.string()),
+			fieldMappings: z.optional(z.record(z.string(), z.string()))
 		})
 	)
 });
@@ -34,34 +38,41 @@ const createSyncSchema = z.object({
 /**
  * Create a new sync configuration
  */
-export const create = command(createSyncSchema, async (input: CreateSyncInput) => {
+export const create = command(createSyncSchema, async (input) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'synchronizations');
 
-	// Find the user's OAuth account for the selected provider
+	// Find the user's OAuth account for the selected provider (if OAuth-based)
 	const providerIdMap: Record<string, string> = {
 		'google-calendar': 'google',
 		'microsoft-calendar': 'microsoft'
 	};
 
 	const oauthProviderId = providerIdMap[input.providerType];
-	if (!oauthProviderId) {
-		throw new Error(`Unknown provider type: ${input.providerType}`);
+	let credentials: any = null;
+
+	if (oauthProviderId) {
+		// OAuth-based provider - verify account exists
+		const [userAccount] = await db
+			.select()
+			.from(account)
+			.where(eq(account.userId, user.id) && eq(account.providerId, oauthProviderId))
+			.limit(1);
+
+		if (!userAccount) {
+			throw new Error(
+				`No ${oauthProviderId} account connected. Please connect your account in settings first.`
+			);
+		}
+
+		credentials = {
+			accessToken: userAccount.accessToken,
+			refreshToken: userAccount.refreshToken,
+			expiresAt: userAccount.accessTokenExpiresAt?.getTime()
+		};
 	}
 
-	const [userAccount] = await db
-		.select()
-		.from(account)
-		.where(eq(account.userId, user.id) && eq(account.providerId, oauthProviderId))
-		.limit(1);
-
-	if (!userAccount) {
-		throw new Error(
-			`No ${oauthProviderId} account connected. Please connect your account in settings first.`
-		);
-	}
-
-	// Create sync config with OAuth credentials
+	// Create sync config
 	const newConfigId = crypto.randomUUID();
 	const config = await db
 		.insert(syncConfig)
@@ -72,11 +83,7 @@ export const create = command(createSyncSchema, async (input: CreateSyncInput) =
 			providerType: input.providerType,
 			direction: input.direction,
 			enabled: true,
-			credentials: {
-				accessToken: userAccount.accessToken,
-				refreshToken: userAccount.refreshToken,
-				expiresAt: userAccount.accessTokenExpiresAt?.getTime()
-			},
+			credentials,
 			settings: input.settings || {},
 			createdAt: new Date(),
 			updatedAt: new Date()
