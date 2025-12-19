@@ -10,7 +10,7 @@ import type { SyncDirection } from '$lib/server/sync/types';
 import { syncService } from '$lib/server/sync/service';
 
 export interface CreateSyncInput {
-	providerType: 'google-calendar' | 'microsoft-calendar' | 'berlin-de-main-calendar';
+	providerType: 'google-calendar' | 'microsoft-calendar' | 'berlin-de-main-calendar' | 'wp-the-events-calendar';
 	providerId: string;
 	direction: SyncDirection;
 	settings?: {
@@ -18,11 +18,14 @@ export interface CreateSyncInput {
 		syncIntervalMinutes?: number;
 		company?: string;
 		fieldMappings?: Record<string, string>;
+		baseUrl?: string;
+		username?: string;
+		applicationPassword?: string;
 	};
 }
 
 const createSyncSchema = z.object({
-	providerType: z.enum(['google-calendar', 'microsoft-calendar', 'berlin-de-main-calendar']),
+	providerType: z.enum(['google-calendar', 'microsoft-calendar', 'berlin-de-main-calendar', 'wp-the-events-calendar']),
 	providerId: z.string(),
 	direction: z.enum(['pull', 'push', 'bidirectional']),
 	settings: z.optional(
@@ -30,7 +33,10 @@ const createSyncSchema = z.object({
 			calendarId: z.optional(z.string()),
 			syncIntervalMinutes: z.optional(z.number()),
 			company: z.optional(z.string()),
-			fieldMappings: z.optional(z.record(z.string(), z.string()))
+			fieldMappings: z.optional(z.record(z.string(), z.string())),
+			baseUrl: z.optional(z.string()),
+			username: z.optional(z.string()),
+			applicationPassword: z.optional(z.string())
 		})
 	)
 });

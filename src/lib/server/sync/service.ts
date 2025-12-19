@@ -18,6 +18,7 @@ import {
 import { eq, and, isNull, lt, inArray, desc } from 'drizzle-orm';
 import { GoogleCalendarProvider } from './providers/google-calendar';
 import { BerlinDeMainCalendarProvider } from './providers/berlin-de-main-calendar';
+import { WpTheEventsCalendarProvider } from './providers/wp-the-events-calendar';
 import crypto from 'crypto';
 import { env } from '$env/dynamic/private';
 import { globalEvents } from '../events';
@@ -33,6 +34,7 @@ export class SyncService {
 		// Register built-in providers
 		this.registerProvider('google-calendar', GoogleCalendarProvider);
 		this.registerProvider('berlin-de-main-calendar', BerlinDeMainCalendarProvider);
+		this.registerProvider('wp-the-events-calendar', WpTheEventsCalendarProvider);
 	}
 
 	/**

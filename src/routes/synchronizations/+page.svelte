@@ -50,6 +50,8 @@
 	function getProviderLabel(providerType: string) {
 		if (providerType === "google-calendar") return "Google Calendar";
 		if (providerType === "microsoft-calendar") return "Microsoft Calendar";
+		if (providerType === "berlin-de-main-calendar") return "Berlin.de (Main Calendar)";
+		if (providerType === "wp-the-events-calendar") return "WP The Events Calendar";
 		return providerType;
 	}
 

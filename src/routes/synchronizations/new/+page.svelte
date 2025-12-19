@@ -15,7 +15,7 @@
 	import { toast } from "svelte-sonner";
 
 	let selectedProvider = $state<
-		"google-calendar" | "microsoft-calendar" | "berlin-de-main-calendar" | null
+		"google-calendar" | "microsoft-calendar" | "berlin-de-main-calendar" | "wp-the-events-calendar" | null
 	>(null);
 	let providerId = $state("");
 	let direction = $state<"pull" | "push" | "bidirectional">("bidirectional");
@@ -23,10 +23,13 @@
 	let syncIntervalMinutes = $state(60);
 	let company = $state("");
 	let fieldMappings = $state<Record<string, string>>({});
+	let wpBaseUrl = $state("");
+	let wpUsername = $state("");
+	let wpAppPassword = $state("");
 
 	// Set default direction based on provider
 	$effect(() => {
-		if (selectedProvider === "berlin-de-main-calendar") {
+		if (selectedProvider === "berlin-de-main-calendar" || selectedProvider === "wp-the-events-calendar") {
 			direction = "push";
 		}
 	});
@@ -46,6 +49,11 @@
 				...(selectedProvider === "berlin-de-main-calendar" && {
 					company,
 					fieldMappings
+				}),
+				...(selectedProvider === "wp-the-events-calendar" && {
+					baseUrl: wpBaseUrl,
+					username: wpUsername,
+					applicationPassword: wpAppPassword,
 				})
 			},
 		};
@@ -90,6 +98,13 @@
 			id: "berlin-de-main-calendar" as const,
 			name: "Berlin.de (Main Calendar)",
 			description: "Push events to main Berlin.de event calendar",
+			icon: Calendar,
+			available: true,
+		},
+		{
+			id: "wp-the-events-calendar" as const,
+			name: "WP The Events Calendar",
+			description: "Push events to WordPress site with The Events Calendar plugin",
 			icon: Calendar,
 			available: true,
 		},
@@ -255,6 +270,63 @@
 						</div>
 					{/if}
 
+					{#if selectedProvider === "wp-the-events-calendar"}
+						<div>
+							<label
+								for="wpBaseUrl"
+								class="block text-sm font-medium text-gray-700 mb-1"
+							>
+								WordPress Site URL
+							</label>
+							<input
+								type="url"
+								id="wpBaseUrl"
+								bind:value={wpBaseUrl}
+								placeholder="https://yoursite.com"
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+							/>
+							<p class="text-xs text-gray-500 mt-1">
+								The base URL of your WordPress site
+							</p>
+						</div>
+						<div>
+							<label
+								for="wpUsername"
+								class="block text-sm font-medium text-gray-700 mb-1"
+							>
+								WordPress Username
+							</label>
+							<input
+								type="text"
+								id="wpUsername"
+								bind:value={wpUsername}
+								placeholder="admin"
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+							/>
+							<p class="text-xs text-gray-500 mt-1">
+								WordPress user with editor or administrator role
+							</p>
+						</div>
+						<div>
+							<label
+								for="wpAppPassword"
+								class="block text-sm font-medium text-gray-700 mb-1"
+							>
+								Application Password
+							</label>
+							<input
+								type="password"
+								id="wpAppPassword"
+								bind:value={wpAppPassword}
+								placeholder="abcd 1234 efgh 5678 ijkl"
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+							/>
+							<p class="text-xs text-gray-500 mt-1">
+								Application password generated in WordPress user profile
+							</p>
+						</div>
+					{/if}
+
 					<div>
 						<label
 							for="syncInterval"
@@ -287,14 +359,14 @@
 							class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors {direction ===
 							dir.value
 								? 'border-blue-600 bg-blue-50'
-								: 'border-gray-200 hover:border-gray-300'} {selectedProvider === 'berlin-de-main-calendar' && dir.value !== 'push' ? 'opacity-50 cursor-not-allowed' : ''}"
+								: 'border-gray-200 hover:border-gray-300'} {(selectedProvider === 'berlin-de-main-calendar' || selectedProvider === 'wp-the-events-calendar') && dir.value !== 'push' ? 'opacity-50 cursor-not-allowed' : ''}"
 						>
 							<input
 								type="radio"
 								name="direction"
 								value={dir.value}
 								bind:group={direction}
-								disabled={selectedProvider === 'berlin-de-main-calendar' && dir.value !== 'push'}
+								disabled={(selectedProvider === 'berlin-de-main-calendar' || selectedProvider === 'wp-the-events-calendar') && dir.value !== 'push'}
 								class="mt-1"
 							/>
 							<Icon
@@ -307,9 +379,9 @@
 								<div class="text-sm text-gray-600">
 									{dir.description}
 								</div>
-								{#if selectedProvider === 'berlin-de-main-calendar' && dir.value !== 'push'}
+								{#if (selectedProvider === 'berlin-de-main-calendar' || selectedProvider === 'wp-the-events-calendar') && dir.value !== 'push'}
 									<div class="text-xs text-orange-600 mt-1">
-										Not supported for Berlin.de
+										Not supported for {selectedProvider === 'berlin-de-main-calendar' ? 'Berlin.de' : 'WordPress Events Calendar'}
 									</div>
 								{/if}
 							</div>
