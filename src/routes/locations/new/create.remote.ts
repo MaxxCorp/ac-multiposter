@@ -25,6 +25,7 @@ export const createLocation = form(createLocationSchema, async (data) => {
             latitude: data.latitude,
             longitude: data.longitude,
             what3words: data.what3words,
+            inclusivitySupport: data.inclusivitySupport
         }).returning();
 
         const row = result[0];

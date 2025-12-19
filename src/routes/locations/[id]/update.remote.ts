@@ -28,6 +28,7 @@ export const updateLocation = form(updateLocationSchema, async (data) => {
                 longitude: data.longitude,
                 what3words: data.what3words,
                 updatedAt: new Date(),
+                inclusivitySupport: data.inclusivitySupport
             })
             .where(and(eq(location.id, data.id), eq(location.userId, user.id)));
 
