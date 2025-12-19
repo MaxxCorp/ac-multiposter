@@ -4,6 +4,7 @@ import { db } from "$lib/server/db";
 import { resource } from "$lib/server/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { getAuthenticatedUser } from "$lib/authorization";
+import { listResources } from '../list.remote';
 
 export const deleteResource = command(z.array(z.string()), async (ids: string[]) => {
     const user = getAuthenticatedUser();
@@ -12,5 +13,6 @@ export const deleteResource = command(z.array(z.string()), async (ids: string[])
         .delete(resource)
         .where(and(eq(resource.userId, user.id), inArray(resource.id, ids)));
 
+    await listResources().refresh();
     return { success: true };
 });
