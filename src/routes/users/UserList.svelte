@@ -108,11 +108,6 @@
                                     <p class="text-gray-600">
                                         {user.email}
                                     </p>
-                                    {#if user.phoneNumber}
-                                        <p class="text-gray-500 text-sm">
-                                            {user.phoneNumber}
-                                        </p>
-                                    {/if}
                                 </div>
                             </div>
                             <div class="mt-2">

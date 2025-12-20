@@ -11,6 +11,7 @@
 	import { Button } from "$lib/components/ui/button";
 	import { toast } from "svelte-sonner";
 	import { createEventSchema } from "$lib/validations/event";
+	import ContactManager from "$lib/components/ContactManager.svelte";
 
 	// Form state
 	let isAllDay = $state(false);
@@ -28,6 +29,7 @@
 	let useFreeTextLocation = $state(false);
 	let selectedLocationId = $state<string>("");
 	let freeTextLocation = $state<string>("");
+	let selectedContactIds = $state<string[]>([]);
 
 	// Calculate smart defaults
 	const now = new Date();
@@ -783,6 +785,22 @@
 					>
 				</div>
 			</div>
+		</div>
+
+		<div class="bg-white shadow rounded-lg p-6 space-y-4">
+			<h2 class="text-xl font-semibold mb-4">Contacts</h2>
+			<ContactManager
+				type="event"
+				onchange={(ids: string[]) => (selectedContactIds = ids)}
+			/>
+			{#each selectedContactIds as contactId, i}
+				<input
+					{...createEvent.fields.contactIds[i].as(
+						"hidden",
+						contactId,
+					)}
+				/>
+			{/each}
 		</div>
 
 		<div class="flex gap-3">

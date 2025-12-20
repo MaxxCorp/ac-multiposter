@@ -28,3 +28,12 @@ export { syncConfig, syncOperation, syncMapping, webhookSubscription } from "./s
 
 // Re-export resource schemas
 export { location, resource, resourceRelation, eventResource } from "./resources-schema";
+
+// Re-export contact schemas
+export {
+  contact, contactEmail, contactPhone, contactAddress,
+  userContact, locationContact, resourceContact, eventContact,
+  contactRelation, tag, contactTag,
+  contactRelations, contactEmailRelations, contactPhoneRelations, contactAddressRelations,
+  contactRelationRelations, tagRelations, contactTagRelations
+} from "./contacts-schema";

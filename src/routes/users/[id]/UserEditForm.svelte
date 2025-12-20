@@ -9,6 +9,7 @@
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import { FEATURES } from "$lib/features";
     import { goto } from "$app/navigation";
+    import ContactManager from "$lib/components/ContactManager.svelte";
 
     let { user }: { user: User } = $props();
 
@@ -108,18 +109,6 @@
             />
         </label>
 
-        <label class="block">
-            <span class="text-sm font-medium text-gray-700 mb-2"
-                >Phone Number</span
-            >
-            <input
-                {...updateUser.fields.phoneNumber.as("text")}
-                class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"
-                value={updateUser.fields.phoneNumber.value() ??
-                    (user.phoneNumber || "")}
-            />
-        </label>
-
         <div class="border-t pt-4 mt-4">
             <h3 class="text-lg font-medium text-gray-900 mb-2">Roles</h3>
             <label class="flex items-center space-x-2">
@@ -157,6 +146,8 @@
                 {/each}
             </div>
         </div>
+
+        <ContactManager type="user" entityId={user.id} />
 
         <div class="flex gap-3 mt-6">
             <AsyncButton

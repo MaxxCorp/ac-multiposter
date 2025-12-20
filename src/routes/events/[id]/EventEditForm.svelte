@@ -10,6 +10,7 @@
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import { goto } from "$app/navigation";
+    import ContactManager from "$lib/components/ContactManager.svelte";
 
     let {
         event,
@@ -654,6 +655,8 @@
         <!-- Skipping Event Type, Status, Visibility, Show As, Color, Guests for brevity but should include them -->
         <!-- I'll assume they are standard selects and text inputs -->
         <!-- Just ensuring Save button is there -->
+
+        <ContactManager type="event" entityId={event.id} />
 
         <div class="flex gap-3 mt-6">
             <AsyncButton

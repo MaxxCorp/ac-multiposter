@@ -2,7 +2,7 @@
  * Reusable utility for common database query patterns
  */
 import { db } from '$lib/server/db';
-import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
+import { getAuthenticatedUser, ensureAccess, type Feature } from '$lib/authorization';
 import { eq, desc, type SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 
@@ -10,7 +10,7 @@ export interface ListQueryConfig<T extends PgTable> {
 	/** The database table to query */
 	table: T;
 	/** The feature name for access control (e.g., "events", "campaigns") */
-	featureName: 'events' | 'campaigns' | 'synchronizations' | 'locations' | 'resources';
+	featureName: Feature;
 	/** Optional custom order by clause (defaults to desc(table.createdAt)) */
 	orderBy?: SQL;
 	/** Optional data transformer function */
@@ -34,7 +34,7 @@ export async function listQuery<T extends PgTable>(config: ListQueryConfig<T>): 
 	const query = db
 		.select()
 		.from(table as any);
-//		.where(eq((table as any).userId, user.id));
+	//		.where(eq((table as any).userId, user.id));
 
 	// Apply ordering
 	if (customOrderBy) {
@@ -57,7 +57,7 @@ export interface GetQueryConfig<T extends PgTable> {
 	/** The database table to query */
 	table: T;
 	/** The feature name for access control (e.g., "events", "campaigns") */
-	featureName: 'events' | 'campaigns' | 'synchronizations' | 'locations' | 'resources';
+	featureName: Feature;
 	/** The ID of the item to fetch */
 	id: string;
 	/** Optional data transformer function */

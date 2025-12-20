@@ -703,7 +703,10 @@ export class SyncService {
 			endTimeZone: internal.endTimeZone ?? undefined,
 			attendees: (internal.attendees as any) ?? undefined,
 			recurrence: (internal.recurrence as any) ?? undefined,
-			reminders: (internal.reminders as any) ?? undefined
+			reminders: (internal.reminders as any) ?? undefined,
+			metadata: {
+				eventId: internal.id
+			}
 		};
 	}
 

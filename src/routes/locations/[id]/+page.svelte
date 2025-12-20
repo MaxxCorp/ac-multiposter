@@ -12,6 +12,7 @@
     import { updateLocationSchema } from "$lib/validations/location";
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
+    import ContactManager from "$lib/components/ContactManager.svelte";
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -297,7 +298,9 @@
                                 >Inclusivity Support</span
                             >
                             <textarea
-                                {...updateLocation.fields.inclusivitySupport.as("text")}
+                                {...updateLocation.fields.inclusivitySupport.as(
+                                    "text",
+                                )}
                                 class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Accessibility and inclusivity information"
                                 rows="3"
@@ -306,6 +309,11 @@
                                     ""}
                             ></textarea>
                         </label>
+
+                        <ContactManager
+                            type="location"
+                            entityId={location.id}
+                        />
 
                         <div class="flex gap-3 mt-6">
                             <AsyncButton

@@ -6,8 +6,9 @@ import type {
 	SyncDirection
 } from '../types';
 import { db } from '$lib/server/db';
-import { user } from '$lib/server/db/schema';
+import { user, eventResource } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { getEntityContacts } from '$lib/server/contacts';
 
 /**
  * Berlin.de Main Calendar sync provider implementation
@@ -97,7 +98,7 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 		}
 
 		// Prepare form data
-		const formData = this.mapEventToFormData(event, userRecord);
+		const formData = await this.mapEventToFormData(event, userRecord);
 
 		// Add event ID for testing purposes
 		formData.eventId = event.externalId || event.providerId;
@@ -137,7 +138,7 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 		console.warn(`Berlin.de provider doesn't support event deletion for ${externalId}`);
 	}
 
-	private mapEventToFormData(event: ExternalEvent, userRecord: typeof user.$inferSelect): Record<string, string> {
+	private async mapEventToFormData(event: ExternalEvent, userRecord: typeof user.$inferSelect): Promise<Record<string, string>> {
 		const formData: Record<string, string> = {};
 
 		// Map basic fields
@@ -193,15 +194,57 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 			formData[this.fieldMappings.eintrittspreis] = event.metadata.ticketPrice;
 		}
 
-		// Inclusivity support from location
-		// This would need to be fetched from the location associated with the event
-		// For now, we'll skip this as it requires additional DB queries
+		// Contact info resolution
+		let targetContact = null;
+		const eventId = event.metadata?.eventId;
 
-		// Contact info from user
-		formData[this.fieldMappings.name] = userRecord.name;
-		formData[this.fieldMappings.email] = userRecord.email;
-		if (userRecord.phoneNumber) {
-			formData[this.fieldMappings.telefon] = userRecord.phoneNumber;
+		if (eventId) {
+			// 1. Check if event has a contact
+			const eventContacts = await getEntityContacts('event', eventId);
+			if (eventContacts.length > 0) {
+				targetContact = eventContacts[0];
+			}
+
+			// 2. Check if location has a contact
+			if (!targetContact) {
+				const resources = await db.query.eventResource.findMany({
+					where: (er, { eq }) => eq(er.eventId, eventId),
+					with: {
+						resource: {
+							with: {
+								location: true
+							}
+						}
+					}
+				});
+
+				for (const er of resources) {
+					const locationId = (er.resource as any)?.locationId;
+					if (locationId) {
+						const locationContacts = await getEntityContacts('location', locationId);
+						if (locationContacts.length > 0) {
+							targetContact = locationContacts[0];
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		if (targetContact) {
+			const contactName = targetContact.displayName || `${targetContact.givenName || ''} ${targetContact.familyName || ''}`.trim();
+			const contactEmail = (targetContact as any).emails?.find((e: any) => e.primary)?.value || (targetContact as any).emails?.[0]?.value || '';
+			const contactPhone = (targetContact as any).phones?.find((p: any) => p.primary)?.value || (targetContact as any).phones?.[0]?.value || '';
+
+			formData[this.fieldMappings.name] = contactName;
+			formData[this.fieldMappings.email] = contactEmail;
+			if (contactPhone) {
+				formData[this.fieldMappings.telefon] = contactPhone;
+			}
+		} else {
+			// Default to user info if no contact found
+			formData[this.fieldMappings.name] = userRecord.name;
+			formData[this.fieldMappings.email] = userRecord.email;
 		}
 
 		// Company from settings

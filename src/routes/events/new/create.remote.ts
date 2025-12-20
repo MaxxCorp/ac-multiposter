@@ -83,6 +83,17 @@ export const createEvent = form(eventSchema, async (data) => {
 			);
 		}
 
+		// Associate contacts with the event if provided
+		if (data.contactIds && data.contactIds.length > 0) {
+			const { eventContact } = await import('$lib/server/db/schema');
+			await db.insert(eventContact).values(
+				data.contactIds.map(contactId => ({
+					eventId: id,
+					contactId,
+				}))
+			);
+		}
+
 		// Trigger sync to external providers (non-blocking)
 		syncService.syncSpecificEvents(user.id, [id]).catch((error) => {
 			console.error('[createEvent] Failed to sync event to providers:', error);

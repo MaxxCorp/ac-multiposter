@@ -100,6 +100,20 @@ export const FEATURES: readonly FeatureMeta[] = [
     borderClass: 'border-rose-100',
     buttonClass: 'bg-rose-600 hover:bg-rose-700',
     order: 6
+  },
+  {
+    key: 'contacts',
+    title: 'Contacts',
+    description: 'Manage your contact information, including emails, phones, and addresses.',
+    href: '/contacts',
+    buttonText: 'Manage Contacts',
+    claim: 'contacts',
+    icon: 'users',
+    gradientFrom: 'from-indigo-50',
+    gradientTo: 'to-blue-50',
+    borderClass: 'border-indigo-100',
+    buttonClass: 'bg-indigo-600 hover:bg-indigo-700',
+    order: 7
   }
 ] as const;
 

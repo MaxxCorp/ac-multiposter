@@ -13,6 +13,7 @@
     } from "$lib/validations/resource";
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
+    import ContactManager from "$lib/components/ContactManager.svelte";
 
     // Extended Resource type that includes parent relationships from read.remote
     type ResourceWithParents = Resource & { parentResourceIds?: string[] };
@@ -316,6 +317,8 @@
                 />
             {/if}
         </div>
+
+        <ContactManager type="resource" entityId={resource.id} />
 
         <div class="flex gap-3 mt-6">
             <AsyncButton

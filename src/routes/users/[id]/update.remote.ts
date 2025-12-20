@@ -25,7 +25,6 @@ export const updateUser = form(updateUserSchema, async (data) => {
             .set({
                 name: data.name,
                 email: data.email,
-                phoneNumber: data.phoneNumber,
                 roles: (data.roles ?? []) as any,
                 claims: data.claims ? JSON.parse(data.claims) : undefined,
                 updatedAt: new Date(),
