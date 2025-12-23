@@ -15,12 +15,13 @@
 
 	// Form state
 	let isAllDay = $state(false);
-	let hasEndTime = $state(false);
+	let hasEndTime = $state(true);
 	let useDefaultReminders = $state(true);
 	let reminders = $state([{ method: "popup", minutes: 10 }]);
 	let guestsCanInviteOthers = $state(true);
 	let guestsCanModify = $state(false);
 	let guestsCanSeeOtherGuests = $state(true);
+	let isPublic = $state(false);
 
 	// Resource and location state
 	let resourcesPromise = listResourcesWithHierarchy();
@@ -145,7 +146,6 @@
 
 	<form
 		{...createEvent
-			.preflight(createEventSchema)
 			.enhance(async ({ submit }) => {
 				try {
 					const result: any = await submit();
@@ -200,6 +200,13 @@
 		<input
 			{...createEvent.fields.guestsCanSeeOtherGuests.as("checkbox")}
 			checked={guestsCanSeeOtherGuests}
+			class="sr-only"
+			aria-hidden="true"
+			tabindex="-1"
+		/>
+		<input
+			{...createEvent.fields.isPublic.as("checkbox")}
+			checked={isPublic}
 			class="sr-only"
 			aria-hidden="true"
 			tabindex="-1"
@@ -429,6 +436,7 @@
 				</label>
 				<select
 					{...createEvent.fields.categoryBerlinDotDe.as("select")}
+					value={createEvent.fields.categoryBerlinDotDe.value() ?? ""}
 					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(createEvent.fields.categoryBerlinDotDe.issues()
 						?.length ?? 0) > 0
 						? 'border-red-500'
@@ -484,6 +492,7 @@
 				<input
 					id="ticketPrice"
 					{...createEvent.fields.ticketPrice.as("text")}
+					value={createEvent.fields.ticketPrice.value() ?? ""}
 					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {(createEvent.fields.ticketPrice.issues()
 						?.length ?? 0) > 0
 						? 'border-red-500'
@@ -788,19 +797,35 @@
 		</div>
 
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
+			<h2 class="text-xl font-semibold mb-4">Visibility</h2>
+			<div class="space-y-2">
+				<div class="flex items-center gap-2">
+					<input
+						id="isPublic"
+						type="checkbox"
+						checked={isPublic}
+						onclick={() => (isPublic = !isPublic)}
+						class="w-4 h-4 text-blue-600"
+					/>
+					<label for="isPublic" class="text-sm font-medium text-gray-700">
+						Public Profile (Allow unauthenticated viewing)
+					</label>
+				</div>
+			</div>
+		</div>
+
+		<div class="bg-white shadow rounded-lg p-6 space-y-4">
 			<h2 class="text-xl font-semibold mb-4">Contacts</h2>
 			<ContactManager
 				type="event"
 				onchange={(ids: string[]) => (selectedContactIds = ids)}
 			/>
-			{#each selectedContactIds as contactId, i}
-				<input
-					{...createEvent.fields.contactIds[i].as(
-						"hidden",
-						contactId,
-					)}
-				/>
-			{/each}
+			<input
+				{...createEvent.fields.contactIds.as(
+					"hidden",
+					JSON.stringify(selectedContactIds),
+				)}
+			/>
 		</div>
 
 		<div class="flex gap-3">

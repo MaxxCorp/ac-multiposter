@@ -5,6 +5,7 @@ import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { syncService } from '$lib/server/sync/service';
 import { eventSchema } from '$lib/validations/event';
+import { generateEventAssets } from '$lib/server/events/assets';
 
 /**
  * Form function for creating a new event
@@ -65,6 +66,9 @@ export const createEvent = form(eventSchema, async (data) => {
 			locked: false,
 			privateCopy: false,
 			sequence: 0,
+			isPublic: data.isPublic ?? false,
+			categoryBerlinDotDe: data.categoryBerlinDotDe || null,
+			ticketPrice: data.ticketPrice || null,
 		}).returning();
 
 		// Optionally check insert result
@@ -83,11 +87,13 @@ export const createEvent = form(eventSchema, async (data) => {
 			);
 		}
 
+
 		// Associate contacts with the event if provided
-		if (data.contactIds && data.contactIds.length > 0) {
+		const contactIds = data.contactIds ? JSON.parse(data.contactIds as string) : [];
+		if (contactIds.length > 0) {
 			const { eventContact } = await import('$lib/server/db/schema');
 			await db.insert(eventContact).values(
-				data.contactIds.map(contactId => ({
+				contactIds.map((contactId: string) => ({
 					eventId: id,
 					contactId,
 				}))
@@ -97,6 +103,11 @@ export const createEvent = form(eventSchema, async (data) => {
 		// Trigger sync to external providers (non-blocking)
 		syncService.syncSpecificEvents(user.id, [id]).catch((error) => {
 			console.error('[createEvent] Failed to sync event to providers:', error);
+		});
+
+		// Generate assets (QR Code, iCal)
+		generateEventAssets(id).catch((error) => {
+			console.error('[createEvent] Failed to generate event assets:', error);
 		});
 
 		// Refresh the list query

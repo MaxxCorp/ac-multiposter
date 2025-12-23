@@ -28,9 +28,9 @@ export const session = pgTable("session", {
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
-}, (table) => ({
-    sessionUserIndex: index("session_user_id_idx").on(table.userId),
-}));
+}, (table) => [
+    index("session_user_id_idx").on(table.userId),
+]);
 
 export const account = pgTable("account", {
     id: text("id").primaryKey(),
@@ -50,12 +50,12 @@ export const account = pgTable("account", {
     updatedAt: timestamp("updated_at")
         .$onUpdate(() => /* @__PURE__ */ new Date())
         .notNull(),
-}, (table) => ({
-    accountUserProviderIndex: index("account_user_provider_id_idx").on(
+}, (table) => [
+    index("account_user_provider_id_idx").on(
         table.userId,
         table.providerId,
     ),
-}));
+]);
 
 export const verification = pgTable("verification", {
     id: text("id").primaryKey(),
@@ -67,6 +67,6 @@ export const verification = pgTable("verification", {
         .defaultNow()
         .$onUpdate(() => /* @__PURE__ */ new Date())
         .notNull(),
-}, (table) => ({
-    verificationIdentifierIndex: index("verification_identifier_idx").on(table.identifier),
-}));
+}, (table) => [
+    index("verification_identifier_idx").on(table.identifier),
+]);

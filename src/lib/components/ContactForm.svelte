@@ -249,7 +249,7 @@
                         type="text"
                         placeholder="Search for a contact to link..."
                         bind:value={contactSearch}
-                        class="flex-1 outline-none text-sm"
+                        class="flex-1 outline-none"
                     />
                 </div>
 
@@ -556,13 +556,12 @@
     </div>
 
     <div class="flex justify-end gap-3 pt-6 border-t">
-        <Button href={cancelHref} variant="outline" type="button">Cancel</Button
+        <Button href={cancelHref} variant="secondary" type="button">Cancel</Button
         >
         <AsyncButton
             type="submit"
             {loading}
             loadingLabel="Saving..."
-            class="bg-blue-600 hover:bg-blue-700 text-white"
         >
             Save Contact
         </AsyncButton>

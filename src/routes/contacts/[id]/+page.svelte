@@ -12,7 +12,7 @@
     const contactId = page.params.id || "";
     let itemsPromise = $state(readContact(contactId));
     let loading = $state(false);
-    let mode = $state<"view" | "edit">("view");
+    let mode = $state<"view" | "edit">(page.url.searchParams.get('edit') === 'true' ? 'edit' : 'view');
 
     // Check if the user is authorized to edit
     function checkCanEdit(contact: any) {

@@ -16,9 +16,9 @@ export const campaign = pgTable("campaign", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-}, (table) => ({
-  campaignUserIndex: index("campaign_user_id_idx").on(table.userId),
-}));
+}, (table) => [
+  index("campaign_user_id_idx").on(table.userId),
+]);
 
 // Re-export event schema
 export { event } from "./events-schema";
@@ -35,5 +35,6 @@ export {
   userContact, locationContact, resourceContact, eventContact,
   contactRelation, tag, contactTag,
   contactRelations, contactEmailRelations, contactPhoneRelations, contactAddressRelations,
-  contactRelationRelations, tagRelations, contactTagRelations
+  contactRelationRelations, tagRelations, contactTagRelations,
+  userContactRelations, locationContactRelations, resourceContactRelations, eventContactRelations
 } from "./contacts-schema";

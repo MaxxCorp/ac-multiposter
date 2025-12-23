@@ -33,9 +33,9 @@ export const contact = pgTable("contact", {
         .defaultNow()
         .$onUpdate(() => new Date())
         .notNull(),
-}, (table) => ({
-    contactUserIndex: index("contact_user_id_idx").on(table.userId),
-}));
+}, (table) => [
+    index("contact_user_id_idx").on(table.userId),
+]);
 
 /**
  * Contact Email Addresses
@@ -48,9 +48,9 @@ export const contactEmail = pgTable("contact_email", {
     value: text("value").notNull(),
     type: text("type"), // e.g., 'home', 'work', 'other'
     primary: boolean("primary").default(false).notNull(),
-}, (table) => ({
-    contactEmailIndex: index("contact_email_contact_id_idx").on(table.contactId),
-}));
+}, (table) => [
+    index("contact_email_contact_id_idx").on(table.contactId),
+]);
 
 /**
  * Contact Phone Numbers
@@ -63,9 +63,9 @@ export const contactPhone = pgTable("contact_phone", {
     value: text("value").notNull(),
     type: text("type"), // e.g., 'home', 'work', 'mobile', 'workMobile', 'other'
     primary: boolean("primary").default(false).notNull(),
-}, (table) => ({
-    contactPhoneIndex: index("contact_phone_contact_id_idx").on(table.contactId),
-}));
+}, (table) => [
+    index("contact_phone_contact_id_idx").on(table.contactId),
+]);
 
 /**
  * Contact Physical Addresses
@@ -84,9 +84,9 @@ export const contactAddress = pgTable("contact_address", {
     country: text("country"),
     type: text("type"), // e.g., 'home', 'work', 'other'
     primary: boolean("primary").default(false).notNull(),
-}, (table) => ({
-    contactAddressIndex: index("contact_address_contact_id_idx").on(table.contactId),
-}));
+}, (table) => [
+    index("contact_address_contact_id_idx").on(table.contactId),
+]);
 
 /**
  * Many-to-Many associations
@@ -99,11 +99,11 @@ export const userContact = pgTable("user_contact", {
     contactId: text("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.userId, table.contactId] }),
-    userIndex: index("user_contact_user_idx").on(table.userId),
-    contactIndex: index("user_contact_contact_idx").on(table.contactId),
-}));
+}, (table) => [
+    primaryKey({ columns: [table.userId, table.contactId] }),
+    index("user_contact_user_idx").on(table.userId),
+    index("user_contact_contact_idx").on(table.contactId),
+]);
 
 export const locationContact = pgTable("location_contact", {
     locationId: text("location_id")
@@ -112,11 +112,11 @@ export const locationContact = pgTable("location_contact", {
     contactId: text("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.locationId, table.contactId] }),
-    locationIndex: index("location_contact_location_idx").on(table.locationId),
-    contactIndex: index("location_contact_contact_idx").on(table.contactId),
-}));
+}, (table) => [
+    primaryKey({ columns: [table.locationId, table.contactId] }),
+    index("location_contact_location_idx").on(table.locationId),
+    index("location_contact_contact_idx").on(table.contactId),
+]);
 
 export const resourceContact = pgTable("resource_contact", {
     resourceId: text("resource_id")
@@ -125,11 +125,11 @@ export const resourceContact = pgTable("resource_contact", {
     contactId: text("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.resourceId, table.contactId] }),
-    resourceIndex: index("resource_contact_resource_idx").on(table.resourceId),
-    contactIndex: index("resource_contact_contact_idx").on(table.contactId),
-}));
+}, (table) => [
+    primaryKey({ columns: [table.resourceId, table.contactId] }),
+    index("resource_contact_resource_idx").on(table.resourceId),
+    index("resource_contact_contact_idx").on(table.contactId),
+]);
 
 export const eventContact = pgTable("event_contact", {
     eventId: text("event_id")
@@ -138,11 +138,11 @@ export const eventContact = pgTable("event_contact", {
     contactId: text("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.eventId, table.contactId] }),
-    eventIndex: index("event_contact_event_idx").on(table.eventId),
-    contactIndex: index("event_contact_contact_idx").on(table.contactId),
-}));
+}, (table) => [
+    primaryKey({ columns: [table.eventId, table.contactId] }),
+    index("event_contact_event_idx").on(table.eventId),
+    index("event_contact_contact_idx").on(table.contactId),
+]);
 
 /**
  * Contact Relations (Self-referential many-to-many)
@@ -157,10 +157,10 @@ export const contactRelation = pgTable("contact_relation", {
         .references(() => contact.id, { onDelete: "cascade" }),
     relationType: text("relation_type").notNull(), // e.g., 'reports to', 'cooperates with'
     createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-    contactIndex: index("contact_relation_contact_idx").on(table.contactId),
-    targetContactIndex: index("contact_relation_target_idx").on(table.targetContactId),
-}));
+}, (table) => [
+    index("contact_relation_contact_idx").on(table.contactId),
+    index("contact_relation_target_idx").on(table.targetContactId),
+]);
 
 /**
  * Global Tags Table
@@ -172,10 +172,10 @@ export const tag = pgTable("tag", {
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-    userIndex: index("tag_user_idx").on(table.userId),
-    uniqueTagNamePerUser: index("tag_name_user_idx").on(table.userId, table.name),
-}));
+}, (table) => [
+    index("tag_user_idx").on(table.userId),
+    index("tag_name_user_idx").on(table.userId, table.name),
+]);
 
 /**
  * Contact-Tag Join Table
@@ -187,11 +187,11 @@ export const contactTag = pgTable("contact_tag", {
     tagId: text("tag_id")
         .notNull()
         .references(() => tag.id, { onDelete: "cascade" }),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.contactId, table.tagId] }),
-    contactIndex: index("contact_tag_contact_idx").on(table.contactId),
-    tagIndex: index("contact_tag_tag_idx").on(table.tagId),
-}));
+}, (table) => [
+    primaryKey({ columns: [table.contactId, table.tagId] }),
+    index("contact_tag_contact_idx").on(table.contactId),
+    index("contact_tag_tag_idx").on(table.tagId),
+]);
 
 export type Contact = typeof contact.$inferSelect;
 export type NewContact = typeof contact.$inferInsert;
@@ -266,6 +266,38 @@ export const contactPhoneRelations = relations(contactPhone, ({ one }) => ({
 export const contactAddressRelations = relations(contactAddress, ({ one }) => ({
     contact: one(contact, {
         fields: [contactAddress.contactId],
+        references: [contact.id],
+    }),
+}));
+
+export const userContactRelations = relations(userContact, ({ one }) => ({
+    contact: one(contact, {
+        fields: [userContact.contactId],
+        references: [contact.id],
+    }),
+    user: one(user, {
+        fields: [userContact.userId],
+        references: [user.id],
+    }),
+}));
+
+export const locationContactRelations = relations(locationContact, ({ one }) => ({
+    contact: one(contact, {
+        fields: [locationContact.contactId],
+        references: [contact.id],
+    }),
+}));
+
+export const resourceContactRelations = relations(resourceContact, ({ one }) => ({
+    contact: one(contact, {
+        fields: [resourceContact.contactId],
+        references: [contact.id],
+    }),
+}));
+
+export const eventContactRelations = relations(eventContact, ({ one }) => ({
+    contact: one(contact, {
+        fields: [eventContact.contactId],
         references: [contact.id],
     }),
 }));

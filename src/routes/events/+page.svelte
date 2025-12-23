@@ -11,6 +11,7 @@
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
 	import { handleDelete } from "$lib/hooks/handleDelete.svelte";
 	import EmptyState from "$lib/components/ui/EmptyState.svelte";
+	import { MapPin, Globe } from "lucide-svelte";
 
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
 	let resolvedItems = $state<Event[]>([]);
@@ -35,9 +36,16 @@
 	}
 
 	function formatEventTime(event: Event): string {
-		if (event.startDate) {
+		// Check if this is an all-day event (has startDate but no startDateTime)
+		const isAllDay = event.startDate && !event.startDateTime;
+		
+		if (isAllDay) {
+			if (event.endDate && event.endDate !== event.startDate) {
+				return `All day: ${event.startDate} - ${event.endDate}`;
+			}
 			return `All day on ${event.startDate}`;
 		}
+		
 		if (event.startDateTime) {
 			const start = new Date(event.startDateTime);
 			const end = event.endDateTime ? new Date(event.endDateTime) : null;
@@ -246,20 +254,35 @@
 											</div>
 										</div>
 										<div class="flex flex-col gap-1 mt-1">
-											<span class="text-xs text-gray-500"
-												>{formatEventTime(event)}</span
-											>
-											{#if event.location}
-												<span
-													class="text-xs text-gray-400 truncate"
-													>{event.location}</span
+											<div class="flex items-center gap-2">
+												<Calendar size={14} class="text-blue-500" />
+												<span class="text-xs text-gray-500"
+													>{formatEventTime(event)}</span
 												>
+											</div>
+											{#if event.location}
+												<div class="flex items-center gap-2">
+													<MapPin size={14} class="text-red-500" />
+													<span
+														class="text-xs text-gray-400 truncate"
+														>{event.location}</span
+													>
+												</div>
+											{/if}
+											{#if event.isPublic}
+												<div class="flex items-center gap-2">
+													<Globe size={14} class="text-green-500" />
+													<span
+														class="text-xs text-green-600 font-medium"
+														>Public</span
+													>
+												</div>
 											{/if}
 										</div>
 									</div>
 									<div class="flex flex-col gap-2 shrink-0">
 										<Button
-											href={`/events/${event.id}`}
+											href={`/events/${event.id}?edit=true`}
 											variant="default"
 											size="default"
 											class="text-center"

@@ -7,6 +7,7 @@ import { readEvent } from './read.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { syncService } from '$lib/server/sync/service';
 import { updateEventSchema } from '$lib/validations/event';
+import { generateEventAssets } from '$lib/server/events/assets';
 
 /**
  * Form function for updating an event
@@ -38,8 +39,8 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 	if (data.startDate !== undefined) updateData.startDate = data.startDate;
 	if (data.startDateTime !== undefined) updateData.startDateTime = data.startDateTime ? new Date(data.startDateTime) : null;
 	if (data.startTimeZone !== undefined) updateData.startTimeZone = data.startTimeZone;
-	if (data.endDate !== undefined) updateData.endDate = data.endDate;
-	if (data.endDateTime !== undefined) updateData.endDateTime = data.endDateTime ? new Date(data.endDateTime) : null;
+	if (data.endDate !== undefined) updateData.endDate = data.endDate === "null" ? null : data.endDate;
+	if (data.endDateTime !== undefined) updateData.endDateTime = data.endDateTime === "null" ? null : (data.endDateTime ? new Date(data.endDateTime) : null);
 	if (data.endTimeZone !== undefined) updateData.endTimeZone = data.endTimeZone;
 	if (data.eventType !== undefined) updateData.eventType = data.eventType;
 	if (data.status !== undefined) updateData.status = data.status;
@@ -52,6 +53,9 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 	if (data.guestsCanInviteOthers !== undefined) updateData.guestsCanInviteOthers = data.guestsCanInviteOthers;
 	if (data.guestsCanModify !== undefined) updateData.guestsCanModify = data.guestsCanModify;
 	if (data.guestsCanSeeOtherGuests !== undefined) updateData.guestsCanSeeOtherGuests = data.guestsCanSeeOtherGuests;
+	if (data.isPublic !== undefined) updateData.isPublic = data.isPublic;
+	if (data.categoryBerlinDotDe !== undefined) updateData.categoryBerlinDotDe = data.categoryBerlinDotDe === "" ? null : data.categoryBerlinDotDe;
+	if (data.ticketPrice !== undefined) updateData.ticketPrice = data.ticketPrice === "" ? null : data.ticketPrice;
 
 	// Update the event
 	await db
@@ -59,19 +63,39 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 		.set(updateData)
 		.where(and(eq(event.id, data.id), eq(event.userId, user.id)));
 
-	// Update event-resource associations if resourceIds are provided
-	if (data.resourceIds !== undefined) {
+	// Update event-resource associations (always update, even if empty)
+	{
 		const { eventResource } = await import('$lib/server/db/schema');
 
 		// Delete existing associations
 		await db.delete(eventResource).where(eq(eventResource.eventId, data.id));
 
 		// Create new associations if any
-		if (data.resourceIds.length > 0) {
+		const resourceIds = data.resourceIds || [];
+		if (resourceIds.length > 0) {
 			await db.insert(eventResource).values(
-				data.resourceIds.map(resourceId => ({
+				resourceIds.map(resourceId => ({
 					eventId: data.id,
 					resourceId,
+				}))
+			);
+		}
+	}
+
+	// Update event-contact associations (always update, even if empty)
+	{
+		const { eventContact } = await import('$lib/server/db/schema');
+
+		// Delete existing associations
+		await db.delete(eventContact).where(eq(eventContact.eventId, data.id));
+
+		// Create new associations if any
+		const contactIds = data.contactIds ? JSON.parse(data.contactIds as string) : [];
+		if (contactIds.length > 0) {
+			await db.insert(eventContact).values(
+				contactIds.map((contactId: string) => ({
+					eventId: data.id,
+					contactId,
 				}))
 			);
 		}
@@ -80,6 +104,11 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 	// Trigger sync to external providers (non-blocking)
 	syncService.syncSpecificEvents(user.id, [data.id]).catch((error) => {
 		console.error('[updateEvent] Failed to sync event to providers:', error);
+	});
+
+	// Re-generate assets (QR Code, iCal)
+	generateEventAssets(data.id).catch((error) => {
+		console.error('[updateEvent] Failed to generate event assets:', error);
 	});
 
 	// Refresh both queries

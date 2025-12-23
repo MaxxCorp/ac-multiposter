@@ -86,7 +86,7 @@
                     {:else}
                         {#each items as contact (contact.id)}
                             <div
-                                class="bg-white border hover:shadow-md rounded-lg p-6 flex items-start gap-4 transition-all"
+                                class="bg-white shadow rounded-lg p-6 flex items-start gap-4 transition-shadow"
                             >
                                 <input
                                     type="checkbox"
@@ -190,15 +190,15 @@
 
                                 <div class="flex flex-col gap-2 shrink-0">
                                     <Button
-                                        href={`/contacts/${contact.id}`}
-                                        variant="outline"
-                                        size="sm"
+                                        href={`/contacts/${contact.id}?edit=true`}
+                                        variant="default"
+                                        size="default"
                                     >
                                         Edit
                                     </Button>
                                     <AsyncButton
                                         variant="destructive"
-                                        size="sm"
+                                        size="default"
                                         loading={false}
                                         loadingLabel="Deleting..."
                                         onclick={async () => {

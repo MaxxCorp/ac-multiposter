@@ -29,9 +29,9 @@ export const location = pgTable("location", {
         .defaultNow()
         .$onUpdate(() => new Date())
         .notNull(),
-}, (table) => ({
-    locationUserIndex: index("location_user_id_idx").on(table.userId),
-}));
+}, (table) => [
+    index("location_user_id_idx").on(table.userId),
+]);
 
 /**
  * Resources table
@@ -53,10 +53,10 @@ export const resource = pgTable("resource", {
         .defaultNow()
         .$onUpdate(() => new Date())
         .notNull(),
-}, (table) => ({
-    resourceUserIndex: index("resource_user_id_idx").on(table.userId),
-    resourceLocationIndex: index("resource_location_id_idx").on(table.locationId),
-}));
+}, (table) => [
+    index("resource_user_id_idx").on(table.userId),
+    index("resource_location_id_idx").on(table.locationId),
+]);
 
 /**
  * Resource Relations table (Many-to-Many Hierarchy)
@@ -70,11 +70,11 @@ export const resourceRelation = pgTable("resource_relation", {
     childResourceId: text("child_resource_id")
         .notNull()
         .references(() => resource.id, { onDelete: "cascade" }),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.parentResourceId, table.childResourceId] }),
-    parentIndex: index("resource_relation_parent_idx").on(table.parentResourceId),
-    childIndex: index("resource_relation_child_idx").on(table.childResourceId),
-}));
+}, (table) => [
+    primaryKey({ columns: [table.parentResourceId, table.childResourceId] }),
+    index("resource_relation_parent_idx").on(table.parentResourceId),
+    index("resource_relation_child_idx").on(table.childResourceId),
+]);
 
 /**
  * Event Resources table (Many-to-Many)
@@ -87,8 +87,8 @@ export const eventResource = pgTable("event_resource", {
     resourceId: text("resource_id")
         .notNull()
         .references(() => resource.id, { onDelete: "cascade" }),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.eventId, table.resourceId] }),
-    eventIndex: index("event_resource_event_idx").on(table.eventId),
-    resourceIndex: index("event_resource_resource_idx").on(table.resourceId),
-}));
+}, (table) => [
+    primaryKey({ columns: [table.eventId, table.resourceId] }),
+    index("event_resource_event_idx").on(table.eventId),
+    index("event_resource_resource_idx").on(table.resourceId),
+]);

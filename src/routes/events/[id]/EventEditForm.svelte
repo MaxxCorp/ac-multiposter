@@ -43,18 +43,28 @@
     const initialHasEndTime = !!(event.endDateTime || event.endDate);
     const initialTimeZone = event.startTimeZone || browserTimezone;
     const initialResourceIds = event.resourceIds || [];
+    const initialContactIds = event.contactIds || [];
     const initialLocation = event.location || "";
+    const initialIsPublic = event.isPublic ?? false;
     const initialUseDefaultReminders = event.reminders?.useDefault ?? true;
     const initialReminders = event.reminders?.overrides?.length
         ? event.reminders.overrides
         : [{ method: "popup", minutes: 10 }];
+    const initialGuestsCanInviteOthers = event.guestsCanInviteOthers ?? true;
+    const initialGuestsCanModify = event.guestsCanModify ?? false;
+    const initialGuestsCanSeeOtherGuests = event.guestsCanSeeOtherGuests ?? true;
 
     // Initialize state from extracted values
     let isAllDay = $state(initialIsAllDay);
     let hasEndTime = $state(initialHasEndTime);
     let timeZone = $state(initialTimeZone);
     let selectedResourceIds = $state<string[]>(initialResourceIds);
+    let selectedContactIds = $state<string[]>(initialContactIds);
     let freeTextLocation = $state(initialLocation);
+    let isPublic = $state(initialIsPublic);
+    let guestsCanInviteOthers = $state(initialGuestsCanInviteOthers);
+    let guestsCanModify = $state(initialGuestsCanModify);
+    let guestsCanSeeOtherGuests = $state(initialGuestsCanSeeOtherGuests);
 
     // Location matching logic
     function findMatchingLocationId(locStr: string | null) {
@@ -103,6 +113,33 @@
     let startTimeInput = $state(initialStartTimeInput);
     let endDateInput = $state(initialEndDateInput);
     let endTimeInput = $state(initialEndTimeInput);
+
+    // Auto-set end time to 1 hour after start
+    const defaultEndTime = $derived(() => {
+        if (!startDateInput || !startTimeInput) return "";
+        const start = new Date(`${startDateInput}T${startTimeInput}:00`);
+        const end = new Date(start.getTime() + 60 * 60000); // 1 hour later
+        return end.toTimeString().slice(0, 5);
+    });
+
+    // Auto-set end time when start time changes and end time is empty
+    $effect(() => {
+        if (startTimeInput && hasEndTime && !isAllDay && !endTimeInput) {
+            endTimeInput = defaultEndTime();
+        }
+    });
+
+    // Auto-set end date/time when hasEndTime is enabled
+    $effect(() => {
+        if (hasEndTime && !isAllDay) {
+            if (!endDateInput) {
+                endDateInput = startDateInput;
+            }
+            if (!endTimeInput) {
+                endTimeInput = defaultEndTime();
+            }
+        }
+    });
 
     // Reminders init
     let useDefaultReminders = $state(initialUseDefaultReminders);
@@ -244,14 +281,8 @@
                 )}
             />
         {/if}
-        {#if endDate}
-            <input {...updateEvent.fields.endDate.as("hidden", endDate)} />
-        {/if}
-        {#if endDateTime}
-            <input
-                {...updateEvent.fields.endDateTime.as("hidden", endDateTime)}
-            />
-        {/if}
+        <input {...updateEvent.fields.endDate.as("hidden", endDate || "null")} />
+        <input {...updateEvent.fields.endDateTime.as("hidden", endDateTime || "null")} />
         {#if endTimeZone}
             <input
                 {...updateEvent.fields.endTimeZone.as("hidden", endTimeZone)}
@@ -259,28 +290,26 @@
         {/if}
 
         <input
-            {...updateEvent.fields.reminders.useDefault.as("checkbox")}
-            type="hidden"
-            value={useDefaultReminders.toString()}
+            {...updateEvent.fields.guestsCanInviteOthers.as("checkbox")}
+            checked={guestsCanInviteOthers}
+            class="sr-only"
+            aria-hidden="true"
+            tabindex="-1"
         />
-        {#if !useDefaultReminders}
-            {#each reminders as reminder, index}
-                <input
-                    {...updateEvent.fields.reminders.overrides[index].method.as(
-                        "text",
-                    )}
-                    type="hidden"
-                    value={reminder.method}
-                />
-                <input
-                    {...updateEvent.fields.reminders.overrides[
-                        index
-                    ].minutes.as("number")}
-                    type="hidden"
-                    value={reminder.minutes}
-                />
-            {/each}
-        {/if}
+        <input
+            {...updateEvent.fields.guestsCanModify.as("checkbox")}
+            checked={guestsCanModify}
+            class="sr-only"
+            aria-hidden="true"
+            tabindex="-1"
+        />
+        <input
+            {...updateEvent.fields.guestsCanSeeOtherGuests.as("checkbox")}
+            checked={guestsCanSeeOtherGuests}
+            class="sr-only"
+            aria-hidden="true"
+            tabindex="-1"
+        />
 
         <div>
             <label
@@ -322,6 +351,19 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onblur={() => updateEvent.validate()}
             ></textarea>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+            <input
+                {...updateEvent.fields.isPublic.as("checkbox")}
+                type="checkbox"
+                id="isPublic"
+                bind:checked={isPublic}
+                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            />
+            <label for="isPublic" class="text-sm font-medium text-gray-700">
+                Public Profile (Allow unauthenticated viewing)
+            </label>
         </div>
 
         <div>
@@ -652,11 +694,65 @@
             </div>
         {/if}
 
-        <!-- Skipping Event Type, Status, Visibility, Show As, Color, Guests for brevity but should include them -->
+        <!-- Skipping Event Type, Status, Visibility, Show As, Color for brevity but should include them -->
         <!-- I'll assume they are standard selects and text inputs -->
         <!-- Just ensuring Save button is there -->
 
-        <ContactManager type="event" entityId={event.id} />
+        <div>
+            <span class="block text-sm font-medium text-gray-700 mb-2">
+                Guest Permissions
+            </span>
+            <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                    <input
+                        id="guestsCanInviteOthers"
+                        type="checkbox"
+                        checked={guestsCanInviteOthers}
+                        onclick={() =>
+                            (guestsCanInviteOthers = !guestsCanInviteOthers)}
+                        class="w-4 h-4 text-blue-600"
+                    />
+                    <label
+                        for="guestsCanInviteOthers"
+                        class="text-sm text-gray-700"
+                        >Guests can invite others</label
+                    >
+                </div>
+                <div class="flex items-center gap-2">
+                    <input
+                        id="guestsCanModify"
+                        type="checkbox"
+                        checked={guestsCanModify}
+                        onclick={() => (guestsCanModify = !guestsCanModify)}
+                        class="w-4 h-4 text-blue-600"
+                    />
+                    <label for="guestsCanModify" class="text-sm text-gray-700"
+                        >Guests can modify event</label
+                    >
+                </div>
+                <div class="flex items-center gap-2">
+                    <input
+                        id="guestsCanSeeOtherGuests"
+                        type="checkbox"
+                        checked={guestsCanSeeOtherGuests}
+                        onclick={() =>
+                            (guestsCanSeeOtherGuests = !guestsCanSeeOtherGuests)}
+                        class="w-4 h-4 text-blue-600"
+                    />
+                    <label
+                        for="guestsCanSeeOtherGuests"
+                        class="text-sm text-gray-700"
+                        >Guests can see other guests</label
+                    >
+                </div>
+            </div>
+        </div>
+
+        <ContactManager type="event" entityId={event.id} onchange={(ids: string[]) => (selectedContactIds = ids)} />
+
+        <input
+            {...updateEvent.fields.contactIds.as("hidden", JSON.stringify(selectedContactIds))}
+        />
 
         <div class="flex gap-3 mt-6">
             <AsyncButton

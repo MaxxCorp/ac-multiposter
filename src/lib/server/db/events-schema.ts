@@ -196,9 +196,12 @@ export const event = pgTable("event", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-}, (table) => ({
-  eventUserIndex: index("event_user_id_idx").on(table.userId),
-}));
+  isPublic: boolean("is_public").default(false).notNull(),
+  qrCodePath: text("qr_code_path"),
+  iCalPath: text("ical_path"),
+}, (table) => [
+  index("event_user_id_idx").on(table.userId),
+]);
 
 export type Event = typeof event.$inferSelect;
 export type NewEvent = typeof event.$inferInsert;
