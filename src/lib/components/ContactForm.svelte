@@ -31,7 +31,13 @@
     const isNew = !initialData.contact.id;
 
     // svelte-ignore state_referenced_locally
-    let contact: any = $state({ isPublic: false, ...initialData.contact });
+    let contact: any = $state({
+        isPublic: false,
+        ...initialData.contact,
+        birthday: initialData.contact.birthday
+            ? initialData.contact.birthday.split("T")[0]
+            : "",
+    });
     // svelte-ignore state_referenced_locally
     let emails = $state([...(initialData.emails || [])]);
     // svelte-ignore state_referenced_locally
@@ -113,8 +119,17 @@
 
     async function handleSubmit(e: Event) {
         e.preventDefault();
+
+        // Convert null values to undefined to satisfy zod/mini optional schemas
+        const cleanedContact = Object.fromEntries(
+            Object.entries(contact).map(([k, v]) => [
+                k,
+                v === null ? undefined : v,
+            ]),
+        );
+
         await onsubmit({
-            contact,
+            contact: cleanedContact,
             emails: emails.filter((e) => e.value),
             phones: phones.filter((p) => p.value),
             addresses: addresses.filter((a) => a.street || a.city),
@@ -556,13 +571,10 @@
     </div>
 
     <div class="flex justify-end gap-3 pt-6 border-t">
-        <Button href={cancelHref} variant="secondary" type="button">Cancel</Button
+        <Button href={cancelHref} variant="secondary" type="button"
+            >Cancel</Button
         >
-        <AsyncButton
-            type="submit"
-            {loading}
-            loadingLabel="Saving..."
-        >
+        <AsyncButton type="submit" {loading} loadingLabel="Saving...">
             Save Contact
         </AsyncButton>
     </div>

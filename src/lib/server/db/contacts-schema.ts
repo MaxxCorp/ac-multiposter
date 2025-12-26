@@ -138,6 +138,7 @@ export const eventContact = pgTable("event_contact", {
     contactId: text("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
+    participationStatus: text("participation_status").default("needsAction").notNull(), // accepted, declined, tentative, needsAction
 }, (table) => [
     primaryKey({ columns: [table.eventId, table.contactId] }),
     index("event_contact_event_idx").on(table.eventId),

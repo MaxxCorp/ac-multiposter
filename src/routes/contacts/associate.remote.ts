@@ -21,6 +21,20 @@ export const removeAssociation = command(AssociationSchema, async (data) => {
     return { success: true };
 });
 
+const UpdateAssociationSchema = z.object({
+    type: z.literal('event'),
+    entityId: z.string(),
+    contactId: z.string(),
+    status: z.string(),
+});
+
+export const updateAssociationStatusRemote = command(UpdateAssociationSchema, async (data) => {
+    const { type, entityId, contactId, status } = data;
+    const { updateAssociationStatus } = await import('$lib/server/contacts');
+    await updateAssociationStatus(type, entityId, contactId, status);
+    return { success: true };
+});
+
 const GetAssociationsSchema = z.object({
     type: z.string(),
     entityId: z.string(),
@@ -31,6 +45,7 @@ export const fetchEntityContacts = query(GetAssociationsSchema, async (data): Pr
     const results = await getEntityContacts(type as any, entityId);
     return results.map((r: any) => ({
         ...r,
+        participationStatus: r.participationStatus,
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
         birthday: r.birthday ? r.birthday.toISOString() : null,

@@ -17,6 +17,8 @@ export type Event = Omit<DbEvent, 'createdAt' | 'updatedAt' | 'startDateTime' | 
 	endDateTime: string | null;
 	resourceIds?: string[];
 	contactIds?: string[];
+	participationStatuses?: Record<string, string>;
+	maxOccupancy?: number | null;
 };
 
 /**

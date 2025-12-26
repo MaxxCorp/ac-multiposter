@@ -82,7 +82,7 @@ export const updateEventSchema = z.object({
 		email: z.string(),
 		displayName: z.optional(z.string()),
 		optional: z.optional(z.boolean()),
-		responseStatus: z.optional(z.string()),
+		responseStatus: z.optional(z.string()), // accepted, declined, tentative, needsAction
 	}))),
 	reminders: z.optional(z.object({
 		useDefault: z.boolean(),

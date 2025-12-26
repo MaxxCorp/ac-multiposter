@@ -220,7 +220,7 @@ export class GoogleCalendarProvider implements SyncProvider {
 
 		// Make the request directly using the auth client
 		// This ensures the Authorization header is properly set
-		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events`;
+		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events?sendUpdates=all`;
 
 		const response = await this.auth.request<{
 			id: string;
@@ -245,7 +245,7 @@ export class GoogleCalendarProvider implements SyncProvider {
 		const gcalEvent = this.mapToGoogleEvent(event);
 
 		// Use auth.request() directly to ensure proper authentication
-		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events/${encodeURIComponent(externalId)}`;
+		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events/${encodeURIComponent(externalId)}?sendUpdates=all`;
 
 		const response = await this.auth.request<{
 			etag?: string;

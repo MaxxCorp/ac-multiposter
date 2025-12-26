@@ -7,18 +7,7 @@ import { readContact } from './read.remote';
 const ContactUpdateSchema = z.object({
     id: z.string(),
     data: z.object({
-        contact: z.optional(z.object({
-            displayName: z.optional(z.string()),
-            givenName: z.optional(z.string()),
-            familyName: z.optional(z.string()),
-            middleName: z.optional(z.string()),
-            honorificPrefix: z.optional(z.string()),
-            honorificSuffix: z.optional(z.string()),
-            birthday: z.optional(z.string()),
-            gender: z.optional(z.string()),
-            notes: z.optional(z.string()),
-            isPublic: z.optional(z.boolean()),
-        })),
+        contact: z.optional(z.any()),
         emails: z.optional(z.array(z.object({
             value: z.string(),
             type: z.optional(z.string()),
@@ -49,11 +38,32 @@ const ContactUpdateSchema = z.object({
 });
 
 export const updateExistingContact = command(ContactUpdateSchema, async ({ id, data }) => {
+    // Sanitize contact data to exclude immutable metadata that might cause type errors (strings vs Dates)
+    let sanitizedContact = undefined;
+    if (data.contact) {
+        const {
+            id: _id,
+            userId: _userId,
+            createdAt: _createdAt,
+            updatedAt: _updatedAt,
+            vCardPath: _vCardPath,
+            qrCodePath: _qrCodePath,
+            birthday,
+            ...rest
+        } = data.contact;
+
+        sanitizedContact = {
+            ...rest,
+            birthday: birthday === undefined
+                ? undefined
+                : (birthday && !isNaN(new Date(birthday).getTime()))
+                    ? new Date(birthday)
+                    : null,
+        };
+    }
+
     const result = await updateContact(id, {
-        contact: data.contact ? {
-            ...data.contact,
-            birthday: data.contact.birthday ? new Date(data.contact.birthday) : undefined,
-        } : undefined,
+        contact: sanitizedContact,
         emails: data.emails?.map(e => ({ ...e, id: crypto.randomUUID(), contactId: id })),
         phones: data.phones?.map(p => ({ ...p, id: crypto.randomUUID(), contactId: id })),
         addresses: data.addresses?.map(a => ({ ...a, id: crypto.randomUUID(), contactId: id })),

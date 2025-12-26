@@ -1,0 +1,1 @@
+ALTER TABLE "event_contact" ADD COLUMN "participation_status" text DEFAULT 'needsAction' NOT NULL;

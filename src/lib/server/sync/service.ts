@@ -13,8 +13,15 @@ import {
 	syncOperation as syncOperationTable,
 	syncMapping as syncMappingTable,
 	webhookSubscription as webhookSubscriptionTable,
-	event as eventTable
+	event as eventTable,
+	eventContact as eventContactTable,
+	tag as tagTable,
+	contactTag as contactTagTable,
+	user as userTable,
+	contactEmail as contactEmailTable
 } from '../db/schema';
+import { getEntityContacts } from '../contacts';
+import { resolveEventContact } from '../contact-resolution';
 import { eq, and, isNull, lt, inArray, desc } from 'drizzle-orm';
 import { GoogleCalendarProvider } from './providers/google-calendar';
 import { BerlinDeMainCalendarProvider } from './providers/berlin-de-main-calendar';
@@ -258,7 +265,7 @@ export class SyncService {
 
 			for (const { event } of unmappedEvents) {
 				try {
-					const externalEvent = this.mapInternalToExternal(event, config.providerType);
+					const externalEvent = await this.mapInternalToExternal(event, config.providerType);
 					const { externalId, etag } = await provider.pushEvent(externalEvent);
 
 					await db.insert(syncMappingTable).values({
@@ -294,7 +301,7 @@ export class SyncService {
 						continue;
 					}
 
-					const externalEvent = this.mapInternalToExternal(event, config.providerType);
+					const externalEvent = await this.mapInternalToExternal(event, config.providerType);
 					const { etag } = await provider.updateEvent(mapping.externalId, externalEvent);
 
 					await db
@@ -376,7 +383,7 @@ export class SyncService {
 				}
 			}
 
-			const internalEvent = this.mapExternalToInternal(externalEvent, config.userId);
+			const internalEvent = await this.mapExternalToInternalWithContacts(externalEvent, config.userId);
 
 			await db
 				.update(eventTable)
@@ -387,6 +394,33 @@ export class SyncService {
 				.update(syncMappingTable)
 				.set({ etag: externalEvent.etag ?? null, lastSyncedAt: new Date() })
 				.where(eq(syncMappingTable.id, mapping.id));
+
+			// Update event contacts status
+			if (externalEvent.attendees) {
+				for (const attendee of externalEvent.attendees) {
+					const [contactRecord] = await db.query.contact.findMany({
+						where: (c, { eq, exists }) => exists(
+							db.select().from(contactEmailTable)
+								.where(and(
+									eq(contactEmailTable.contactId, c.id),
+									eq(contactEmailTable.value, attendee.email)
+								))
+						),
+						limit: 1
+					});
+
+					if (contactRecord) {
+						await db.insert(eventContactTable).values({
+							eventId: mapping.eventId,
+							contactId: contactRecord.id,
+							participationStatus: attendee.responseStatus || 'needsAction'
+						}).onConflictDoUpdate({
+							target: [eventContactTable.eventId, eventContactTable.contactId],
+							set: { participationStatus: attendee.responseStatus || 'needsAction' }
+						});
+					}
+				}
+			}
 
 			// Emit event-updated event for real-time updates
 			globalEvents.emit('event-updated', {
@@ -458,7 +492,7 @@ export class SyncService {
 			}
 
 			// Create new event - no matching local event found
-			const internalEvent = this.mapExternalToInternal(externalEvent, config.userId);
+			const internalEvent = await this.mapExternalToInternalWithContacts(externalEvent, config.userId);
 			const [newEvent] = await db.insert(eventTable).values(internalEvent).returning();
 
 			await db.insert(syncMappingTable).values({
@@ -470,6 +504,34 @@ export class SyncService {
 				etag: externalEvent.etag ?? null,
 				lastSyncedAt: new Date()
 			});
+
+			// Update event contacts associations and their status
+			if (externalEvent.attendees) {
+				for (const attendee of externalEvent.attendees) {
+					// Find or create person contact for this attendee
+					const [contactRecord] = await db.query.contact.findMany({
+						where: (c, { eq, exists }) => exists(
+							db.select().from(contactEmailTable)
+								.where(and(
+									eq(contactEmailTable.contactId, c.id),
+									eq(contactEmailTable.value, attendee.email)
+								))
+						),
+						limit: 1
+					});
+
+					if (contactRecord) {
+						await db.insert(eventContactTable).values({
+							eventId: newEvent.id,
+							contactId: contactRecord.id,
+							participationStatus: attendee.responseStatus || 'needsAction'
+						}).onConflictDoUpdate({
+							target: [eventContactTable.eventId, eventContactTable.contactId],
+							set: { participationStatus: attendee.responseStatus || 'needsAction' }
+						});
+					}
+				}
+			}
 
 			// Emit event-created event for real-time updates
 			globalEvents.emit('event-created', {
@@ -666,15 +728,31 @@ export class SyncService {
 	}
 
 	/**
-	 * Map external event to internal event format
+	 * Map external event to internal event format with owner resolution
 	 */
-	private mapExternalToInternal(
+	private async mapExternalToInternalWithContacts(
 		external: ExternalEvent,
-		userId: string
-	): typeof eventTable.$inferInsert {
+		defaultUserId: string
+	): Promise<typeof eventTable.$inferInsert> {
+		let resolvedUserId = defaultUserId;
+
+		// Attempt to resolve owner via contact email
+		const resolvedContact = await resolveEventContact(external);
+		if (resolvedContact?.email) {
+			const [userRow] = await db
+				.select()
+				.from(userTable)
+				.where(eq(userTable.email, resolvedContact.email))
+				.limit(1);
+
+			if (userRow) {
+				resolvedUserId = userRow.id;
+			}
+		}
+
 		return {
 			id: crypto.randomUUID(),
-			userId,
+			userId: resolvedUserId,
 			summary: external.summary,
 			description: external.description ?? null,
 			location: external.location ?? null,
@@ -695,10 +773,44 @@ export class SyncService {
 	/**
 	 * Map internal event to external event format
 	 */
-	private mapInternalToExternal(
+	private async mapInternalToExternal(
 		internal: typeof eventTable.$inferSelect,
 		providerId: ProviderType
-	): ExternalEvent {
+	): Promise<ExternalEvent> {
+		// Fetch associated contacts
+		const associatedContacts = await getEntityContacts('event', internal.id);
+
+		// Filter out contacts with "Employee" tag
+		const attendees = [];
+		for (const contact of associatedContacts) {
+			const contactTags = (contact as any).tags || [];
+			const isEmployee = contactTags.some((ct: any) => ct.tag.name.toLowerCase() === 'employee');
+
+			if (!isEmployee) {
+				// Get primary email
+				const email = (contact as any).emails?.find((e: any) => e.primary)?.value ||
+					(contact as any).emails?.[0]?.value;
+
+				if (email) {
+					// Find the association to get participation status
+					const [assoc] = await db
+						.select()
+						.from(eventContactTable)
+						.where(and(
+							eq(eventContactTable.eventId, internal.id),
+							eq(eventContactTable.contactId, contact.id)
+						))
+						.limit(1);
+
+					attendees.push({
+						email,
+						displayName: contact.displayName || `${contact.givenName || ''} ${contact.familyName || ''}`.trim(),
+						responseStatus: assoc?.participationStatus || 'needsAction'
+					});
+				}
+			}
+		}
+
 		return {
 			externalId: '',
 			providerId,
@@ -711,7 +823,7 @@ export class SyncService {
 			endDate: internal.endDate ?? undefined,
 			endDateTime: internal.endDateTime ?? undefined,
 			endTimeZone: internal.endTimeZone ?? undefined,
-			attendees: (internal.attendees as any) ?? undefined,
+			attendees: attendees.length > 0 ? attendees : undefined,
 			recurrence: (internal.recurrence as any) ?? undefined,
 			reminders: (internal.reminders as any) ?? undefined,
 			metadata: {
@@ -835,7 +947,7 @@ export class SyncService {
 					}
 				}
 
-				const externalEvent = this.mapInternalToExternal(eventRow, config.providerType);
+				const externalEvent = await this.mapInternalToExternal(eventRow, config.providerType);
 				const { etag } = await provider.updateEvent(mapping.externalId, externalEvent);
 
 				await db
@@ -845,7 +957,7 @@ export class SyncService {
 			} else {
 				// Create new event
 				console.log(`[SyncService] Creating new event ${eventId} on provider`);
-				const externalEvent = this.mapInternalToExternal(eventRow, config.providerType);
+				const externalEvent = await this.mapInternalToExternal(eventRow, config.providerType);
 				const { externalId, etag } = await provider.pushEvent(externalEvent);
 
 				// Create mapping immediately to prevent duplicates if webhook fires quickly

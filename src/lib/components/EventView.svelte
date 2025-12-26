@@ -9,15 +9,20 @@
         Tag as TagIcon,
         List,
         Euro,
-        Info
+        Info,
+        Users,
     } from "lucide-svelte";
     import Button from "./ui/button/button.svelte";
     import type { Event } from "../../routes/events/list.remote";
 
-    let { event, canEdit = false, onedit } = $props<{ 
-        event: Event; 
-        canEdit?: boolean; 
-        onedit?: () => void 
+    let {
+        event,
+        canEdit = false,
+        onedit,
+    } = $props<{
+        event: Event;
+        canEdit?: boolean;
+        onedit?: () => void;
     }>();
 
     // Formatting helpers
@@ -60,6 +65,20 @@
                 event.endDate &&
                 event.startDate !== event.endDate),
     );
+
+    const acceptedCount = $derived(
+        Object.values(event.participationStatuses || {}).filter(
+            (s) => s === "accepted",
+        ).length,
+    );
+
+    const occupancyDisplay = $derived(() => {
+        let text = `${acceptedCount} yes`;
+        if (event.maxOccupancy) {
+            text += ` of ${event.maxOccupancy} maximum`;
+        }
+        return text;
+    });
 </script>
 
 <div class="space-y-8">
@@ -67,7 +86,9 @@
     <div class="flex flex-col md:flex-row justify-between items-start gap-6">
         <div class="flex-1 space-y-4">
             <div class="flex items-center gap-3 flex-wrap">
-                <h1 class="text-3xl font-bold text-gray-900">{event.summary}</h1>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    {event.summary}
+                </h1>
                 {#if event.isPublic}
                     <span
                         class="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full flex items-center gap-1"
@@ -89,9 +110,11 @@
                     <Calendar size={18} class="text-blue-500" />
                     <span class="font-medium">{startDisplay}</span>
                     {#if isMultiDay && endDisplay}
-                         - <span class="font-medium">{endDisplay}</span>
+                        - <span class="font-medium">{endDisplay}</span>
                     {:else if event.endDateTime}
-                         - <span class="font-medium">{formatTime(event.endDateTime)}</span>
+                        - <span class="font-medium"
+                            >{formatTime(event.endDateTime)}</span
+                        >
                     {/if}
                 </div>
                 {#if event.location}
@@ -100,18 +123,22 @@
                         <span>{event.location}</span>
                     </div>
                 {/if}
-                 {#if event.categoryBerlinDotDe}
+                {#if event.categoryBerlinDotDe}
                     <div class="flex items-center gap-2">
                         <TagIcon size={18} class="text-purple-500" />
                         <span>{event.categoryBerlinDotDe}</span>
                     </div>
                 {/if}
-                 {#if event.ticketPrice}
+                {#if event.ticketPrice}
                     <div class="flex items-center gap-2">
                         <Euro size={18} class="text-green-600" />
                         <span>{event.ticketPrice}</span>
                     </div>
                 {/if}
+                <div class="flex items-center gap-2">
+                    <Users size={18} class="text-indigo-500" />
+                    <span>{occupancyDisplay()}</span>
+                </div>
             </div>
         </div>
 
@@ -139,7 +166,7 @@
             >
                 <Info size={16} /> About this event
             </h3>
-             <div class="whitespace-pre-wrap">{event.description}</div>
+            <div class="whitespace-pre-wrap">{event.description}</div>
         </div>
     {/if}
 
@@ -155,7 +182,7 @@
         {#if event.iCalPath}
             <Button
                 href={event.iCalPath}
-                download={`${event.summary.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.ics`}
+                download={`${event.summary.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.ics`}
                 class="flex items-center gap-2"
                 variant="outline"
             >

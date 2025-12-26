@@ -4,18 +4,7 @@ import { createContact } from '$lib/server/contacts';
 import { listContacts } from '../list.remote';
 
 const ContactInputSchema = z.object({
-    contact: z.object({
-        displayName: z.optional(z.string()),
-        givenName: z.optional(z.string()),
-        familyName: z.optional(z.string()),
-        middleName: z.optional(z.string()),
-        honorificPrefix: z.optional(z.string()),
-        honorificSuffix: z.optional(z.string()),
-        birthday: z.optional(z.string()),
-        gender: z.optional(z.string()),
-        notes: z.optional(z.string()),
-        isPublic: z.boolean(),
-    }),
+    contact: z.any(),
     emails: z.optional(z.array(z.object({
         value: z.string(),
         type: z.optional(z.string()),
@@ -45,17 +34,29 @@ const ContactInputSchema = z.object({
 });
 
 export const createNewContact = command(ContactInputSchema, async (data) => {
+    // Sanitize contact data
+    const {
+        id: _id,
+        userId: _userId,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        vCardPath: _vCardPath,
+        qrCodePath: _qrCodePath,
+        birthday,
+        ...rest
+    } = data.contact;
+
     const contactId = await createContact({
         contact: {
-            ...data.contact,
-            birthday: data.contact.birthday ? new Date(data.contact.birthday) : null,
-        },
+            ...rest,
+            birthday: (birthday && !isNaN(new Date(birthday).getTime())) ? new Date(birthday) : null,
+        } as any,
         emails: data.emails?.map(e => ({ ...e, id: crypto.randomUUID(), contactId: '' })),
         phones: data.phones?.map(p => ({ ...p, id: crypto.randomUUID(), contactId: '' })),
         addresses: data.addresses?.map(a => ({ ...a, id: crypto.randomUUID(), contactId: '' })),
         relationIds: data.relationIds,
         tagNames: data.tagNames,
-    } as any);
+    });
 
     await listContacts().refresh();
 

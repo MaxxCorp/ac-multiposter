@@ -218,12 +218,19 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'contacts');
 
+    const isAdmin = parseRoles(user).includes('admin');
+
     await db.transaction(async (tx) => {
         // Update main contact
         if (data.contact) {
-            await tx.update(contact)
-                .set({ ...data.contact, updatedAt: new Date() })
-                .where(and(eq(contact.id, id), eq(contact.userId, user.id)));
+            const updateSet = { ...data.contact, updatedAt: new Date() };
+            const query = tx.update(contact).set(updateSet);
+
+            if (isAdmin) {
+                await query.where(eq(contact.id, id));
+            } else {
+                await query.where(and(eq(contact.id, id), eq(contact.userId, user.id)));
+            }
         }
 
         // Replace related fields if provided (naive implementation: delete and re-insert)
@@ -327,7 +334,11 @@ export async function deleteContact(id: string) {
  */
 export async function associateContact(type: 'user' | 'location' | 'resource' | 'event', entityId: string, contactId: string) {
     const user = getAuthenticatedUser();
-    ensureAccess(user, 'contacts');
+
+    // Allow users with 'contacts' access OR 'events' access if associating with an event
+    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
+        throw new Error('Forbidden');
+    }
 
     const table = {
         user: userContact,
@@ -403,7 +414,11 @@ export async function getContact(id: string) {
  */
 export async function dissociateContact(type: 'user' | 'location' | 'resource' | 'event', entityId: string, contactId: string) {
     const user = getAuthenticatedUser();
-    ensureAccess(user, 'contacts');
+
+    // Allow users with 'contacts' access OR 'events' access if dissociating from an event
+    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
+        throw new Error('Forbidden');
+    }
 
     const table = {
         user: userContact,
@@ -430,7 +445,11 @@ export async function dissociateContact(type: 'user' | 'location' | 'resource' |
  */
 export async function getEntityContacts(type: 'user' | 'location' | 'resource' | 'event', entityId: string) {
     const user = getAuthenticatedUser();
-    ensureAccess(user, 'contacts');
+
+    // Allow users with 'contacts' access OR 'events' access if fetching event contacts
+    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
+        throw new Error('Forbidden');
+    }
 
     const tableName = {
         user: 'userContact',
@@ -479,5 +498,37 @@ export async function getEntityContacts(type: 'user' | 'location' | 'resource' |
         }
     });
 
-    return associations.map((a: any) => a.contact);
+    return associations.map((a: any) => ({
+        ...a.contact,
+        participationStatus: a.participationStatus || 'needsAction'
+    }));
+}
+
+/**
+ * Update metadata (like participation status) for an association
+ */
+export async function updateAssociationStatus(type: 'event', entityId: string, contactId: string, status: string) {
+    const user = getAuthenticatedUser();
+
+    // Allow users with either 'contacts' or the respective entity's access
+    if (!hasAccess(user, 'contacts') && !hasAccess(user, 'events')) {
+        throw new Error('Forbidden');
+    }
+
+    if (type !== 'event') {
+        throw new Error('Only event associations support participation status');
+    }
+
+    console.log(`[Contacts] Updating participation status for event ${entityId}, contact ${contactId} to ${status}`);
+
+    const result = await db.update(eventContact)
+        .set({ participationStatus: status })
+        .where(and(
+            eq(eventContact.eventId, entityId),
+            eq(eventContact.contactId, contactId)
+        ));
+
+    // Note: Drizzle's update doesn't return the number of rows by default in all drivers, 
+    // but we can check if it worked by querying if we really wanted to.
+    // For now, we'll assume success if no error was thrown.
 }

@@ -18,6 +18,7 @@
         addAssociation,
         removeAssociation,
         fetchEntityContacts,
+        updateAssociationStatusRemote,
     } from "../../routes/contacts/associate.remote";
     import ContactForm from "./ContactForm.svelte";
     import { createNewContact } from "../../routes/contacts/new/create.remote";
@@ -149,6 +150,27 @@
             toast.error(error.message || "Failed to update contact");
         }
     }
+
+    async function updateStatus(contact: Contact, status: string) {
+        try {
+            if (entityId) {
+                await (updateAssociationStatusRemote as any)({
+                    type,
+                    entityId,
+                    contactId: contact.id,
+                    status,
+                });
+            }
+            associatedContacts = associatedContacts.map((ac) =>
+                ac.id === contact.id
+                    ? { ...ac, participationStatus: status }
+                    : ac,
+            );
+        } catch (error: any) {
+            console.error("Failed to update status:", error);
+            toast.error(error.message || "Failed to update status");
+        }
+    }
 </script>
 
 <div class="space-y-4 border rounded-lg p-4 bg-gray-50">
@@ -196,6 +218,20 @@
                             class="opacity-0 group-hover:opacity-100 transition-opacity"
                         />
                     </a>
+
+                    {#if type === "event"}
+                        <select
+                            value={contact.participationStatus || "needsAction"}
+                            onchange={(e) =>
+                                updateStatus(contact, e.currentTarget.value)}
+                            class="text-xs bg-transparent border-0 focus:ring-0 cursor-pointer text-gray-500 hover:text-blue-600 font-medium"
+                        >
+                            <option value="needsAction">Needs Action</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="declined">Declined</option>
+                            <option value="tentative">Tentative</option>
+                        </select>
+                    {/if}
 
                     <div class="flex items-center border-l pl-2 ml-1 gap-1">
                         <button

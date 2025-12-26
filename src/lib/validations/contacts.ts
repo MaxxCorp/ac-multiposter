@@ -17,6 +17,7 @@ export const ContactSchema = z.object({
     qrCodePath: z.optional(z.string()),
     createdAt: z.string(),
     updatedAt: z.string(),
+    participationStatus: z.optional(z.string()),
     emails: z.optional(z.array(z.object({
         id: z.string(),
         value: z.string(),

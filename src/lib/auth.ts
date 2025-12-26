@@ -9,6 +9,7 @@ export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "pg",
     }),
+    secret: env.BETTER_AUTH_SECRET || "development-secret-only-for-build",
     baseURL: env.BETTER_AUTH_URL || "http://localhost:5173",
     basePath: "/api/auth",
     trustHost: true,
