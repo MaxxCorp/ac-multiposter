@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { list } from "./list.remote";
 	import { removeBulk } from "./[id]/delete.remote";
+	import { getEmailCampaigns } from "./email-campaigns.remote";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-	import { Calendar, CheckCircle2, AlertCircle } from "@lucide/svelte";
+	import { Calendar, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Mail, Eye, MousePointer, AlertTriangle, XCircle, UserX } from "@lucide/svelte";
 	import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
@@ -14,10 +15,24 @@
 
 	// Type definition for the list items
 	type SyncConfig = Awaited<ReturnType<typeof list>>[number];
+	type EmailCampaign = {
+		id: string;
+		eventSummary: string;
+		sentAt: Date;
+		recipientCount: number;
+		brevoCampaignId: string | null;
+		events: Array<{
+			recipientEmail: string;
+			eventType: string;
+			occurredAt: Date;
+		}>;
+	};
 
 	let itemsPromise = $state<Promise<SyncConfig[]>>(list());
 	let initializedItems = $state<SyncConfig[]>([]);
 	let selectedIds = $state<Set<string>>(new Set());
+	let expandedCampaigns = $state<Set<string>>(new Set());
+	let campaignsData = $state<Map<string, { campaigns: EmailCampaign[]; hasMore: boolean; loading: boolean }>>(new Map());
 
 	function isSelected(id: string) {
 		return selectedIds.has(id);
@@ -44,6 +59,7 @@
 
 	function getProviderIcon(providerType: string) {
 		if (providerType === "google-calendar") return Calendar;
+		if (providerType === "email") return Mail;
 		return Calendar;
 	}
 
@@ -52,9 +68,9 @@
 		if (providerType === "microsoft-calendar") return "Microsoft Calendar";
 		if (providerType === "berlin-de-main-calendar") return "Berlin.de (Main Calendar)";
 		if (providerType === "wp-the-events-calendar") return "WP The Events Calendar";
+		if (providerType === "email") return "E-Mail (Brevo)";
 		return providerType;
 	}
-
 	function getDirectionLabel(direction: string) {
 		if (direction === "pull") return "Pull Only";
 		if (direction === "push") return "Push Only";
@@ -70,14 +86,87 @@
 		if (hoursSinceSync > 24) return "text-orange-500";
 		return "text-green-500";
 	}
+
+	function toggleCampaignsExpansion(syncConfigId: string) {
+		if (expandedCampaigns.has(syncConfigId)) {
+			expandedCampaigns.delete(syncConfigId);
+		} else {
+			expandedCampaigns.add(syncConfigId);
+			// Load campaigns if not already loaded
+			loadCampaigns(syncConfigId);
+		}
+		expandedCampaigns = new Set(expandedCampaigns);
+	}
+
+	async function loadCampaigns(syncConfigId: string, append = false) {
+		const currentData = campaignsData.get(syncConfigId) || { campaigns: [], hasMore: true, loading: false };
+		if (currentData.loading) return;
+
+		campaignsData.set(syncConfigId, { ...currentData, loading: true });
+		campaignsData = new Map(campaignsData);
+
+		try {
+			const offset = append ? currentData.campaigns.length : 0;
+			const newCampaigns = await getEmailCampaigns({ syncConfigId, limit: 10, offset });
+
+			const updatedCampaigns = append ? [...currentData.campaigns, ...newCampaigns] : newCampaigns;
+			const hasMore = newCampaigns.length === 10;
+
+			campaignsData.set(syncConfigId, {
+				campaigns: updatedCampaigns,
+				hasMore,
+				loading: false
+			});
+		} catch (error) {
+			console.error('Failed to load email campaigns:', error);
+			campaignsData.set(syncConfigId, { ...currentData, loading: false });
+		}
+
+		campaignsData = new Map(campaignsData);
+	}
+
+	function getEventIcon(eventType: string) {
+		switch (eventType) {
+			case 'delivered': return CheckCircle2;
+			case 'opened': return Eye;
+			case 'clicked': return MousePointer;
+			case 'bounced': return AlertTriangle;
+			case 'complained': return XCircle;
+			case 'unsubscribed': return UserX;
+			default: return Mail;
+		}
+	}
+
+	function getEventColor(eventType: string) {
+		switch (eventType) {
+			case 'delivered': return 'text-green-600';
+			case 'opened': return 'text-blue-600';
+			case 'clicked': return 'text-purple-600';
+			case 'bounced': return 'text-red-600';
+			case 'complained': return 'text-orange-600';
+			case 'unsubscribed': return 'text-gray-600';
+			default: return 'text-gray-500';
+		}
+	}
+
+	function formatEventType(eventType: string) {
+		switch (eventType) {
+			case 'delivered': return 'Delivered';
+			case 'opened': return 'Opened';
+			case 'clicked': return 'Clicked';
+			case 'bounced': return 'Bounced';
+			case 'complained': return 'Complained';
+			case 'unsubscribed': return 'Unsubscribed';
+			default: return eventType;
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>Synchronizations</title>
 </svelte:head>
 
-<div class="container mx-auto px-4 py-8">
-	<div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto">
 		<Breadcrumb feature="synchronizations" />
 		<div class="bg-white shadow rounded-lg p-6">
 			<div class="flex justify-between items-center mb-6 gap-4">
@@ -210,6 +299,73 @@
 												>
 											</div>
 										</div>
+
+										{#if config.providerType === 'email'}
+											<div class="mt-4 border-t pt-4">
+												<button
+													class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+													onclick={() => toggleCampaignsExpansion(config.id)}
+												>
+													{#if expandedCampaigns.has(config.id)}
+														<ChevronDown class="h-4 w-4" />
+													{:else}
+														<ChevronRight class="h-4 w-4" />
+													{/if}
+													Campaigns
+												</button>
+
+												{#if expandedCampaigns.has(config.id)}
+													{@const campaignData = campaignsData.get(config.id)}
+													<div class="mt-3 space-y-3">
+														{#if campaignData?.campaigns.length === 0 && !campaignData.loading}
+															<p class="text-sm text-gray-500">No campaigns sent yet.</p>
+														{:else}
+															{#each campaignData?.campaigns || [] as campaign}
+																<div class="border rounded-lg p-3 bg-gray-50">
+																	<div class="flex items-center justify-between mb-2">
+																		<h4 class="font-medium text-sm">{campaign.eventSummary}</h4>
+																		<span class="text-xs text-gray-500">
+																			{new Date(campaign.sentAt).toLocaleDateString()} {new Date(campaign.sentAt).toLocaleTimeString()}
+																		</span>
+																	</div>
+																	<div class="space-y-1">
+																		{#each campaign.events as event}
+																			{@const EventIcon = getEventIcon(event.eventType)}
+																			<div class="flex items-center gap-2 text-xs">
+																				<EventIcon class={`h-3 w-3 ${getEventColor(event.eventType)}`} />
+																				<span class="text-gray-600">{event.recipientEmail}</span>
+																				<span class={`font-medium ${getEventColor(event.eventType)}`}>
+																					{formatEventType(event.eventType)}
+																				</span>
+																				<span class="text-gray-400 ml-auto">
+																					{new Date(event.occurredAt).toLocaleString()}
+																				</span>
+																			</div>
+																		{/each}
+																	</div>
+																</div>
+															{/each}
+
+															{#if campaignData?.loading}
+																<div class="text-center py-2">
+																	<div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+																</div>
+															{:else if campaignData?.hasMore}
+																<div class="text-center pt-2">
+																	<Button
+																		variant="outline"
+																		size="sm"
+																		onclick={() => loadCampaigns(config.id, true)}
+																	>
+																		Load More Campaigns
+																	</Button>
+																</div>
+															{/if}
+														{/if}
+													</div>
+												{/if}
+											</div>
+										{/if}
 									</div>
 									<div class="flex flex-col gap-2 shrink-0">
 										<WebhookToggleButton
@@ -261,4 +417,3 @@
 			{/await}
 		</div>
 	</div>
-</div>

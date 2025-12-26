@@ -19,6 +19,11 @@ import { eq, and, isNull, lt, inArray, desc } from 'drizzle-orm';
 import { GoogleCalendarProvider } from './providers/google-calendar';
 import { BerlinDeMainCalendarProvider } from './providers/berlin-de-main-calendar';
 import { WpTheEventsCalendarProvider } from './providers/wp-the-events-calendar';
+import { EventbriteProvider } from './providers/eventbrite';
+import { MeetupProvider } from './providers/meetup';
+import { SeniorennetzBerlinProvider } from './providers/seniorennetz-berlin';
+import { BewegungsatlasBerlinProvider } from './providers/bewegungsatlas-berlin';
+import { EmailProvider } from './providers/email';
 import crypto from 'crypto';
 import { env } from '$env/dynamic/private';
 import { globalEvents } from '../events';
@@ -35,6 +40,11 @@ export class SyncService {
 		this.registerProvider('google-calendar', GoogleCalendarProvider);
 		this.registerProvider('berlin-de-main-calendar', BerlinDeMainCalendarProvider);
 		this.registerProvider('wp-the-events-calendar', WpTheEventsCalendarProvider);
+		this.registerProvider('eventbrite', EventbriteProvider);
+		this.registerProvider('meetup', MeetupProvider);
+		this.registerProvider('seniorennetz-berlin', SeniorennetzBerlinProvider);
+		this.registerProvider('bewegungsatlas-berlin', BewegungsatlasBerlinProvider);
+		this.registerProvider('email', EmailProvider);
 	}
 
 	/**

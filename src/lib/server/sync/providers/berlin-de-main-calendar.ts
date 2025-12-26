@@ -8,7 +8,7 @@ import type {
 import { db } from '$lib/server/db';
 import { user, eventResource } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { getEntityContacts } from '$lib/server/contacts';
+import { resolveEventContact } from '$lib/server/contact-resolution';
 
 /**
  * Berlin.de Main Calendar sync provider implementation
@@ -194,52 +194,14 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 			formData[this.fieldMappings.eintrittspreis] = event.metadata.ticketPrice;
 		}
 
-		// Contact info resolution
-		let targetContact = null;
-		const eventId = event.metadata?.eventId;
+		// Contact info resolution using shared algorithm
+		const resolvedContact = await resolveEventContact(event);
 
-		if (eventId) {
-			// 1. Check if event has a contact
-			const eventContacts = await getEntityContacts('event', eventId);
-			if (eventContacts.length > 0) {
-				targetContact = eventContacts[0];
-			}
-
-			// 2. Check if location has a contact
-			if (!targetContact) {
-				const resources = await db.query.eventResource.findMany({
-					where: (er, { eq }) => eq(er.eventId, eventId),
-					with: {
-						resource: {
-							with: {
-								location: true
-							}
-						}
-					}
-				});
-
-				for (const er of resources) {
-					const locationId = (er.resource as any)?.locationId;
-					if (locationId) {
-						const locationContacts = await getEntityContacts('location', locationId);
-						if (locationContacts.length > 0) {
-							targetContact = locationContacts[0];
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		if (targetContact) {
-			const contactName = targetContact.displayName || `${targetContact.givenName || ''} ${targetContact.familyName || ''}`.trim();
-			const contactEmail = (targetContact as any).emails?.find((e: any) => e.primary)?.value || (targetContact as any).emails?.[0]?.value || '';
-			const contactPhone = (targetContact as any).phones?.find((p: any) => p.primary)?.value || (targetContact as any).phones?.[0]?.value || '';
-
-			formData[this.fieldMappings.name] = contactName;
-			formData[this.fieldMappings.email] = contactEmail;
-			if (contactPhone) {
-				formData[this.fieldMappings.telefon] = contactPhone;
+		if (resolvedContact) {
+			formData[this.fieldMappings.name] = resolvedContact.name;
+			formData[this.fieldMappings.email] = resolvedContact.email;
+			if (resolvedContact.phone) {
+				formData[this.fieldMappings.telefon] = resolvedContact.phone;
 			}
 		} else {
 			// Default to user info if no contact found

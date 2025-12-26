@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, doublePrecision, primaryKey, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, doublePrecision, primaryKey, index, jsonb, integer } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 import { event } from "./events-schema";
 
@@ -48,6 +48,7 @@ export const resource = pgTable("resource", {
     description: text("description"),
     type: text("type").notNull(), // e.g., "room", "equipment", "vehicle"
     allocationCalendars: jsonb("allocation_calendars").$type<Array<{ provider: string; calendarId: string }>>(), // Track allocation via synced calendars
+    maxOccupancy: integer("max_occupancy"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()

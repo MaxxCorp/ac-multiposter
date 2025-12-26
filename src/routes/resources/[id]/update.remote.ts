@@ -27,6 +27,7 @@ export const updateResource = form(updateResourceSchema, async (data) => {
             .set({
                 name: data.name,
                 description: data.description,
+                maxOccupancy: data.maxOccupancy,
                 type: data.type,
                 locationId: data.locationId || null,
                 allocationCalendars: parsedCalendars,

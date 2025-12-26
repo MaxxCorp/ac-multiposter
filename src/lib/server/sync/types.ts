@@ -4,7 +4,7 @@
 
 export type SyncDirection = 'pull' | 'push' | 'bidirectional';
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'paused';
-export type ProviderType = 'google-calendar' | 'microsoft-calendar' | 'webhook' | 'custom' | 'berlin-de-main-calendar' | 'wp-the-events-calendar';
+export type ProviderType = 'google-calendar' | 'microsoft-calendar' | 'webhook' | 'custom' | 'berlin-de-main-calendar' | 'wp-the-events-calendar' | 'eventbrite' | 'meetup' | 'seniorennetz-berlin' | 'bewegungsatlas-berlin' | 'email';
 
 /**
  * Configuration for a sync provider instance

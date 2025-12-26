@@ -10,7 +10,7 @@ import type { SyncDirection } from '$lib/server/sync/types';
 import { syncService } from '$lib/server/sync/service';
 
 export interface CreateSyncInput {
-	providerType: 'google-calendar' | 'microsoft-calendar' | 'berlin-de-main-calendar' | 'wp-the-events-calendar';
+	providerType: 'google-calendar' | 'microsoft-calendar' | 'berlin-de-main-calendar' | 'wp-the-events-calendar' | 'eventbrite' | 'meetup' | 'seniorennetz-berlin' | 'bewegungsatlas-berlin' | 'email';
 	providerId: string;
 	direction: SyncDirection;
 	settings?: {
@@ -25,7 +25,7 @@ export interface CreateSyncInput {
 }
 
 const createSyncSchema = z.object({
-	providerType: z.enum(['google-calendar', 'microsoft-calendar', 'berlin-de-main-calendar', 'wp-the-events-calendar']),
+	providerType: z.enum(['google-calendar', 'microsoft-calendar', 'berlin-de-main-calendar', 'wp-the-events-calendar', 'eventbrite', 'meetup', 'seniorennetz-berlin', 'bewegungsatlas-berlin', 'email']),
 	providerId: z.string(),
 	direction: z.enum(['pull', 'push', 'bidirectional']),
 	settings: z.optional(

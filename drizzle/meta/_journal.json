@@ -99,6 +99,20 @@
       "when": 1766312870304,
       "tag": "0013_low_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1766622434499,
+      "tag": "0014_lush_vindicator",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1766775816095,
+      "tag": "0015_rare_tinkerer",
+      "breakpoints": true
     }
   ]
 }

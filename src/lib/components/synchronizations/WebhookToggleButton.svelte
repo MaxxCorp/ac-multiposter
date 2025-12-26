@@ -20,8 +20,9 @@
     // Only show for active configurations that support it
     // Note: This derived check is simple logic.
     const supportsWebhooks = $derived(
-        providerType === "google-calendar" &&
-            (direction === "pull" || direction === "bidirectional"),
+        (providerType === "google-calendar" &&
+            (direction === "pull" || direction === "bidirectional")) ||
+        (providerType === "email" && direction === "push"),
     );
 
     let statusPromise = $derived.by(() => {

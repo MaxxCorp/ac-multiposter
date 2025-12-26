@@ -8,6 +8,7 @@ const allocationCalendarSchema = z.object({
 export const createResourceSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
+    maxOccupancy: z.number().optional(),
     type: z.string().min(1, "Type is required"),
     locationId: z.string().optional(),
     parentResourceIds: z.array(z.string()).optional(), // For many-to-many hierarchy

@@ -187,6 +187,17 @@
 
         <label class="block">
             <span class="text-sm font-medium text-gray-700 mb-2"
+                >Max Occupancy</span
+            >
+            <input
+                {...updateResource.fields.maxOccupancy.as("number")}
+                class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter max occupancy"
+            />
+        </label>
+
+        <label class="block">
+            <span class="text-sm font-medium text-gray-700 mb-2"
                 >Location (Optional)</span
             >
             <select

@@ -1,0 +1,21 @@
+NEUE VERANSTALTUNG: {event.summary}
+
+Details:
+{event.description ? `Beschreibung: ${event.description}
+
+` : ''}Beginn: {startDate}
+{endDate !== 'Nicht angegeben' ? `Ende: ${endDate}
+` : ''}
+{event.location ? `Ort: ${event.location}
+` : ''}
+{event.recurrence && event.recurrence.length > 0 ? `Wiederholung: ${event.recurrence.join(', ')}
+` : ''}
+
+Kontakt:
+Name: {contactInfo.name}
+E-Mail: {contactInfo.email}
+{contactInfo.phone ? `Telefon: ${contactInfo.phone}
+` : ''}
+
+Diese E-Mail wurde automatisch von AC-Multiposter generiert.
+Anhänge: iCal-Datei (.ics) für Kalender-Import und vCard (.vcf) für Kontaktdaten.

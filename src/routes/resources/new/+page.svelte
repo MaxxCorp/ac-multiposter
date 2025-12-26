@@ -4,7 +4,10 @@
     import { listLocations } from "../../locations/list.remote";
     import { listResources } from "../list.remote";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
-    import { createResourceSchema, type AllocationCalendar } from "$lib/validations/resource";
+    import {
+        createResourceSchema,
+        type AllocationCalendar,
+    } from "$lib/validations/resource";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
     import { toast } from "svelte-sonner";
     import { Button } from "$lib/components/ui/button";
@@ -20,7 +23,10 @@
 
     function addAllocationCalendar() {
         if (newCalendarId.trim()) {
-            allocationCalendars = [...allocationCalendars, { provider: newProvider, calendarId: newCalendarId.trim() }];
+            allocationCalendars = [
+                ...allocationCalendars,
+                { provider: newProvider, calendarId: newCalendarId.trim() },
+            ];
             newCalendarId = "";
         }
     }
@@ -109,6 +115,17 @@
                     ></textarea>
                 </label>
 
+                <label class="block">
+                    <span class="text-sm font-medium text-gray-700 mb-2"
+                        >Max Occupancy</span
+                    >
+                    <input
+                        {...createResource.fields.maxOccupancy.as("number")}
+                        class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter max occupancy"
+                    />
+                </label>
+
                 {#await locationsPromise then locations}
                     <label class="block">
                         <span class="text-sm font-medium text-gray-700 mb-2"
@@ -135,22 +152,38 @@
                         >
                         <div class="mt-2 space-y-2">
                             <label class="flex items-center gap-2">
-                                <input type="checkbox" checked={hasParent} onclick={() => (hasParent = !hasParent)} class="w-4 h-4 text-blue-600" />
-                                <span class="text-sm">Assign to existing parent(s)</span>
+                                <input
+                                    type="checkbox"
+                                    checked={hasParent}
+                                    onclick={() => (hasParent = !hasParent)}
+                                    class="w-4 h-4 text-blue-600"
+                                />
+                                <span class="text-sm"
+                                    >Assign to existing parent(s)</span
+                                >
                             </label>
                             {#if hasParent}
-                                <div class="space-y-2 border rounded-md p-4 max-h-48 overflow-y-auto">
+                                <div
+                                    class="space-y-2 border rounded-md p-4 max-h-48 overflow-y-auto"
+                                >
                                     {#each resources as resource}
                                         <label class="flex items-center gap-2">
                                             <input
-                                                {...createResource.fields.parentResourceIds.as('checkbox', resource.id)}
+                                                {...createResource.fields.parentResourceIds.as(
+                                                    "checkbox",
+                                                    resource.id,
+                                                )}
                                                 class="w-4 h-4 text-blue-600"
                                             />
-                                            <span class="text-sm">{resource.name} ({resource.type})</span>
+                                            <span class="text-sm"
+                                                >{resource.name} ({resource.type})</span
+                                            >
                                         </label>
                                     {/each}
                                     {#if resources.length === 0}
-                                        <p class="text-sm text-gray-500">No resources available</p>
+                                        <p class="text-sm text-gray-500">
+                                            No resources available
+                                        </p>
                                     {/if}
                                 </div>
                             {/if}
@@ -159,19 +192,30 @@
                 {/await}
 
                 <div class="block">
-                    <span class="text-sm font-medium text-gray-700 mb-2">Allocation Calendars (Optional)</span>
-                    <p class="text-xs text-gray-500 mb-3">Track resource allocation via synced calendars from different providers</p>
-                    
+                    <span class="text-sm font-medium text-gray-700 mb-2"
+                        >Allocation Calendars (Optional)</span
+                    >
+                    <p class="text-xs text-gray-500 mb-3">
+                        Track resource allocation via synced calendars from
+                        different providers
+                    </p>
+
                     {#if allocationCalendars.length > 0}
                         <div class="space-y-2 mb-3">
                             {#each allocationCalendars as calendar, index}
-                                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                                <div
+                                    class="flex items-center gap-2 p-2 bg-gray-50 rounded border"
+                                >
                                     <span class="text-sm flex-1">
-                                        <span class="font-medium">{calendar.provider}:</span> {calendar.calendarId}
+                                        <span class="font-medium"
+                                            >{calendar.provider}:</span
+                                        >
+                                        {calendar.calendarId}
                                     </span>
                                     <button
                                         type="button"
-                                        onclick={() => removeAllocationCalendar(index)}
+                                        onclick={() =>
+                                            removeAllocationCalendar(index)}
                                         class="text-red-600 hover:text-red-800 text-sm"
                                     >
                                         Remove
@@ -180,14 +224,18 @@
                             {/each}
                         </div>
                     {/if}
-                    
+
                     <div class="flex gap-2">
                         <select
                             bind:value={newProvider}
                             class="px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
-                            <option value="google-calendar">Google Calendar</option>
-                            <option value="microsoft-calendar">Microsoft Calendar</option>
+                            <option value="google-calendar"
+                                >Google Calendar</option
+                            >
+                            <option value="microsoft-calendar"
+                                >Microsoft Calendar</option
+                            >
                         </select>
                         <input
                             type="text"
@@ -195,7 +243,7 @@
                             placeholder="Calendar ID"
                             class="flex-1 px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             onkeydown={(e) => {
-                                if (e.key === 'Enter') {
+                                if (e.key === "Enter") {
                                     e.preventDefault();
                                     addAllocationCalendar();
                                 }
@@ -209,7 +257,7 @@
                             Add
                         </button>
                     </div>
-                    
+
                     {#if allocationCalendars.length > 0}
                         <input
                             type="hidden"

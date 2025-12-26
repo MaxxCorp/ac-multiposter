@@ -30,6 +30,7 @@ export const createResource = form(createResourceSchema, async (data) => {
             type: data.type,
             locationId: data.locationId || null,
             allocationCalendars: parsedCalendars,
+            maxOccupancy: data.maxOccupancy,
         }).returning();
 
         const row = result[0];
