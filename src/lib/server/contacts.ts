@@ -85,6 +85,9 @@ async function generateContactAssets(contactId: string) {
     const storage = getStorageProvider();
     const fullNameSlug = fullName.replace(/\s+/g, '_');
 
+    const oldVCardPath = data.vCardPath;
+    const oldQRCodePath = data.qrCodePath;
+
     // vCard Upload
     const vCardFileName = `contacts/${contactId}/${fullNameSlug}.vcf`;
     const vCardUrl = await storage.put(vCardFileName, card.toString(), 'text/vcard');
@@ -113,6 +116,14 @@ async function generateContactAssets(contactId: string) {
             qrCodePath: qrCodeUrl
         })
         .where(eq(contact.id, contactId));
+
+    // Clean up old assets if paths changed
+    if (oldVCardPath && oldVCardPath !== vCardUrl) {
+        await storage.delete(oldVCardPath);
+    }
+    if (oldQRCodePath && oldQRCodePath !== qrCodeUrl) {
+        await storage.delete(oldQRCodePath);
+    }
 }
 
 export interface ContactData {

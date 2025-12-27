@@ -53,6 +53,9 @@ export async function generateEventAssets(eventId: string) {
     const storage = getStorageProvider();
     const summarySlug = data.summary.replace(/\s+/g, '_');
 
+    const oldICalPath = data.iCalPath;
+    const oldQRCodePath = data.qrCodePath;
+
     // iCal Upload
     const iCalFileName = `events/${eventId}/${summarySlug}.ics`;
     const iCalUrl = await storage.put(iCalFileName, vcalendar.toString(), 'text/calendar');
@@ -81,4 +84,12 @@ export async function generateEventAssets(eventId: string) {
             qrCodePath: qrCodeUrl
         })
         .where(eq(eventTable.id, eventId));
+
+    // Clean up old assets if paths changed
+    if (oldICalPath && oldICalPath !== iCalUrl) {
+        await storage.delete(oldICalPath);
+    }
+    if (oldQRCodePath && oldQRCodePath !== qrCodeUrl) {
+        await storage.delete(oldQRCodePath);
+    }
 }

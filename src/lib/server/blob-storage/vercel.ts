@@ -7,6 +7,8 @@ export class VercelBlobStorageProvider implements BlobStorageProvider {
         const response = await put(path, content, {
             contentType,
             access: 'public',
+            addRandomSuffix: false,
+            allowOverwrite: true,
         });
         return response.url;
     }
