@@ -93,8 +93,9 @@ async function generateContactAssets(contactId: string) {
     const vCardUrl = await storage.put(vCardFileName, card.toString(), 'text/vcard');
 
     // QR Code generation
-    const baseUrl = env.PUBLIC_BASE_URL || '';
-    const contactUrl = `${baseUrl}/contacts/${contactId}`;
+    const requestEvent = getRequestEvent();
+    const origin = env.PUBLIC_BASE_URL || requestEvent?.url.origin || '';
+    const contactUrl = `${origin}/contacts/${contactId}`;
 
     // Generate QR as Buffer
     const qrBuffer = await QRCode.toBuffer(contactUrl, {

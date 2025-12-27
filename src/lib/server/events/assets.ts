@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { getRequestEvent } from '$app/server';
 import { event as eventTable } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import QRCode from 'qrcode';
@@ -61,8 +62,9 @@ export async function generateEventAssets(eventId: string) {
     const iCalUrl = await storage.put(iCalFileName, vcalendar.toString(), 'text/calendar');
 
     // QR Code generation
-    const baseUrl = env.PUBLIC_BASE_URL || '';
-    const eventUrl = `${baseUrl}/events/${eventId}`;
+    const requestEvent = getRequestEvent();
+    const origin = env.PUBLIC_BASE_URL || requestEvent?.url.origin || '';
+    const eventUrl = `${origin}/events/${eventId}`;
 
     // Generate QR as Buffer
     const qrBuffer = await QRCode.toBuffer(eventUrl, {
