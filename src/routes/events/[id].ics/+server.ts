@@ -1,23 +1,20 @@
-import { db } from '../db';
-import { event as eventTable } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import QRCode from 'qrcode';
+import { error } from '@sveltejs/kit';
+import { db } from '$lib/server/db';
 import ICAL from 'ical.js';
-import { getStorageProvider } from '../blob-storage';
+import type { RequestHandler } from './$types';
 
-import { env } from '$env/dynamic/private';
+export const GET: RequestHandler = async ({ params }) => {
+    const eventId = params.id;
 
-/**
- * Generate iCal and QR Code for an event
- */
-export async function generateEventAssets(eventId: string) {
     const data = await db.query.event.findFirst({
         where: (table, { eq }) => eq(table.id, eventId),
     });
 
-    if (!data) return;
+    if (!data) {
+        throw error(404, 'Event not found');
+    }
 
-    // iCal generation using ical.js
+    // iCal generation (logic copied from events/assets.ts)
     const vcalendar = new ICAL.Component(['vcalendar', [], []]);
     vcalendar.addPropertyWithValue('prodid', '-//MaxxCorp//ac-multiposter//EN');
     vcalendar.addPropertyWithValue('version', '2.0');
@@ -29,7 +26,6 @@ export async function generateEventAssets(eventId: string) {
     if (data.description) vevent.addPropertyWithValue('description', data.description);
     if (data.location) vevent.addPropertyWithValue('location', data.location);
 
-    // Handle dates
     if (data.startDateTime) {
         vevent.addPropertyWithValue('dtstart', ICAL.Time.fromJSDate(data.startDateTime, true));
     } else if (data.startDate) {
@@ -47,38 +43,12 @@ export async function generateEventAssets(eventId: string) {
     }
 
     vevent.addPropertyWithValue('dtstamp', ICAL.Time.fromJSDate(new Date(), true));
-
     vcalendar.addSubcomponent(vevent);
 
-    const storage = getStorageProvider();
-    const summarySlug = data.summary.replace(/\s+/g, '_');
-
-    // iCal Upload
-    const iCalFileName = `events/${eventId}/${summarySlug}.ics`;
-    const iCalUrl = await storage.put(iCalFileName, vcalendar.toString(), 'text/calendar');
-
-    // QR Code generation
-    const baseUrl = env.PUBLIC_BASE_URL || '';
-    const eventUrl = `${baseUrl}/events/${eventId}`;
-
-    // Generate QR as Buffer
-    const qrBuffer = await QRCode.toBuffer(eventUrl, {
-        width: 300,
-        margin: 2,
-        color: {
-            dark: '#1e40af', // blue-800
-            light: '#ffffff'
+    return new Response(vcalendar.toString(), {
+        headers: {
+            'Content-Type': 'text/calendar',
+            'Content-Disposition': `attachment; filename="${data.summary.replace(/\s+/g, '_')}.ics"`
         }
     });
-
-    const qrCodeFileName = `events/${eventId}/qr.png`;
-    const qrCodeUrl = await storage.put(qrCodeFileName, qrBuffer, 'image/png');
-
-    // Update paths in DB
-    await db.update(eventTable)
-        .set({
-            iCalPath: iCalUrl,
-            qrCodePath: qrCodeUrl
-        })
-        .where(eq(eventTable.id, eventId));
-}
+};

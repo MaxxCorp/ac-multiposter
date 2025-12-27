@@ -9,8 +9,8 @@ import { getRequestEvent } from '$app/server';
 import { getAuthenticatedUser, ensureAccess, parseRoles, hasAccess } from '$lib/authorization';
 import QRCode from 'qrcode';
 import ICAL from 'ical.js';
-import fs from 'fs';
-import path from 'path';
+import { getStorageProvider } from './blob-storage';
+import { env } from '$env/dynamic/private';
 
 /**
  * Backend logic for managing contacts and their associations.
@@ -82,23 +82,19 @@ async function generateContactAssets(contactId: string) {
         card.addPropertyWithValue('note', data.notes);
     }
 
-    const vcardDir = path.join(process.cwd(), 'static', 'contacts');
-    if (!fs.existsSync(vcardDir)) {
-        fs.mkdirSync(vcardDir, { recursive: true });
-    }
+    const storage = getStorageProvider();
+    const fullNameSlug = fullName.replace(/\s+/g, '_');
 
-    const vCardFileName = `${contactId}.vcf`;
-    const fullVCardPath = path.join(vcardDir, vCardFileName);
-    fs.writeFileSync(fullVCardPath, card.toString());
+    // vCard Upload
+    const vCardFileName = `contacts/${contactId}/${fullNameSlug}.vcf`;
+    const vCardUrl = await storage.put(vCardFileName, card.toString(), 'text/vcard');
 
     // QR Code generation
-    // We use a relative URL or dynamic base if available
-    const baseUrl = process.env.PUBLIC_BASE_URL || '';
+    const baseUrl = env.PUBLIC_BASE_URL || '';
     const contactUrl = `${baseUrl}/contacts/${contactId}`;
-    const qrCodeFileName = `${contactId}.png`;
-    const fullQRPath = path.join(vcardDir, qrCodeFileName);
 
-    await QRCode.toFile(fullQRPath, contactUrl, {
+    // Generate QR as Buffer
+    const qrBuffer = await QRCode.toBuffer(contactUrl, {
         width: 300,
         margin: 2,
         color: {
@@ -107,11 +103,14 @@ async function generateContactAssets(contactId: string) {
         }
     });
 
+    const qrCodeFileName = `contacts/${contactId}/qr.png`;
+    const qrCodeUrl = await storage.put(qrCodeFileName, qrBuffer, 'image/png');
+
     // Update paths in DB
     await db.update(contact)
         .set({
-            vCardPath: `/contacts/${vCardFileName}`,
-            qrCodePath: `/contacts/${qrCodeFileName}`
+            vCardPath: vCardUrl,
+            qrCodePath: qrCodeUrl
         })
         .where(eq(contact.id, contactId));
 }
@@ -317,13 +316,16 @@ export async function deleteContact(id: string) {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'contacts');
 
-    // Clean up files
-    const vcardDir = path.join(process.cwd(), 'static', 'contacts');
-    const vCardPath = path.join(vcardDir, `${id}.vcf`);
-    const qrCodePath = path.join(vcardDir, `${id}.png`);
+    // Clean up files if we have the URLs
+    const data = await db.query.contact.findFirst({
+        where: (table, { eq }) => eq(table.id, id)
+    });
 
-    if (fs.existsSync(vCardPath)) fs.unlinkSync(vCardPath);
-    if (fs.existsSync(qrCodePath)) fs.unlinkSync(qrCodePath);
+    if (data) {
+        const storage = getStorageProvider();
+        if (data.vCardPath) await storage.delete(data.vCardPath);
+        if (data.qrCodePath) await storage.delete(data.qrCodePath);
+    }
 
     return await db.delete(contact)
         .where(and(eq(contact.id, id), eq(contact.userId, user.id)));
