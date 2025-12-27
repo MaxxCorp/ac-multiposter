@@ -172,7 +172,7 @@ export class EmailProvider implements SyncProvider {
 		// We'll create a webhook for email events if it doesn't exist
 		const webhookData = {
 			type: 'marketing',
-			events: ['delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed'],
+			events: ['delivered', 'opened', 'click', 'hardBounce', 'softBounce', 'spam', 'unsubscribed'],
 			url: callbackUrl,
 			description: `Webhook for sync config ${this.config.id}`
 		};
@@ -277,7 +277,7 @@ export class EmailProvider implements SyncProvider {
 			const contacts = await getEntityContacts('event', eventId);
 			for (const contact of contacts) {
 				const email = (contact as any).emails?.find((e: any) => e.primary)?.value ||
-				             (contact as any).emails?.[0]?.value;
+					(contact as any).emails?.[0]?.value;
 				if (email && !recipients.find(r => r.email === email)) {
 					recipients.push({
 						email,

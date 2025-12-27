@@ -7,6 +7,7 @@
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
     import { toast } from "svelte-sonner";
     import { Bell, BellOff } from "@lucide/svelte";
+    import { invalidateAll } from "$app/navigation";
 
     let { configId, providerType, direction } = $props<{
         configId: string;
@@ -14,39 +15,58 @@
         direction: string;
     }>();
 
-    let version = $state(0);
+    let status = $state<{ active: boolean; expiresAt?: Date } | null>(null);
+    let isLoadingStatus = $state(true);
     let actionLoading = $state(false);
 
     // Only show for active configurations that support it
-    // Note: This derived check is simple logic.
     const supportsWebhooks = $derived(
         (providerType === "google-calendar" &&
             (direction === "pull" || direction === "bidirectional")) ||
-        (providerType === "email" && direction === "push"),
+            (providerType === "email" && direction === "push"),
     );
 
-    let statusPromise = $derived.by(() => {
-        // Track version to support manual refresh
-        version;
-        if (supportsWebhooks) {
-            return checkStatus(configId);
+    async function refreshStatus() {
+        if (!supportsWebhooks) return;
+        isLoadingStatus = true;
+        try {
+            status = await checkStatus(configId);
+        } catch (error) {
+            console.error("Failed to load webhook status:", error);
+        } finally {
+            isLoadingStatus = false;
         }
-        return Promise.resolve(null);
+    }
+
+    $effect(() => {
+        refreshStatus();
     });
 
-    async function toggleWebhook(currentStatus: { active: boolean } | null) {
+    async function toggleWebhook() {
+        if (!status) return;
+        const previousStatus = { ...status };
+
         try {
             actionLoading = true;
-            if (currentStatus?.active) {
-                await unregister(configId);
+            // Optimistic update
+            status = { ...status, active: !status.active };
+
+            if (previousStatus.active) {
+                const newStatus = await unregister(configId);
+                status = newStatus;
                 toast.success("Webhook unregistered successfully");
             } else {
-                await register(configId);
+                const newStatus = await register(configId);
+                status = newStatus;
                 toast.success("Webhook registered successfully");
             }
-            version++; // Trigger re-fetch
+
+            // Refresh parent page data if on a synchronization page
+            await invalidateAll();
         } catch (error: any) {
-            const action = currentStatus?.active ? "unregister" : "register";
+            // Revert on error
+            status = previousStatus;
+            const action = previousStatus.active ? "unregister" : "register";
             toast.error(`Failed to ${action} webhook: ${error.message}`);
         } finally {
             actionLoading = false;
@@ -55,7 +75,7 @@
 </script>
 
 {#if supportsWebhooks}
-    {#await statusPromise}
+    {#if isLoadingStatus && !status}
         <AsyncButton
             variant="default"
             size="sm"
@@ -66,13 +86,13 @@
         >
             <span>Loading...</span>
         </AsyncButton>
-    {:then status}
+    {:else}
         <AsyncButton
             variant={status?.active ? "outline" : "default"}
             size="sm"
             loading={actionLoading}
             loadingLabel="Updating..."
-            onclick={() => toggleWebhook(status)}
+            onclick={toggleWebhook}
             class="w-full flex items-center justify-center gap-2"
             title={status?.active
                 ? "Webhook Active - Click to unregister"
@@ -86,7 +106,5 @@
                 <span>Activate</span>
             {/if}
         </AsyncButton>
-    {:catch error}
-        <div class="text-xs text-red-500">Failed to load status</div>
-    {/await}
+    {/if}
 {/if}

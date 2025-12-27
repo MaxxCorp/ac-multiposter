@@ -161,10 +161,14 @@
 				return CircleCheck;
 			case "opened":
 				return Eye;
+			case "click":
 			case "clicked":
 				return MousePointer;
+			case "hardBounce":
+			case "softBounce":
 			case "bounced":
 				return TriangleAlert;
+			case "spam":
 			case "complained":
 				return CircleX;
 			case "unsubscribed":
@@ -180,10 +184,14 @@
 				return "text-green-600";
 			case "opened":
 				return "text-blue-600";
+			case "click":
 			case "clicked":
 				return "text-purple-600";
+			case "hardBounce":
+			case "softBounce":
 			case "bounced":
 				return "text-red-600";
+			case "spam":
 			case "complained":
 				return "text-orange-600";
 			case "unsubscribed":
@@ -199,12 +207,18 @@
 				return "Delivered";
 			case "opened":
 				return "Opened";
+			case "click":
 			case "clicked":
 				return "Clicked";
+			case "hardBounce":
+				return "Hard Bounce";
+			case "softBounce":
+				return "Soft Bounce";
 			case "bounced":
 				return "Bounced";
+			case "spam":
 			case "complained":
-				return "Complained";
+				return "Spam / Complained";
 			case "unsubscribed":
 				return "Unsubscribed";
 			default:

@@ -21,7 +21,7 @@ export const register = command(z.string(), async (configId: string) => {
     ensureAccess(user, 'synchronizations');
 
     await syncService.setupWebhook(configId);
-    return { success: true };
+    return await syncService.checkWebhookStatus(configId);
 });
 
 /**
@@ -32,5 +32,5 @@ export const unregister = command(z.string(), async (configId: string) => {
     ensureAccess(user, 'synchronizations');
 
     await syncService.removeWebhook(configId);
-    return { success: true };
+    return await syncService.checkWebhookStatus(configId);
 });
