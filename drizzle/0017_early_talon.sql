@@ -1,0 +1,1 @@
+ALTER TABLE "event" ALTER COLUMN "guests_can_see_other_guests" SET DEFAULT false;
