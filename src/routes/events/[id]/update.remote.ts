@@ -50,10 +50,10 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 	if (data.recurrence !== undefined) updateData.recurrence = data.recurrence as any;
 	if (data.attendees !== undefined) updateData.attendees = data.attendees as any;
 	if (data.reminders !== undefined) updateData.reminders = data.reminders;
-	if (data.guestsCanInviteOthers !== undefined) updateData.guestsCanInviteOthers = data.guestsCanInviteOthers;
-	if (data.guestsCanModify !== undefined) updateData.guestsCanModify = data.guestsCanModify;
-	if (data.guestsCanSeeOtherGuests !== undefined) updateData.guestsCanSeeOtherGuests = data.guestsCanSeeOtherGuests;
-	if (data.isPublic !== undefined) updateData.isPublic = data.isPublic;
+	updateData.guestsCanInviteOthers = !!data.guestsCanInviteOthers;
+	updateData.guestsCanModify = !!data.guestsCanModify;
+	updateData.guestsCanSeeOtherGuests = !!data.guestsCanSeeOtherGuests;
+	updateData.isPublic = !!data.isPublic;
 	if (data.categoryBerlinDotDe !== undefined) updateData.categoryBerlinDotDe = data.categoryBerlinDotDe === "" ? null : data.categoryBerlinDotDe;
 	if (data.ticketPrice !== undefined) updateData.ticketPrice = data.ticketPrice === "" ? null : data.ticketPrice;
 

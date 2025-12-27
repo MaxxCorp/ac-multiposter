@@ -20,7 +20,7 @@
 	let reminders = $state([{ method: "popup", minutes: 10 }]);
 	let guestsCanInviteOthers = $state(true);
 	let guestsCanModify = $state(false);
-	let guestsCanSeeOtherGuests = $state(true);
+	let guestsCanSeeOtherGuests = $state(false);
 	let isPublic = $state(false);
 
 	// Resource and location state

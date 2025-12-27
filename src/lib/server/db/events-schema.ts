@@ -88,7 +88,7 @@ export const event = pgTable("event", {
   // Guest permissions
   guestsCanInviteOthers: boolean("guests_can_invite_others").default(true),
   guestsCanModify: boolean("guests_can_modify").default(false),
-  guestsCanSeeOtherGuests: boolean("guests_can_see_other_guests").default(true),
+  guestsCanSeeOtherGuests: boolean("guests_can_see_other_guests").default(false),
   anyoneCanAddSelf: boolean("anyone_can_add_self").default(false),
 
   // Reminders

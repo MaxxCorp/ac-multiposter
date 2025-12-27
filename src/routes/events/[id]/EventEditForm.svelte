@@ -61,7 +61,7 @@
     const initialGuestsCanInviteOthers = event.guestsCanInviteOthers ?? true;
     const initialGuestsCanModify = event.guestsCanModify ?? false;
     const initialGuestsCanSeeOtherGuests =
-        event.guestsCanSeeOtherGuests ?? true;
+        event.guestsCanSeeOtherGuests ?? false;
 
     // Initialize state from extracted values
     let isAllDay = $state(initialIsAllDay);
