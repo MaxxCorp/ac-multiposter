@@ -3,12 +3,11 @@
 	import { goto } from "$app/navigation";
 	import { view, getOperations } from "./view.remote";
 	import { update, type UpdateSyncInput } from "./update.remote";
-	import { remove, removeBulk } from "./delete.remote";
+	import { removeBulk } from "./delete.remote";
 	import { sync } from "./sync.remote";
 	import DashboardCard from "$lib/components/ui/DashboardCard.svelte";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-	import Button from "$lib/components/ui/button/button.svelte";
 	import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 	import { handleDelete } from "$lib/hooks/handleDelete.svelte";
@@ -18,10 +17,10 @@
 		RefreshCw,
 		Settings,
 		Trash2,
-		CheckCircle2,
-		XCircle,
+		CircleCheck,
+		CircleX,
 		Clock,
-		AlertCircle,
+		CircleAlert,
 	} from "@lucide/svelte";
 
 	const configId = page.params.id!;
@@ -102,12 +101,11 @@
 	}
 
 	function getStatusIcon(status: string) {
-		if (status === "completed") return CheckCircle2;
-		if (status === "failed") return XCircle;
+		if (status === "completed") return CircleCheck;
+		if (status === "failed") return CircleX;
 		if (status === "pending") return Clock;
-		return AlertCircle;
+		return CircleAlert;
 	}
-
 	function getStatusColor(status: string) {
 		if (status === "completed") return "text-green-600";
 		if (status === "failed") return "text-red-600";
@@ -321,9 +319,10 @@
 							class="rounded-lg border border-red-200 bg-red-50 p-4"
 						>
 							<div class="flex items-start gap-3 text-red-600">
-								<AlertCircle
+								<CircleAlert
 									class="h-5 w-5 flex-shrink-0 mt-0.5"
 								/>
+
 								<div class="flex-1">
 									<p class="font-semibold mb-1">
 										Sync failed
@@ -364,7 +363,8 @@
 					{#if updateError}
 						<DashboardCard>
 							<div class="flex items-center gap-2 text-red-600">
-								<AlertCircle class="h-5 w-5" />
+								<CircleAlert class="h-5 w-5" />
+
 								<p>Update failed: {updateError}</p>
 							</div>
 						</DashboardCard>
@@ -467,7 +467,8 @@
 							{/if}
 						{:catch error}
 							<div class="flex items-center gap-2 text-red-600">
-								<AlertCircle class="h-5 w-5" />
+								<CircleAlert class="h-5 w-5" />
+
 								<p>
 									Failed to load operations: {error instanceof
 									Error

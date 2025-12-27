@@ -1,29 +1,16 @@
 import { command } from '$app/server';
-import { z } from 'zod/mini';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { db } from '$lib/server/db';
 import { syncConfig } from '$lib/server/db/sync-schema';
 import { eq, and } from 'drizzle-orm';
+import { UpdateSyncSchema, type UpdateSyncInput } from '$lib/validations/sync';
+export type { UpdateSyncInput };
 
-export interface UpdateSyncInput {
-	enabled?: boolean;
-	settings?: {
-		calendarId?: string;
-		syncIntervalMinutes?: number;
-	};
-}
 
 /**
  * Update a sync configuration
  */
-const updateSchema = z.object({
-	id: z.string(),
-	input: z.object({
-		enabled: z.boolean()
-	})
-});
-
-export const update = command(updateSchema, async ({ id, input }: { id: string; input: UpdateSyncInput }) => {
+export const update = command(UpdateSyncSchema, async ({ id, input }) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'synchronizations');
 
@@ -31,7 +18,7 @@ export const update = command(updateSchema, async ({ id, input }: { id: string; 
 	const [existing] = await db
 		.select()
 		.from(syncConfig)
-	.where(and(eq(syncConfig.id, id), eq(syncConfig.userId, user.id)));
+		.where(and(eq(syncConfig.id, id), eq(syncConfig.userId, user.id)));
 
 	if (!existing) {
 		throw new Error('Sync configuration not found');
@@ -49,4 +36,4 @@ export const update = command(updateSchema, async ({ id, input }: { id: string; 
 		.returning();
 
 	return updated;
-	});
+});

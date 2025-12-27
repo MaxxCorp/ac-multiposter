@@ -1,17 +1,16 @@
 <script lang="ts">
     import {
         Calendar,
-        Clock,
         MapPin,
-        Download,
-        Edit2,
-        Globe,
+        Users,
         Tag as TagIcon,
-        List,
+        Earth,
         Euro,
         Info,
-        Users,
-    } from "lucide-svelte";
+        Download,
+        Pencil,
+    } from "@lucide/svelte";
+
     import Button from "./ui/button/button.svelte";
     import type { Event } from "../../routes/events/list.remote";
 
@@ -93,7 +92,7 @@
                     <span
                         class="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full flex items-center gap-1"
                     >
-                        <Globe size={12} /> Public
+                        <Earth size={12} /> Public
                     </span>
                 {/if}
                 {#if event.status}
@@ -196,7 +195,7 @@
                 class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 onclick={onedit}
             >
-                <Edit2 size={18} /> Edit Event
+                <Pencil size={18} /> Edit Event
             </Button>
         {/if}
     </div>

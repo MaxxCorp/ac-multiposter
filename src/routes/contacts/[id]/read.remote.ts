@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/mini';
 import { query } from '$app/server';
 import { getContact } from '$lib/server/contacts';
 import { type Contact } from '$lib/validations/contacts';

@@ -1,13 +1,6 @@
-import { z } from 'zod/mini';
 import { command, query } from '$app/server';
 import { associateContact, dissociateContact, getEntityContacts } from '$lib/server/contacts';
-import { type Contact } from '$lib/validations/contacts';
-
-const AssociationSchema = z.object({
-    type: z.string(),
-    entityId: z.string(),
-    contactId: z.string(),
-});
+import { type Contact, AssociationSchema, UpdateAssociationSchema, GetAssociationsSchema } from '$lib/validations/contacts';
 
 export const addAssociation = command(AssociationSchema, async (data) => {
     const { type, entityId, contactId } = data;
@@ -21,23 +14,11 @@ export const removeAssociation = command(AssociationSchema, async (data) => {
     return { success: true };
 });
 
-const UpdateAssociationSchema = z.object({
-    type: z.literal('event'),
-    entityId: z.string(),
-    contactId: z.string(),
-    status: z.string(),
-});
-
 export const updateAssociationStatusRemote = command(UpdateAssociationSchema, async (data) => {
     const { type, entityId, contactId, status } = data;
     const { updateAssociationStatus } = await import('$lib/server/contacts');
     await updateAssociationStatus(type, entityId, contactId, status);
     return { success: true };
-});
-
-const GetAssociationsSchema = z.object({
-    type: z.string(),
-    entityId: z.string(),
 });
 
 export const fetchEntityContacts = query(GetAssociationsSchema, async (data): Promise<Contact[]> => {

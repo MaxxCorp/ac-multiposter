@@ -1,19 +1,10 @@
 import { query } from '$app/server';
-import { z } from 'zod';
 import { emailCampaign, emailEvent } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { getAuthenticatedUser } from '$lib/authorization';
 import { ensureAccess } from '$lib/authorization';
-
-/**
- * Get email campaigns for a sync configuration
- */
-const GetEmailCampaignsSchema = z.object({
-	syncConfigId: z.string(),
-	limit: z.number().optional().default(10),
-	offset: z.number().optional().default(0)
-});
+import { GetEmailCampaignsSchema } from '$lib/validations/sync';
 
 export const getEmailCampaigns = query(GetEmailCampaignsSchema, async ({ syncConfigId, limit = 10, offset = 0 }) => {
 	const user = getAuthenticatedUser();

@@ -55,3 +55,86 @@ export const ContactSchema = z.object({
 });
 
 export type Contact = z.infer<typeof ContactSchema>;
+
+export const ContactInputSchema = z.object({
+    contact: z.any(),
+    emails: z.optional(z.array(z.object({
+        value: z.string(),
+        type: z.optional(z.string()),
+        primary: z.boolean(),
+    }))),
+    phones: z.optional(z.array(z.object({
+        value: z.string(),
+        type: z.optional(z.string()),
+        primary: z.boolean(),
+    }))),
+    addresses: z.optional(z.array(z.object({
+        street: z.optional(z.string()),
+        houseNumber: z.optional(z.string()),
+        addressSuffix: z.optional(z.string()),
+        zip: z.optional(z.string()),
+        city: z.optional(z.string()),
+        state: z.optional(z.string()),
+        country: z.optional(z.string()),
+        type: z.optional(z.string()),
+        primary: z.boolean(),
+    }))),
+    relationIds: z.optional(z.array(z.object({
+        targetContactId: z.string(),
+        relationType: z.string(),
+    }))),
+    tagNames: z.optional(z.array(z.string())),
+});
+
+export const ContactUpdateSchema = z.object({
+    id: z.string(),
+    data: z.object({
+        contact: z.optional(z.any()),
+        emails: z.optional(z.array(z.object({
+            value: z.string(),
+            type: z.optional(z.string()),
+            primary: z.boolean(),
+        }))),
+        phones: z.optional(z.array(z.object({
+            value: z.string(),
+            type: z.optional(z.string()),
+            primary: z.boolean(),
+        }))),
+        addresses: z.optional(z.array(z.object({
+            street: z.optional(z.string()),
+            houseNumber: z.optional(z.string()),
+            addressSuffix: z.optional(z.string()),
+            zip: z.optional(z.string()),
+            city: z.optional(z.string()),
+            state: z.optional(z.string()),
+            country: z.optional(z.string()),
+            type: z.optional(z.string()),
+            primary: z.boolean(),
+        }))),
+        relationIds: z.optional(z.array(z.object({
+            targetContactId: z.string(),
+            relationType: z.string(),
+        }))),
+        tagNames: z.optional(z.array(z.string())),
+    }),
+});
+
+export const AssociationSchema = z.object({
+    type: z.string(),
+    entityId: z.string(),
+    contactId: z.string(),
+});
+
+export const UpdateAssociationSchema = z.object({
+    type: z.literal('event'),
+    entityId: z.string(),
+    contactId: z.string(),
+    status: z.string(),
+});
+
+export const GetAssociationsSchema = z.object({
+    type: z.string(),
+    entityId: z.string(),
+});
+
+

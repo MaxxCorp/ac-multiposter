@@ -5,7 +5,8 @@
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import Button from "$lib/components/ui/button/button.svelte";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-    import { User, Mail, Phone, MapPin } from "lucide-svelte";
+    import { User as UserIcon, Mail, Phone, MapPin } from "@lucide/svelte";
+
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
@@ -77,7 +78,7 @@
                 <div class="grid gap-4">
                     {#if items.length === 0}
                         <EmptyState
-                            icon={User}
+                            icon={UserIcon}
                             title="No Contacts"
                             description="Get started by creating your first contact"
                             actionLabel="Create Your First Contact"
@@ -99,7 +100,7 @@
                                         <div
                                             class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"
                                         >
-                                            <User size={20} />
+                                            <UserIcon size={20} />
                                         </div>
                                         <div>
                                             <h2 class="text-xl font-semibold">

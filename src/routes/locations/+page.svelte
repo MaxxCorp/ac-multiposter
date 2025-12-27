@@ -5,7 +5,8 @@
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-	import { MapPin } from "lucide-svelte";
+	import { MapPin } from "@lucide/svelte";
+
 	import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";

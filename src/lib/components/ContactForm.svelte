@@ -5,12 +5,14 @@
         Mail,
         Phone,
         MapPin,
-        User,
         Tag as TagIcon,
         Link as LinkIcon,
+        User,
         Search,
-    } from "lucide-svelte";
+    } from "@lucide/svelte";
+
     import { listContacts } from "../../routes/contacts/list.remote";
+
     import Button from "./ui/button/button.svelte";
     import AsyncButton from "./ui/AsyncButton.svelte";
 

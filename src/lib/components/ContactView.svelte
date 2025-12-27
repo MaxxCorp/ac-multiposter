@@ -3,14 +3,12 @@
         Mail,
         Phone,
         MapPin,
-        User,
-        Download,
-        Edit2,
-        Globe,
         Tag as TagIcon,
-    } from "lucide-svelte";
+        Download,
+        Pencil,
+        Earth,
+    } from "@lucide/svelte";
     import Button from "./ui/button/button.svelte";
-    import { page } from "$app/state";
 
     let { contact, canEdit = false, onedit } = $props();
 
@@ -31,7 +29,7 @@
                     <span
                         class="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full flex items-center gap-1"
                     >
-                        <Globe size={12} /> Public
+                        <Earth size={12} /> Public
                     </span>
                 {/if}
                 {#if contact.tags && contact.tags.length > 0}
@@ -179,7 +177,7 @@
                 class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 onclick={onedit}
             >
-                <Edit2 size={18} /> Edit Contact
+                <Pencil size={18} /> Edit Contact
             </Button>
         {/if}
     </div>

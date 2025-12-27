@@ -1,17 +1,16 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import {
+        Search,
         User,
         Plus,
-        X,
-        Search,
         Check,
         ExternalLink,
-        Edit2,
-        Eye,
-    } from "lucide-svelte";
+        Pencil,
+        X,
+    } from "@lucide/svelte";
+
     import Button from "./ui/button/button.svelte";
-    import AsyncButton from "./ui/AsyncButton.svelte";
     import { listContacts } from "../../routes/contacts/list.remote";
     import { type Contact } from "$lib/validations/contacts";
     import {
@@ -244,7 +243,7 @@
                             }}
                             title="Edit in place"
                         >
-                            <Edit2 size={12} />
+                            <Pencil size={12} />
                         </button>
                         <button
                             type="button"

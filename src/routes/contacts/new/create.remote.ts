@@ -1,37 +1,7 @@
-import { z } from 'zod/mini';
 import { command } from '$app/server';
 import { createContact } from '$lib/server/contacts';
 import { listContacts } from '../list.remote';
-
-const ContactInputSchema = z.object({
-    contact: z.any(),
-    emails: z.optional(z.array(z.object({
-        value: z.string(),
-        type: z.optional(z.string()),
-        primary: z.boolean(),
-    }))),
-    phones: z.optional(z.array(z.object({
-        value: z.string(),
-        type: z.optional(z.string()),
-        primary: z.boolean(),
-    }))),
-    addresses: z.optional(z.array(z.object({
-        street: z.optional(z.string()),
-        houseNumber: z.optional(z.string()),
-        addressSuffix: z.optional(z.string()),
-        zip: z.optional(z.string()),
-        city: z.optional(z.string()),
-        state: z.optional(z.string()),
-        country: z.optional(z.string()),
-        type: z.optional(z.string()),
-        primary: z.boolean(),
-    }))),
-    relationIds: z.optional(z.array(z.object({
-        targetContactId: z.string(),
-        relationType: z.string(),
-    }))),
-    tagNames: z.optional(z.array(z.string())),
-});
+import { ContactInputSchema } from '$lib/validations/contacts';
 
 export const createNewContact = command(ContactInputSchema, async (data) => {
     // Sanitize contact data

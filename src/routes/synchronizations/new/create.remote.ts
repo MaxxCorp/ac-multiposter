@@ -1,5 +1,4 @@
 import { command } from '$app/server';
-import { z } from 'zod/mini';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { db } from '$lib/server/db';
 import { syncConfig } from '$lib/server/db/sync-schema';
@@ -8,43 +7,11 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { SyncDirection } from '$lib/server/sync/types';
 import { syncService } from '$lib/server/sync/service';
+import { CreateSyncSchema, type CreateSyncInput } from '$lib/validations/sync';
+export type { CreateSyncInput };
 
-export interface CreateSyncInput {
-	providerType: 'google-calendar' | 'microsoft-calendar' | 'berlin-de-main-calendar' | 'wp-the-events-calendar' | 'eventbrite' | 'meetup' | 'seniorennetz-berlin' | 'bewegungsatlas-berlin' | 'email';
-	providerId: string;
-	direction: SyncDirection;
-	settings?: {
-		calendarId?: string;
-		syncIntervalMinutes?: number;
-		company?: string;
-		fieldMappings?: Record<string, string>;
-		baseUrl?: string;
-		username?: string;
-		applicationPassword?: string;
-	};
-}
 
-const createSyncSchema = z.object({
-	providerType: z.enum(['google-calendar', 'microsoft-calendar', 'berlin-de-main-calendar', 'wp-the-events-calendar', 'eventbrite', 'meetup', 'seniorennetz-berlin', 'bewegungsatlas-berlin', 'email']),
-	providerId: z.string(),
-	direction: z.enum(['pull', 'push', 'bidirectional']),
-	settings: z.optional(
-		z.object({
-			calendarId: z.optional(z.string()),
-			syncIntervalMinutes: z.optional(z.number()),
-			company: z.optional(z.string()),
-			fieldMappings: z.optional(z.record(z.string(), z.string())),
-			baseUrl: z.optional(z.string()),
-			username: z.optional(z.string()),
-			applicationPassword: z.optional(z.string())
-		})
-	)
-});
-
-/**
- * Create a new sync configuration
- */
-export const create = command(createSyncSchema, async (input) => {
+export const create = command(CreateSyncSchema, async (input) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'synchronizations');
 

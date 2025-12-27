@@ -10,9 +10,7 @@
 		Mail,
 		Users,
 		MapPin,
-		Globe,
 	} from "@lucide/svelte";
-	import DashboardCard from "$lib/components/ui/DashboardCard.svelte";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
@@ -69,13 +67,13 @@
 				syncIntervalMinutes,
 				...(selectedProvider === "berlin-de-main-calendar" && {
 					company,
-					fieldMappings
+					fieldMappings,
 				}),
 				...(selectedProvider === "wp-the-events-calendar" && {
 					baseUrl: wpBaseUrl,
 					username: wpUsername,
 					applicationPassword: wpAppPassword,
-				})
+				}),
 			},
 		};
 
@@ -125,7 +123,8 @@
 		{
 			id: "wp-the-events-calendar" as const,
 			name: "WP The Events Calendar",
-			description: "Push events to WordPress site with The Events Calendar plugin",
+			description:
+				"Push events to WordPress site with The Events Calendar plugin",
 			icon: Calendar,
 			available: true,
 		},
@@ -378,7 +377,8 @@
 								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
 							/>
 							<p class="text-xs text-gray-500 mt-1">
-								Application password generated in WordPress user profile
+								Application password generated in WordPress user
+								profile
 							</p>
 						</div>
 					{/if}
@@ -415,14 +415,28 @@
 							class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors {direction ===
 							dir.value
 								? 'border-blue-600 bg-blue-50'
-								: 'border-gray-200 hover:border-gray-300'} {(selectedProvider === 'berlin-de-main-calendar' || selectedProvider === 'wp-the-events-calendar' || selectedProvider === 'seniorennetz-berlin' || selectedProvider === 'email') && dir.value !== 'push' ? 'opacity-50 cursor-not-allowed' : ''}"
+								: 'border-gray-200 hover:border-gray-300'} {(selectedProvider ===
+								'berlin-de-main-calendar' ||
+								selectedProvider === 'wp-the-events-calendar' ||
+								selectedProvider === 'seniorennetz-berlin' ||
+								selectedProvider === 'email') &&
+							dir.value !== 'push'
+								? 'opacity-50 cursor-not-allowed'
+								: ''}"
 						>
 							<input
 								type="radio"
 								name="direction"
 								value={dir.value}
 								bind:group={direction}
-								disabled={(selectedProvider === 'berlin-de-main-calendar' || selectedProvider === 'wp-the-events-calendar' || selectedProvider === 'seniorennetz-berlin' || selectedProvider === 'email') && dir.value !== 'push'}
+								disabled={(selectedProvider ===
+									"berlin-de-main-calendar" ||
+									selectedProvider ===
+										"wp-the-events-calendar" ||
+									selectedProvider ===
+										"seniorennetz-berlin" ||
+									selectedProvider === "email") &&
+									dir.value !== "push"}
 								class="mt-1"
 							/>
 							<Icon
@@ -435,9 +449,18 @@
 								<div class="text-sm text-gray-600">
 									{dir.description}
 								</div>
-								{#if (selectedProvider === 'berlin-de-main-calendar' || selectedProvider === 'wp-the-events-calendar' || selectedProvider === 'seniorennetz-berlin' || selectedProvider === 'email') && dir.value !== 'push'}
+								{#if (selectedProvider === "berlin-de-main-calendar" || selectedProvider === "wp-the-events-calendar" || selectedProvider === "seniorennetz-berlin" || selectedProvider === "email") && dir.value !== "push"}
 									<div class="text-xs text-orange-600 mt-1">
-										Not supported for {selectedProvider === 'berlin-de-main-calendar' ? 'Berlin.de' : selectedProvider === 'wp-the-events-calendar' ? 'WordPress Events Calendar' : selectedProvider === 'seniorennetz-berlin' ? 'Seniorennetz Berlin' : 'Email (Brevo)'}
+										Not supported for {selectedProvider ===
+										"berlin-de-main-calendar"
+											? "Berlin.de"
+											: selectedProvider ===
+												  "wp-the-events-calendar"
+												? "WordPress Events Calendar"
+												: selectedProvider ===
+													  "seniorennetz-berlin"
+													? "Seniorennetz Berlin"
+													: "Email (Brevo)"}
 									</div>
 								{/if}
 							</div>

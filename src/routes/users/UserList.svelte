@@ -3,7 +3,8 @@
     import type { User } from "./list.remote";
     import Button from "$lib/components/ui/button/button.svelte";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-    import { User as UserIcon } from "lucide-svelte";
+    import { User as UserIcon } from "@lucide/svelte";
+
     import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import EmptyState from "$lib/components/ui/EmptyState.svelte";

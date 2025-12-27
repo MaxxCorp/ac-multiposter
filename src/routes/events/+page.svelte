@@ -5,13 +5,12 @@
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-	import { Calendar } from "@lucide/svelte";
 	import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
 	import { handleDelete } from "$lib/hooks/handleDelete.svelte";
 	import EmptyState from "$lib/components/ui/EmptyState.svelte";
-	import { MapPin, Globe } from "lucide-svelte";
+	import { Calendar, MapPin, Earth } from "@lucide/svelte";
 
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
 	let resolvedItems = $state<Event[]>([]);
@@ -38,14 +37,14 @@
 	function formatEventTime(event: Event): string {
 		// Check if this is an all-day event (has startDate but no startDateTime)
 		const isAllDay = event.startDate && !event.startDateTime;
-		
+
 		if (isAllDay) {
 			if (event.endDate && event.endDate !== event.startDate) {
 				return `All day: ${event.startDate} - ${event.endDate}`;
 			}
 			return `All day on ${event.startDate}`;
 		}
-		
+
 		if (event.startDateTime) {
 			const start = new Date(event.startDateTime);
 			const end = event.endDateTime ? new Date(event.endDateTime) : null;
@@ -254,15 +253,28 @@
 											</div>
 										</div>
 										<div class="flex flex-col gap-1 mt-1">
-											<div class="flex items-center gap-2">
-												<Calendar size={14} class="text-blue-500" />
-												<span class="text-xs text-gray-500"
-													>{formatEventTime(event)}</span
+											<div
+												class="flex items-center gap-2"
+											>
+												<Calendar
+													size={14}
+													class="text-blue-500"
+												/>
+												<span
+													class="text-xs text-gray-500"
+													>{formatEventTime(
+														event,
+													)}</span
 												>
 											</div>
 											{#if event.location}
-												<div class="flex items-center gap-2">
-													<MapPin size={14} class="text-red-500" />
+												<div
+													class="flex items-center gap-2"
+												>
+													<MapPin
+														size={14}
+														class="text-red-500"
+													/>
 													<span
 														class="text-xs text-gray-400 truncate"
 														>{event.location}</span
@@ -270,8 +282,14 @@
 												</div>
 											{/if}
 											{#if event.isPublic}
-												<div class="flex items-center gap-2">
-													<Globe size={14} class="text-green-500" />
+												<div
+													class="flex items-center gap-2"
+												>
+													<Earth
+														size={14}
+														class="text-green-500"
+													/>
+
 													<span
 														class="text-xs text-green-600 font-medium"
 														>Public</span
