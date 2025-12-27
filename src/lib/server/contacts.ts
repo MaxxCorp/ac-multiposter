@@ -10,7 +10,7 @@ import { getAuthenticatedUser, ensureAccess, parseRoles, hasAccess } from '$lib/
 import QRCode from 'qrcode';
 import ICAL from 'ical.js';
 import { getStorageProvider } from './blob-storage';
-import { env } from '$env/dynamic/private';
+import { resolve } from '$app/paths';
 
 /**
  * Backend logic for managing contacts and their associations.
@@ -93,9 +93,8 @@ async function generateContactAssets(contactId: string) {
     const vCardUrl = await storage.put(vCardFileName, card.toString(), 'text/vcard');
 
     // QR Code generation
-    const requestEvent = getRequestEvent();
-    const origin = env.PUBLIC_BASE_URL || requestEvent?.url.origin || '';
-    const contactUrl = `${origin}/contacts/${contactId}`;
+
+    const contactUrl = resolve(`/contacts/${contactId}`);
 
     // Generate QR as Buffer
     const qrBuffer = await QRCode.toBuffer(contactUrl, {
