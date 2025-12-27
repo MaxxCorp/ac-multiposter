@@ -72,7 +72,7 @@
     );
 
     const occupancyDisplay = $derived(() => {
-        let text = `${acceptedCount} yes`;
+        let text = `${acceptedCount}`;
         if (event.maxOccupancy) {
             text += ` of ${event.maxOccupancy} maximum`;
         }
