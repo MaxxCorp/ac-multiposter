@@ -1,4 +1,4 @@
-import { form } from '$app/server';
+import { form, getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { event } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -107,7 +107,8 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 	});
 
 	// Re-generate assets (QR Code, iCal)
-	generateEventAssets(data.id).catch((error) => {
+	const origin = getRequestEvent()?.url.origin;
+	generateEventAssets(data.id, origin).catch((error) => {
 		console.error('[updateEvent] Failed to generate event assets:', error);
 	});
 

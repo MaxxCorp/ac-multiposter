@@ -305,28 +305,6 @@
             />
         {/if}
 
-        <input
-            {...updateEvent.fields.guestsCanInviteOthers.as("checkbox")}
-            checked={guestsCanInviteOthers}
-            class="sr-only"
-            aria-hidden="true"
-            tabindex="-1"
-        />
-        <input
-            {...updateEvent.fields.guestsCanModify.as("checkbox")}
-            checked={guestsCanModify}
-            class="sr-only"
-            aria-hidden="true"
-            tabindex="-1"
-        />
-        <input
-            {...updateEvent.fields.guestsCanSeeOtherGuests.as("checkbox")}
-            checked={guestsCanSeeOtherGuests}
-            class="sr-only"
-            aria-hidden="true"
-            tabindex="-1"
-        />
-
         <div>
             <label
                 for="summary"
@@ -373,7 +351,6 @@
             <input
                 {...updateEvent.fields.isPublic.as("checkbox")}
                 type="checkbox"
-                id="isPublic"
                 bind:checked={isPublic}
                 class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
             />
@@ -721,12 +698,13 @@
             <div class="space-y-2">
                 <div class="flex items-center gap-2">
                     <input
+                        {...updateEvent.fields.guestsCanInviteOthers.as(
+                            "checkbox",
+                        )}
                         id="guestsCanInviteOthers"
                         type="checkbox"
-                        checked={guestsCanInviteOthers}
-                        onclick={() =>
-                            (guestsCanInviteOthers = !guestsCanInviteOthers)}
-                        class="w-4 h-4 text-blue-600"
+                        bind:checked={guestsCanInviteOthers}
+                        class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                     <label
                         for="guestsCanInviteOthers"
@@ -736,11 +714,11 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <input
+                        {...updateEvent.fields.guestsCanModify.as("checkbox")}
                         id="guestsCanModify"
                         type="checkbox"
-                        checked={guestsCanModify}
-                        onclick={() => (guestsCanModify = !guestsCanModify)}
-                        class="w-4 h-4 text-blue-600"
+                        bind:checked={guestsCanModify}
+                        class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                     <label for="guestsCanModify" class="text-sm text-gray-700"
                         >Guests can modify event</label
@@ -748,13 +726,13 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <input
+                        {...updateEvent.fields.guestsCanSeeOtherGuests.as(
+                            "checkbox",
+                        )}
                         id="guestsCanSeeOtherGuests"
                         type="checkbox"
-                        checked={guestsCanSeeOtherGuests}
-                        onclick={() =>
-                            (guestsCanSeeOtherGuests =
-                                !guestsCanSeeOtherGuests)}
-                        class="w-4 h-4 text-blue-600"
+                        bind:checked={guestsCanSeeOtherGuests}
+                        class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                     <label
                         for="guestsCanSeeOtherGuests"

@@ -9,7 +9,7 @@ import { env } from '$env/dynamic/private';
 /**
  * Generate iCal and QR Code for an event
  */
-export async function generateEventAssets(eventId: string) {
+export async function generateEventAssets(eventId: string, origin?: string) {
     const data = await db.query.event.findFirst({
         where: (table, { eq }) => eq(table.id, eventId),
     });
@@ -61,7 +61,11 @@ export async function generateEventAssets(eventId: string) {
 
     // QR Code generation
 
-    const eventUrl = `${env.PUBLIC_BASE_URL}/events/${eventId}`;
+    const baseUrl = env.PUBLIC_BASE_URL || origin || "";
+    if (!baseUrl) {
+        console.warn(`[Assets] No PUBLIC_BASE_URL or derivation origin found for event ${eventId}. QR code will have relative URL.`);
+    }
+    const eventUrl = `${baseUrl}/events/${eventId}`;
 
     // Generate QR as Buffer
     const qrBuffer = await QRCode.toBuffer(eventUrl, {

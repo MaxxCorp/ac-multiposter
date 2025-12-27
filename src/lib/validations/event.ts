@@ -35,12 +35,12 @@ export const eventBaseSchema = z.object({
 			minutes: z.number()
 		})))
 	})),
-	guestsCanInviteOthers: z.optional(z.boolean()),
-	guestsCanModify: z.optional(z.boolean()),
-	guestsCanSeeOtherGuests: z.optional(z.boolean()),
+	guestsCanInviteOthers: z.optional(z.union([z.boolean(), z.string()])),
+	guestsCanModify: z.optional(z.union([z.boolean(), z.string()])),
+	guestsCanSeeOtherGuests: z.optional(z.union([z.boolean(), z.string()])),
 	resourceIds: z.optional(z.array(z.string())), // Resource IDs to associate with event
 	contactIds: z.optional(z.string()), // Contact IDs as JSON string
-	isPublic: z.optional(z.boolean()),
+	isPublic: z.optional(z.union([z.boolean(), z.string()])),
 });
 
 /**
@@ -91,10 +91,10 @@ export const updateEventSchema = z.object({
 			minutes: z.number()
 		})))
 	})),
-	guestsCanInviteOthers: z.optional(z.boolean()),
-	guestsCanModify: z.optional(z.boolean()),
-	guestsCanSeeOtherGuests: z.optional(z.boolean()),
+	guestsCanInviteOthers: z.optional(z.union([z.boolean(), z.string()])),
+	guestsCanModify: z.optional(z.union([z.boolean(), z.string()])),
+	guestsCanSeeOtherGuests: z.optional(z.union([z.boolean(), z.string()])),
 	resourceIds: z.optional(z.array(z.string())), // Resource IDs to associate with event
 	contactIds: z.optional(z.string()), // Contact IDs as JSON string
-	isPublic: z.optional(z.boolean()),
+	isPublic: z.optional(z.union([z.boolean(), z.string()])),
 });

@@ -1,4 +1,4 @@
-import { form } from '$app/server';
+import { form, getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { event, eventResource } from '$lib/server/db/schema';
 import { listEvents } from '../list.remote';
@@ -66,7 +66,7 @@ export const createEvent = form(eventSchema, async (data) => {
 			locked: false,
 			privateCopy: false,
 			sequence: 0,
-			isPublic: data.isPublic ?? false,
+			isPublic: !!data.isPublic,
 			categoryBerlinDotDe: data.categoryBerlinDotDe || null,
 			ticketPrice: data.ticketPrice || null,
 		}).returning();
@@ -106,7 +106,8 @@ export const createEvent = form(eventSchema, async (data) => {
 		});
 
 		// Generate assets (QR Code, iCal)
-		generateEventAssets(id).catch((error) => {
+		const origin = getRequestEvent()?.url.origin;
+		generateEventAssets(id, origin).catch((error) => {
 			console.error('[createEvent] Failed to generate event assets:', error);
 		});
 

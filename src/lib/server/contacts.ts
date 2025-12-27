@@ -23,7 +23,7 @@ const generateId = () => crypto.randomUUID();
 /**
  * Generate vCard and QR Code for a contact
  */
-async function generateContactAssets(contactId: string) {
+async function generateContactAssets(contactId: string, origin?: string) {
     const data = await db.query.contact.findFirst({
         where: (table, { eq }) => eq(table.id, contactId),
         with: {
@@ -94,7 +94,11 @@ async function generateContactAssets(contactId: string) {
 
     // QR Code generation
 
-    const contactUrl = `${env.PUBLIC_BASE_URL}/contacts/${contactId}`;
+    const baseUrl = env.PUBLIC_BASE_URL || origin || "";
+    if (!baseUrl) {
+        console.warn(`[Assets] No PUBLIC_BASE_URL or derivation origin found for contact ${contactId}. QR code will have relative URL.`);
+    }
+    const contactUrl = `${baseUrl}/contacts/${contactId}`;
 
     // Generate QR as Buffer
     const qrBuffer = await QRCode.toBuffer(contactUrl, {
@@ -216,7 +220,12 @@ export async function createContact(data: ContactData) {
     });
 
     // Generate assets after transaction
-    await generateContactAssets(contactId);
+    // Generate assets after transaction
+    let origin: string | undefined;
+    try {
+        origin = getRequestEvent()?.url.origin;
+    } catch (e) { /* ignore */ }
+    await generateContactAssets(contactId, origin);
 
     return contactId;
 }
@@ -315,7 +324,12 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
     });
 
     // Re-generate assets
-    await generateContactAssets(id);
+    // Re-generate assets
+    let origin: string | undefined;
+    try {
+        origin = getRequestEvent()?.url.origin;
+    } catch (e) { /* ignore */ }
+    await generateContactAssets(id, origin);
 
     return id;
 }
