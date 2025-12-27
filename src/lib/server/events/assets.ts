@@ -1,11 +1,10 @@
 import { db } from '../db';
-import { resolve } from '$app/paths';
 import { event as eventTable } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import QRCode from 'qrcode';
 import ICAL from 'ical.js';
 import { getStorageProvider } from '../blob-storage';
-
+import { env } from '$env/dynamic/private';
 
 /**
  * Generate iCal and QR Code for an event
@@ -62,7 +61,7 @@ export async function generateEventAssets(eventId: string) {
 
     // QR Code generation
 
-    const eventUrl = resolve(`/events/${eventId}`);
+    const eventUrl = `${env.PUBLIC_BASE_URL}/events/${eventId}`;
 
     // Generate QR as Buffer
     const qrBuffer = await QRCode.toBuffer(eventUrl, {
