@@ -60,12 +60,14 @@
 	// Compute datetime values reactively for hidden remote fields
 	const computedStartDateTime = $derived(
 		!isAllDay && startDate && startTime
-			? `${startDate}T${startTime}:00`
+			? new Date(`${startDate}T${startTime}:00`).toISOString()
 			: "",
 	);
 	const computedEndDateTime = $derived(
 		!isAllDay && hasEndTime && effectiveEndDate && effectiveEndTime
-			? `${effectiveEndDate}T${effectiveEndTime}:00`
+			? new Date(
+					`${effectiveEndDate}T${effectiveEndTime}:00`,
+				).toISOString()
 			: "",
 	);
 
@@ -145,25 +147,21 @@
 	<h1 class="text-3xl font-bold mb-6">Create New Event</h1>
 
 	<form
-		{...createEvent
-			.enhance(async ({ submit }) => {
-				try {
-					const result: any = await submit();
-					if (result?.error) {
-						toast.error(
-							result.error.message ||
-								"Oh no! Something went wrong",
-						);
-						return;
-					}
-					toast.success("Successfully Saved!");
-					await goto("/events");
-				} catch (error: any) {
+		{...createEvent.enhance(async ({ submit }) => {
+			try {
+				const result: any = await submit();
+				if (result?.error) {
 					toast.error(
-						error?.message || "Oh no! Something went wrong",
+						result.error.message || "Oh no! Something went wrong",
 					);
+					return;
 				}
-			})}
+				toast.success("Successfully Saved!");
+				await goto("/events");
+			} catch (error: any) {
+				toast.error(error?.message || "Oh no! Something went wrong");
+			}
+		})}
 		class="space-y-4"
 	>
 		{#if computedStartDateTime}
@@ -807,7 +805,10 @@
 						onclick={() => (isPublic = !isPublic)}
 						class="w-4 h-4 text-blue-600"
 					/>
-					<label for="isPublic" class="text-sm font-medium text-gray-700">
+					<label
+						for="isPublic"
+						class="text-sm font-medium text-gray-700"
+					>
 						Public Profile (Allow unauthenticated viewing)
 					</label>
 				</div>

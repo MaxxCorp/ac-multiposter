@@ -24,17 +24,25 @@
 
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    // Helper to parse datetime for inputs
+    // Helper to parse datetime for inputs (returns local date and time strings)
     function parseDateTime(dt: string | Date | null | undefined): {
         date: string;
         time: string;
     } {
         if (!dt) return { date: "", time: "" };
-        const isoString =
-            typeof dt === "string" ? dt : new Date(dt).toISOString();
-        const [date, timeWithZone] = isoString.split("T");
-        const time = timeWithZone?.substring(0, 5) || "";
-        return { date, time };
+        const d = new Date(dt);
+        if (isNaN(d.getTime())) return { date: "", time: "" };
+
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const date = String(d.getDate()).padStart(2, "0");
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+
+        return {
+            date: `${year}-${month}-${date}`,
+            time: `${hours}:${minutes}`,
+        };
     }
 
     // svelte-ignore state_referenced_locally
@@ -52,7 +60,8 @@
         : [{ method: "popup", minutes: 10 }];
     const initialGuestsCanInviteOthers = event.guestsCanInviteOthers ?? true;
     const initialGuestsCanModify = event.guestsCanModify ?? false;
-    const initialGuestsCanSeeOtherGuests = event.guestsCanSeeOtherGuests ?? true;
+    const initialGuestsCanSeeOtherGuests =
+        event.guestsCanSeeOtherGuests ?? true;
 
     // Initialize state from extracted values
     let isAllDay = $state(initialIsAllDay);
@@ -151,12 +160,12 @@
     const endDate = $derived(isAllDay && hasEndTime ? endDateInput : "");
     const startDateTime = $derived(
         !isAllDay && startDateInput && startTimeInput
-            ? `${startDateInput}T${startTimeInput}:00`
+            ? new Date(`${startDateInput}T${startTimeInput}:00`).toISOString()
             : "",
     );
     const endDateTime = $derived(
         !isAllDay && hasEndTime && endDateInput && endTimeInput
-            ? `${endDateInput}T${endTimeInput}:00`
+            ? new Date(`${endDateInput}T${endTimeInput}:00`).toISOString()
             : "",
     );
     const startTimeZone = $derived(!isAllDay && timeZone ? timeZone : "");
@@ -281,8 +290,15 @@
                 )}
             />
         {/if}
-        <input {...updateEvent.fields.endDate.as("hidden", endDate || "null")} />
-        <input {...updateEvent.fields.endDateTime.as("hidden", endDateTime || "null")} />
+        <input
+            {...updateEvent.fields.endDate.as("hidden", endDate || "null")}
+        />
+        <input
+            {...updateEvent.fields.endDateTime.as(
+                "hidden",
+                endDateTime || "null",
+            )}
+        />
         {#if endTimeZone}
             <input
                 {...updateEvent.fields.endTimeZone.as("hidden", endTimeZone)}
@@ -736,7 +752,8 @@
                         type="checkbox"
                         checked={guestsCanSeeOtherGuests}
                         onclick={() =>
-                            (guestsCanSeeOtherGuests = !guestsCanSeeOtherGuests)}
+                            (guestsCanSeeOtherGuests =
+                                !guestsCanSeeOtherGuests)}
                         class="w-4 h-4 text-blue-600"
                     />
                     <label
@@ -748,10 +765,17 @@
             </div>
         </div>
 
-        <ContactManager type="event" entityId={event.id} onchange={(ids: string[]) => (selectedContactIds = ids)} />
+        <ContactManager
+            type="event"
+            entityId={event.id}
+            onchange={(ids: string[]) => (selectedContactIds = ids)}
+        />
 
         <input
-            {...updateEvent.fields.contactIds.as("hidden", JSON.stringify(selectedContactIds))}
+            {...updateEvent.fields.contactIds.as(
+                "hidden",
+                JSON.stringify(selectedContactIds),
+            )}
         />
 
         <div class="flex gap-3 mt-6">
