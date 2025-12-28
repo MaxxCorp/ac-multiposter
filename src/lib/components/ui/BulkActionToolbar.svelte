@@ -40,7 +40,7 @@
 	}
 </script>
 
-<div class="flex gap-2">
+<div class="flex flex-wrap gap-2">
 	{#if selectedCount > 0}
 		<Button
 			variant="secondary"

@@ -173,7 +173,9 @@
 </script>
 
 <div class="space-y-4 border rounded-lg p-4 bg-gray-50">
-    <div class="flex justify-between items-center">
+    <div
+        class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"
+    >
         <h3
             class="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2"
         >

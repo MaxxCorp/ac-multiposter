@@ -40,9 +40,11 @@
     <div class="max-w-4xl mx-auto">
         <Breadcrumb feature="resources" />
         <div class="bg-white shadow rounded-lg p-6">
-            <div class="flex justify-between items-center mb-6 gap-4">
+            <div
+                class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4"
+            >
                 <h1 class="text-3xl font-bold flex-shrink-0">Resources</h1>
-                <div class="flex-1 flex justify-end">
+                <div class="flex-1 flex justify-end w-full md:w-auto">
                     <BulkActionToolbar
                         selectedCount={selectedIds.size}
                         totalCount={initializedItems.length}
@@ -84,7 +86,7 @@
                         {#each items as resource (resource.id)}
                             <div class="mb-6 last:mb-0">
                                 <div
-                                    class="bg-white shadow rounded-lg p-6 flex items-start gap-4 transition-shadow"
+                                    class="bg-white shadow rounded-lg p-6 flex flex-col sm:flex-row items-start gap-4 transition-shadow"
                                 >
                                     <input
                                         type="checkbox"
