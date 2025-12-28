@@ -16,6 +16,16 @@
     import Button from "./ui/button/button.svelte";
     import AsyncButton from "./ui/AsyncButton.svelte";
 
+    interface Props {
+        initialData?: any;
+        onsubmit?: (data: any) => Promise<void>;
+        remoteFunction?: any;
+        preflightSchema?: any;
+        onSuccess?: (result: any) => void;
+        loading?: boolean;
+        cancelHref?: string;
+    }
+
     let {
         initialData = {
             contact: {},
@@ -26,11 +36,81 @@
             tags: [],
         },
         onsubmit,
+        remoteFunction,
+        preflightSchema,
+        onSuccess,
         loading = false,
         cancelHref = "/contacts",
-    } = $props();
+    }: Props = $props();
 
+    function prepareData() {
+        // Convert null values to undefined to satisfy zod/mini optional schemas
+        const cleanedContact = Object.fromEntries(
+            Object.entries(contact).map(([k, v]) => [
+                k,
+                v === null ? undefined : v,
+            ]),
+        );
+
+        return {
+            contact: cleanedContact,
+            emails: emails.filter((e) => e.value),
+            phones: phones.filter((p) => p.value),
+            addresses: addresses.filter((a) => a.street || a.city),
+            relationIds: relations.map((r) => ({
+                targetContactId: r.targetContactId,
+                relationType: r.relationType,
+            })),
+            tagNames: tagsInput
+                .split(",")
+                .map((t: string) => t.trim())
+                .filter(Boolean),
+        };
+    }
+
+    const enhanceAttr = $derived.by(() => {
+        if (remoteFunction && preflightSchema) {
+            return remoteFunction
+                .preflight(preflightSchema)
+                .enhance(async ({ submit }: any) => {
+                    const data = prepareData();
+                    try {
+                        const result = await submit(data);
+                        if (onSuccess) onSuccess(result);
+                    } catch (err: any) {
+                        // Error is usually handled by toast in current pages,
+                        // but we can add default error handling here or let onSuccess handle both.
+                    }
+                });
+        }
+        return {};
+    });
+
+    // svelte-ignore state_referenced_locally
     const isNew = !initialData.contact.id;
+
+    // Determine the path to the display name field issues based on the schema structure
+    // createNewContact uses { contact: { displayName: ... } }
+    // updateExistingContact uses { data: { contact: { displayName: ... } } }
+    const displayNameIssues = $derived.by(() => {
+        if (!remoteFunction) return [];
+        try {
+            // Try both common structures
+            return (
+                remoteFunction.fields?.contact?.displayName?.issues() ||
+                remoteFunction.fields?.data?.contact?.displayName?.issues() ||
+                []
+            );
+        } catch (e) {
+            return [];
+        }
+    });
+
+    function validateField() {
+        if (remoteFunction?.validate) {
+            remoteFunction.validate();
+        }
+    }
 
     // svelte-ignore state_referenced_locally
     let contact: any = $state({
@@ -70,7 +150,11 @@
                               .includes(contactSearch.toLowerCase()) ||
                           c.familyName
                               ?.toLowerCase()
-                              .includes(contactSearch.toLowerCase())),
+                              .includes(contactSearch.toLowerCase()) ||
+                          (c.email &&
+                              c.email
+                                  .toLowerCase()
+                                  .includes(contactSearch.toLowerCase()))),
               )
             : [],
     );
@@ -84,14 +168,14 @@
     // Do not pre-fill empty items if they are empty, as requested
 
     function addEmail() {
-        emails.push({ value: "", type: "other", primary: false });
+        emails.push({ value: "", type: "work", primary: false });
     }
     function removeEmail(index: number) {
         emails.splice(index, 1);
     }
 
     function addPhone() {
-        phones.push({ value: "", type: "other", primary: false });
+        phones.push({ value: "", type: "mobile", primary: false });
     }
     function removePhone(index: number) {
         phones.splice(index, 1);
@@ -122,32 +206,26 @@
     async function handleSubmit(e: Event) {
         e.preventDefault();
 
-        // Convert null values to undefined to satisfy zod/mini optional schemas
-        const cleanedContact = Object.fromEntries(
-            Object.entries(contact).map(([k, v]) => [
-                k,
-                v === null ? undefined : v,
-            ]),
-        );
+        const data = prepareData();
 
-        await onsubmit({
-            contact: cleanedContact,
-            emails: emails.filter((e) => e.value),
-            phones: phones.filter((p) => p.value),
-            addresses: addresses.filter((a) => a.street || a.city),
-            relationIds: relations.map((r) => ({
-                targetContactId: r.targetContactId,
-                relationType: r.relationType,
-            })),
-            tagNames: tagsInput
-                .split(",")
-                .map((t: string) => t.trim())
-                .filter(Boolean),
-        });
+        // Manual preflight validation if remoteFunction is provided but enhance isn't used
+        if (remoteFunction?.validate && !preflightSchema) {
+            let validationPayload: any = data;
+            if (!isNew && initialData.contact.id) {
+                validationPayload = { id: initialData.contact.id, data };
+            }
+
+            const isValid = await remoteFunction.validate(validationPayload);
+            if (!isValid) return;
+        }
+
+        if (onsubmit) {
+            await onsubmit(data);
+        }
     }
 </script>
 
-<form onsubmit={handleSubmit} class="space-y-8">
+<form {...enhanceAttr} onsubmit={handleSubmit} class="space-y-8">
     <div class="space-y-4">
         <h3 class="text-lg font-medium flex items-center gap-2">
             <User size={20} class="text-blue-500" />
@@ -158,14 +236,22 @@
                 <label
                     for="displayName"
                     class="block text-sm font-medium text-gray-700"
-                    >Display Name</label
+                    >Display Name <span class="text-red-500">*</span></label
                 >
                 <input
                     type="text"
                     id="displayName"
                     bind:value={contact.displayName}
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onblur={validateField}
+                    class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {displayNameIssues.length >
+                    0
+                        ? 'border-red-500 ring-1 ring-red-500'
+                        : 'border-gray-300'}"
+                    required
                 />
+                {#each displayNameIssues as issue}
+                    <p class="mt-1 text-xs text-red-600">{issue.message}</p>
+                {/each}
             </div>
             <div>
                 <label

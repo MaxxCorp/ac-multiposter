@@ -1,17 +1,11 @@
-import { command } from '$app/server';
+import { form } from '$app/server';
 import { createContact } from '$lib/server/contacts';
 import { listContacts } from '../list.remote';
 import { ContactInputSchema } from '$lib/validations/contacts';
 
-export const createNewContact = command(ContactInputSchema, async (data) => {
+export const createNewContact = form(ContactInputSchema, async (data) => {
     // Sanitize contact data
     const {
-        id: _id,
-        userId: _userId,
-        createdAt: _createdAt,
-        updatedAt: _updatedAt,
-        vCardPath: _vCardPath,
-        qrCodePath: _qrCodePath,
         birthday,
         ...rest
     } = data.contact;

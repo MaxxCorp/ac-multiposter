@@ -1,20 +1,14 @@
-import { command } from '$app/server';
+import { form } from '$app/server';
 import { updateContact } from '$lib/server/contacts';
 import { listContacts } from '../list.remote';
 import { readContact } from './read.remote';
 import { ContactUpdateSchema } from '$lib/validations/contacts';
 
-export const updateExistingContact = command(ContactUpdateSchema, async ({ id, data }) => {
+export const updateExistingContact = form(ContactUpdateSchema, async ({ id, data }) => {
     // Sanitize contact data to exclude immutable metadata that might cause type errors (strings vs Dates)
     let sanitizedContact = undefined;
     if (data.contact) {
         const {
-            id: _id,
-            userId: _userId,
-            createdAt: _createdAt,
-            updatedAt: _updatedAt,
-            vCardPath: _vCardPath,
-            qrCodePath: _qrCodePath,
             birthday,
             ...rest
         } = data.contact;
@@ -41,5 +35,5 @@ export const updateExistingContact = command(ContactUpdateSchema, async ({ id, d
     await readContact(id).refresh();
     await listContacts().refresh();
 
-    return { id: result };
+    return result;
 });

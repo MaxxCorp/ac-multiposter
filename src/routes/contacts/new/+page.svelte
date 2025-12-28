@@ -5,22 +5,20 @@
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import { toast } from "svelte-sonner";
 
-    let loading = $state(false);
+    import { ContactInputSchema } from "$lib/validations/contacts";
 
-    async function handleSubmit(data: any) {
-        loading = true;
-        try {
-            const result = await createNewContact(data);
-            if (result.id) {
-                toast.success("Contact created successfully");
-                goto(`/contacts/${result.id}`);
-            } else {
-                toast.error("Failed to create contact");
-            }
-        } catch (error: any) {
-            toast.error(error.message || "An error occurred");
-        } finally {
-            loading = false;
+    let loading = $derived(createNewContact.pending > 0);
+
+    async function handleSuccess(result: any) {
+        if (result?.error) {
+            toast.error(result.error.message || "Oh no! Something went wrong");
+            return;
+        }
+        toast.success("Contact created successfully");
+        if (result?.id) {
+            goto(`/contacts/${result.id}`);
+        } else {
+            goto("/contacts");
         }
     }
 </script>
@@ -30,7 +28,12 @@
         <Breadcrumb feature="contacts" />
         <div class="bg-white shadow rounded-lg p-6">
             <h1 class="text-2xl font-bold mb-6">Create New Contact</h1>
-            <ContactForm onsubmit={handleSubmit} {loading} />
+            <ContactForm
+                remoteFunction={createNewContact}
+                preflightSchema={ContactInputSchema}
+                onSuccess={handleSuccess}
+                {loading}
+            />
         </div>
     </div>
 </div>

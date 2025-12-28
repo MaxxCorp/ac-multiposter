@@ -7,7 +7,7 @@
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 	import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
 	import EventEditForm from "./EventEditForm.svelte";
-	import EventView from "$lib/components/EventView.svelte";
+	import EventView from "$lib/components/events/EventView.svelte";
 
 	const eventId = page.params.id || "";
 
@@ -17,7 +17,9 @@
 		listLocations(),
 	]);
 
-	let mode = $state<"view" | "edit">(page.url.searchParams.get('edit') === 'true' ? 'edit' : 'view');
+	let mode = $state<"view" | "edit">(
+		page.url.searchParams.get("edit") === "true" ? "edit" : "view",
+	);
 
 	// Check if the user is authorized to edit
 	function checkCanEdit(event: any) {

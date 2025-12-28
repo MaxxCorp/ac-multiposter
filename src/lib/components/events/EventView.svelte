@@ -11,8 +11,8 @@
         Pencil,
     } from "@lucide/svelte";
 
-    import Button from "./ui/button/button.svelte";
-    import type { Event } from "../../routes/events/list.remote";
+    import Button from "../ui/button/button.svelte";
+    import type { Event } from "../../../routes/events/list.remote";
 
     let {
         event,
@@ -134,10 +134,12 @@
                         <span>{event.ticketPrice}</span>
                     </div>
                 {/if}
-                <div class="flex items-center gap-2">
-                    <Users size={18} class="text-indigo-500" />
-                    <span>{occupancyDisplay()}</span>
-                </div>
+                {#if acceptedCount}
+                    <div class="flex items-center gap-2">
+                        <Users size={18} class="text-indigo-500" />
+                        <span>{occupancyDisplay()}</span>
+                    </div>
+                {/if}
             </div>
         </div>
 

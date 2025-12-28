@@ -57,7 +57,18 @@ export const ContactSchema = z.object({
 export type Contact = z.infer<typeof ContactSchema>;
 
 export const ContactInputSchema = z.object({
-    contact: z.any(),
+    contact: z.object({
+        displayName: z.string().check(z.minLength(1, 'Display name is required')),
+        givenName: z.optional(z.string()),
+        familyName: z.optional(z.string()),
+        middleName: z.optional(z.string()),
+        honorificPrefix: z.optional(z.string()),
+        honorificSuffix: z.optional(z.string()),
+        birthday: z.optional(z.string()),
+        gender: z.optional(z.string()),
+        notes: z.optional(z.string()),
+        isPublic: z.boolean(),
+    }),
     emails: z.optional(z.array(z.object({
         value: z.string(),
         type: z.optional(z.string()),
@@ -89,7 +100,18 @@ export const ContactInputSchema = z.object({
 export const ContactUpdateSchema = z.object({
     id: z.string(),
     data: z.object({
-        contact: z.optional(z.any()),
+        contact: z.optional(z.object({
+            displayName: z.string().check(z.minLength(1, 'Display name is required')),
+            givenName: z.optional(z.string()),
+            familyName: z.optional(z.string()),
+            middleName: z.optional(z.string()),
+            honorificPrefix: z.optional(z.string()),
+            honorificSuffix: z.optional(z.string()),
+            birthday: z.optional(z.string()),
+            gender: z.optional(z.string()),
+            notes: z.optional(z.string()),
+            isPublic: z.optional(z.boolean()),
+        })),
         emails: z.optional(z.array(z.object({
             value: z.string(),
             type: z.optional(z.string()),
