@@ -68,23 +68,7 @@
         };
     }
 
-    const enhanceAttr = $derived.by(() => {
-        if (remoteFunction && preflightSchema) {
-            return remoteFunction
-                .preflight(preflightSchema)
-                .enhance(async ({ submit }: any) => {
-                    const data = prepareData();
-                    try {
-                        const result = await submit(data);
-                        if (onSuccess) onSuccess(result);
-                    } catch (err: any) {
-                        // Error is usually handled by toast in current pages,
-                        // but we can add default error handling here or let onSuccess handle both.
-                    }
-                });
-        }
-        return {};
-    });
+    // Remove separate enhanceAttr and rely on manual submission due to library behavior
 
     // svelte-ignore state_referenced_locally
     const isNew = !initialData.contact.id;
@@ -108,7 +92,13 @@
 
     function validateField() {
         if (remoteFunction?.validate) {
-            remoteFunction.validate();
+            // Construct payload for validation - heuristic matching handleSubmit
+            const data = prepareData();
+            let payload: any = data;
+            if (!isNew && initialData.contact.id) {
+                payload = { id: initialData.contact.id, data };
+            }
+            remoteFunction.validate(payload);
         }
     }
 
@@ -208,28 +198,38 @@
 
         const data = prepareData();
 
-        // Manual preflight validation if remoteFunction is provided but enhance isn't used
-        if (remoteFunction?.validate && !preflightSchema) {
-            let validationPayload: any = data;
-            if (!isNew && initialData.contact.id) {
-                validationPayload = { id: initialData.contact.id, data };
-            }
+        // Construct payload
+        let payload: any = data;
+        if (!isNew && initialData.contact.id) {
+            payload = { id: initialData.contact.id, data };
+        }
 
-            const isValid = await remoteFunction.validate(validationPayload);
-            if (!isValid) return;
+        // Manual validation if remoteFunction is provided
+        if (remoteFunction?.validate) {
+            try {
+                const isValid = await remoteFunction.validate(payload);
+                if (!isValid) return;
+            } catch (err) {
+                console.error("Validation error:", err);
+                return;
+            }
         }
 
         if (onsubmit) {
-            await onsubmit(data);
+            await onsubmit(data); // Consumer expects raw data
+        } else if (remoteFunction) {
+            try {
+                // Call remote function programmatically
+                const result = await remoteFunction(payload);
+                if (onSuccess) onSuccess(result);
+            } catch (error) {
+                console.error("Submission error:", error);
+            }
         }
     }
 </script>
 
-<form
-    {...enhanceAttr}
-    onsubmit={remoteFunction ? undefined : handleSubmit}
-    class="space-y-8"
->
+<form onsubmit={handleSubmit} class="space-y-8">
     <div class="space-y-4">
         <h3 class="text-lg font-medium flex items-center gap-2">
             <User size={20} class="text-blue-500" />
