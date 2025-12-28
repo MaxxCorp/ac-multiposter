@@ -11,11 +11,11 @@
         Search,
     } from "@lucide/svelte";
     import { goto } from "$app/navigation";
-    import { listContacts } from "../../routes/contacts/list.remote";
+    import { listContacts } from "../../../routes/contacts/list.remote";
     import { toast } from "svelte-sonner";
 
-    import Button from "./ui/button/button.svelte";
-    import AsyncButton from "./ui/AsyncButton.svelte";
+    import Button from "../ui/button/button.svelte";
+    import AsyncButton from "../ui/AsyncButton.svelte";
 
     interface Props {
         initialData?: any;

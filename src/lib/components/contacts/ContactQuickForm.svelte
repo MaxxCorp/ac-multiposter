@@ -11,11 +11,11 @@
         Search,
     } from "@lucide/svelte";
 
-    import { listContacts } from "../../routes/contacts/list.remote";
+    import { listContacts } from "../../../routes/contacts/list.remote";
     import { toast } from "svelte-sonner";
 
-    import Button from "./ui/button/button.svelte";
-    import AsyncButton from "./ui/AsyncButton.svelte";
+    import Button from "../ui/button/button.svelte";
+    import AsyncButton from "../ui/AsyncButton.svelte";
 
     /**
      * A simplified contact form for use in ContactManager (Quick Create / Edit)

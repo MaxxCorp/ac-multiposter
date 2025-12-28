@@ -212,6 +212,9 @@
                     <div
                         class="bg-gray-50 p-4 rounded-lg relative border border-gray-100"
                     >
+                        <p class="font-bold text-gray-900 truncate">
+                            {event.resolvedContact.name}
+                        </p>
                         <div class="flex gap-4 items-start">
                             {#if event.resolvedContact.qrCodeDataUrl}
                                 <div
@@ -228,9 +231,6 @@
                             <div
                                 class="flex flex-col gap-1 text-sm min-w-0 flex-1"
                             >
-                                <p class="font-bold text-gray-900 truncate">
-                                    {event.resolvedContact.name}
-                                </p>
                                 {#if event.resolvedContact.phone}
                                     <a
                                         href="tel:{event.resolvedContact.phone}"
@@ -250,23 +250,22 @@
                                         {event.resolvedContact.email}
                                     </a>
                                 {/if}
-
-                                <a
-                                    href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
-                                        `BEGIN:VCARD
-VERSION:3.0
-FN:${event.resolvedContact.name}
-EMAIL:${event.resolvedContact.email}
-TEL:${event.resolvedContact.phone}
-END:VCARD`,
-                                    )}`}
-                                    download={`${event.resolvedContact.name.replace(/[^a-z0-9]/gi, "_")}.vcf`}
-                                    class="inline-flex items-center gap-1 mt-2 text-xs font-medium text-gray-600 hover:text-gray-900 border px-2 py-1 rounded bg-white hover:bg-gray-50 w-max transition-colors"
-                                >
-                                    <Download size={12} /> Save Contact
-                                </a>
                             </div>
                         </div>
+                        <a
+                            href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                                `BEGIN:VCARD
+                                    VERSION:3.0
+                                    FN:${event.resolvedContact.name}
+                                    EMAIL:${event.resolvedContact.email}
+                                    TEL:${event.resolvedContact.phone}
+                                    END:VCARD`,
+                            )}`}
+                            download={`${event.resolvedContact.name.replace(/[^a-z0-9]/gi, "_")}.vcf`}
+                            class="inline-flex items-center gap-1 mt-2 text-xs font-medium text-gray-600 hover:text-gray-900 border px-2 py-1 rounded bg-white hover:bg-gray-50 w-max transition-colors"
+                        >
+                            <Download size={12} /> Save Contact
+                        </a>
                     </div>
                 </section>
             {/if}

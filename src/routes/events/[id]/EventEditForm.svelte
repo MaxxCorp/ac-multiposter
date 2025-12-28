@@ -10,7 +10,7 @@
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import { goto } from "$app/navigation";
-    import ContactManager from "$lib/components/ContactManager.svelte";
+    import ContactManager from "$lib/components/contacts/ContactManager.svelte";
 
     let {
         event,
@@ -752,6 +752,14 @@
             )}
         />
 
+        <div class="pt-6 border-t">
+            <ContactManager
+                type="event"
+                entityId={event.id}
+                onchange={(ids: string[]) => (selectedContactIds = ids)}
+            />
+        </div>
+
         <div class="flex flex-wrap gap-3 mt-6">
             <AsyncButton
                 type="submit"
@@ -765,12 +773,4 @@
             </Button>
         </div>
     </form>
-
-    <div class="pt-6 border-t">
-        <ContactManager
-            type="event"
-            entityId={event.id}
-            onchange={(ids: string[]) => (selectedContactIds = ids)}
-        />
-    </div>
 </div>

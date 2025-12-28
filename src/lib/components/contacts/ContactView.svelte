@@ -8,7 +8,7 @@
         Pencil,
         Earth,
     } from "@lucide/svelte";
-    import Button from "./ui/button/button.svelte";
+    import Button from "../ui/button/button.svelte";
 
     let { contact, canEdit = false, onedit } = $props();
 
@@ -23,7 +23,7 @@
     <!-- Header with Name and QR -->
     <div class="flex flex-col md:flex-row justify-between items-start gap-6">
         <div class="flex-1">
-            <div class="flex items-center gap-3 mb-2">
+            <div class="flex items-center gap-3 mb-2 flex-wrap">
                 <h1 class="text-3xl font-bold text-gray-900">{fullName}</h1>
                 {#if contact.isPublic}
                     <span
@@ -82,7 +82,9 @@
                     </h3>
                     <ul class="space-y-3">
                         {#each contact.emails as email}
-                            <li class="flex items-center justify-between group">
+                            <li
+                                class="flex items-center justify-between group flex-wrap"
+                            >
                                 <span class="text-gray-700 font-medium"
                                     >{email.value}</span
                                 >
@@ -105,7 +107,9 @@
                     </h3>
                     <ul class="space-y-3">
                         {#each contact.phones as phone}
-                            <li class="flex items-center justify-between group">
+                            <li
+                                class="flex items-center justify-between group flex-wrap"
+                            >
                                 <span class="text-gray-700 font-medium"
                                     >{phone.value}</span
                                 >

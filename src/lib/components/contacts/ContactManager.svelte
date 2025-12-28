@@ -10,20 +10,20 @@
         X,
     } from "@lucide/svelte";
 
-    import Button from "./ui/button/button.svelte";
-    import { listContacts } from "../../routes/contacts/list.remote";
+    import Button from "../ui/button/button.svelte";
+    import { listContacts } from "../../../routes/contacts/list.remote";
     import { type Contact } from "$lib/validations/contacts";
     import {
         addAssociation,
         removeAssociation,
         fetchEntityContacts,
         updateAssociationStatusRemote,
-    } from "../../routes/contacts/associate.remote";
+    } from "../../../routes/contacts/associate.remote";
     import ContactQuickForm from "./ContactQuickForm.svelte";
     import {
         createContactCommand,
         updateContactCommand,
-    } from "../../routes/contacts/contact-commands.remote";
+    } from "../../../routes/contacts/contact-commands.remote";
     import { toast } from "svelte-sonner";
 
     let { type, entityId = null, onchange = null } = $props();
@@ -184,7 +184,7 @@
             <User size={16} />
             Associated Contacts
         </h3>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
             <Button
                 type="button"
                 variant="outline"
@@ -208,7 +208,7 @@
         <div class="flex flex-wrap gap-2">
             {#each associatedContacts as contact}
                 <div
-                    class="flex items-center gap-2 bg-white border rounded-full px-3 py-1 text-sm shadow-sm group"
+                    class="flex items-center gap-2 bg-white border rounded-full px-3 py-1 text-sm shadow-sm group flex-wrap"
                 >
                     <a
                         href="/contacts/{contact.id}"

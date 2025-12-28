@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import { createNewContact } from "./create.remote";
-    import ContactForm from "$lib/components/ContactForm.svelte";
+    import ContactForm from "$lib/components/contacts/ContactForm.svelte";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 
     import { ContactInputSchema } from "$lib/validations/contacts";

@@ -2,8 +2,8 @@
     import { page } from "$app/state";
     import { readContact } from "./read.remote";
     import { updateExistingContact } from "./update.remote";
-    import ContactForm from "$lib/components/ContactForm.svelte";
-    import ContactView from "$lib/components/ContactView.svelte";
+    import ContactForm from "$lib/components/contacts/ContactForm.svelte";
+    import ContactView from "$lib/components/contacts/ContactView.svelte";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
