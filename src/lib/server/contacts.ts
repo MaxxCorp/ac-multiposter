@@ -470,12 +470,14 @@ export async function dissociateContact(type: 'user' | 'location' | 'resource' |
 /**
  * Get all contacts associated with a specific entity
  */
-export async function getEntityContacts(type: 'user' | 'location' | 'resource' | 'event', entityId: string) {
-    const user = getAuthenticatedUser();
+export async function getEntityContacts(type: 'user' | 'location' | 'resource' | 'event', entityId: string, skipAccessControl: boolean = false) {
+    if (!skipAccessControl) {
+        const user = getAuthenticatedUser();
 
-    // Allow users with 'contacts' access OR 'events' access if fetching event contacts
-    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
-        throw new Error('Forbidden');
+        // Allow users with 'contacts' access OR 'events' access if fetching event contacts
+        if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
+            throw new Error('Forbidden');
+        }
     }
 
     const tableName = {

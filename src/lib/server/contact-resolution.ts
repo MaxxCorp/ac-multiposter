@@ -18,7 +18,7 @@ export async function resolveContactForEventId(eventId: string | undefined): Pro
 	}
 
 	// 1. Check for event contacts tagged as "Employee"
-	const eventContacts = await getEntityContacts('event', eventId);
+	const eventContacts = await getEntityContacts('event', eventId, true);
 
 	// Find contacts with "Employee" tag
 	for (const contact of eventContacts) {
@@ -56,7 +56,7 @@ export async function resolveContactForEventId(eventId: string | undefined): Pro
 	for (const er of resources) {
 		const locationId = (er.resource as any)?.locationId;
 		if (locationId) {
-			const locationContacts = await getEntityContacts('location', locationId);
+			const locationContacts = await getEntityContacts('location', locationId, true);
 			if (locationContacts.length > 0) {
 				const contact = locationContacts[0];
 				return {
