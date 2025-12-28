@@ -745,12 +745,6 @@
             </div>
         </div>
 
-        <ContactManager
-            type="event"
-            entityId={event.id}
-            onchange={(ids: string[]) => (selectedContactIds = ids)}
-        />
-
         <input
             {...updateEvent.fields.contactIds.as(
                 "hidden",
@@ -771,4 +765,12 @@
             </Button>
         </div>
     </form>
+
+    <div class="pt-6 border-t">
+        <ContactManager
+            type="event"
+            entityId={event.id}
+            onchange={(ids: string[]) => (selectedContactIds = ids)}
+        />
+    </div>
 </div>

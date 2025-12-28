@@ -69,29 +69,33 @@ export const readEvent = query(z.string(), async (eventId: string): Promise<Even
 	}
 
 	// 7. Resolve contact info
-	const resolvedContact = await resolveContactForEventId(eventId);
 	let resolvedContactWithQr = null;
+	try {
+		const resolvedContact = await resolveContactForEventId(eventId);
 
-	if (resolvedContact) {
-		// Generate vCard
-		const vCard = `BEGIN:VCARD
+		if (resolvedContact) {
+			// Generate vCard
+			const vCard = `BEGIN:VCARD
 VERSION:3.0
 FN:${resolvedContact.name}
 EMAIL:${resolvedContact.email}
 TEL:${resolvedContact.phone}
 END:VCARD`;
 
-		// Generate QR Code
-		try {
-			const qrCodeDataUrl = await QRCode.toDataURL(vCard);
-			resolvedContactWithQr = {
-				...resolvedContact,
-				qrCodeDataUrl,
-			};
-		} catch (err) {
-			console.error('Failed to generate contact QR code:', err);
-			resolvedContactWithQr = { ...resolvedContact };
+			// Generate QR Code
+			try {
+				const qrCodeDataUrl = await QRCode.toDataURL(vCard);
+				resolvedContactWithQr = {
+					...resolvedContact,
+					qrCodeDataUrl,
+				};
+			} catch (err) {
+				console.error('Failed to generate contact QR code:', err);
+				resolvedContactWithQr = { ...resolvedContact };
+			}
 		}
+	} catch (err) {
+		console.error('Failed to resolve contact for event:', err);
 	}
 
 	return {

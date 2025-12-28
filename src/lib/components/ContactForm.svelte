@@ -225,7 +225,11 @@
     }
 </script>
 
-<form {...enhanceAttr} onsubmit={handleSubmit} class="space-y-8">
+<form
+    {...enhanceAttr}
+    onsubmit={remoteFunction ? undefined : handleSubmit}
+    class="space-y-8"
+>
     <div class="space-y-4">
         <h3 class="text-lg font-medium flex items-center gap-2">
             <User size={20} class="text-blue-500" />

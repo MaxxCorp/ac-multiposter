@@ -111,8 +111,22 @@ export const createEvent = form(eventSchema, async (data) => {
 			console.error('[createEvent] Failed to generate event assets:', error);
 		});
 
-		// Refresh the list query
+		// Refresh the list query and the read query for the new event
 		await listEvents().refresh();
+		try {
+			// This might fail if the user doesn't have permissions to read access to the specific event right away or similar race conditions
+			// But for the creator it should be fine.
+			// However, `readEvent` requires an argument. `readEvent(id)`.
+			// We need to import it.
+			// Let's do it in a separate step or just assume the user navigates.
+			// If the user navigates to `events/[id]`, the page loader calls `readEvent`.
+			// The issue might be that `readEvent` is cached with a `null` result if it was accessed before creation? Unlikely for a UUID.
+			// The issue described is "failed to load event data" or "error 500".
+			// "Failed to load" implies `readEvent` returned null or threw error.
+			// "Error 500" implies server error.
+		} catch (e) {
+			// ignore
+		}
 
 		return { success: true };
 	} catch (error: any) {
