@@ -7,7 +7,6 @@
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
-    import { toast } from "svelte-sonner";
 
     import { ContactUpdateSchema } from "$lib/validations/contacts";
 
@@ -16,8 +15,6 @@
     let mode = $state<"view" | "edit">(
         page.url.searchParams.get("edit") === "true" ? "edit" : "view",
     );
-
-    let loading = $derived(updateExistingContact.pending > 0);
 
     // Check if the user is authorized to edit
     function checkCanEdit(contact: any) {
@@ -28,12 +25,7 @@
         );
     }
 
-    async function handleSuccess(result: any) {
-        if (result?.error) {
-            toast.error(result.error.message || "An error occurred");
-            return;
-        }
-        toast.success("Contact updated successfully");
+    function handleSuccess(result: any) {
         itemsPromise = readContact(contactId);
         mode = "view";
     }
@@ -85,8 +77,9 @@
                         </div>
                         <ContactForm
                             remoteFunction={updateExistingContact}
-                            preflightSchema={ContactUpdateSchema}
+                            schema={ContactUpdateSchema}
                             onSuccess={handleSuccess}
+                            contactId={contact.id}
                             initialData={{
                                 contact,
                                 emails: contact.emails,
@@ -95,7 +88,6 @@
                                 tags: contact.tags,
                                 relations: contact.relations,
                             }}
-                            {loading}
                         />
                     {/if}
                 </div>

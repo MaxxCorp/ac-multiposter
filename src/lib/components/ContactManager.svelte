@@ -19,9 +19,11 @@
         fetchEntityContacts,
         updateAssociationStatusRemote,
     } from "../../routes/contacts/associate.remote";
-    import ContactForm from "./ContactForm.svelte";
-    import { createNewContact } from "../../routes/contacts/new/create.remote";
-    import { updateExistingContact } from "../../routes/contacts/[id]/update.remote";
+    import ContactQuickForm from "./ContactQuickForm.svelte";
+    import {
+        createContactCommand,
+        updateContactCommand,
+    } from "../../routes/contacts/contact-commands.remote";
     import { toast } from "svelte-sonner";
 
     let { type, entityId = null, onchange = null } = $props();
@@ -95,7 +97,7 @@
 
     async function handleQuickCreate(data: any) {
         try {
-            const result = await (createNewContact as any)(data);
+            const result = await createContactCommand(data);
             if (result.id) {
                 if (entityId) {
                     // Automatically associate the new contact
@@ -125,7 +127,7 @@
         if (!editingContact) return;
         const targetId = editingContact.id;
         try {
-            const result = await (updateExistingContact as any)({
+            const result = await updateContactCommand({
                 id: targetId,
                 data,
             });
@@ -335,7 +337,7 @@
             </div>
 
             {#if editingContact}
-                <ContactForm
+                <ContactQuickForm
                     initialData={{
                         contact: editingContact,
                         emails: editingContact.emails,
@@ -349,7 +351,7 @@
                     cancelHref="#"
                 />
             {:else}
-                <ContactForm
+                <ContactQuickForm
                     onsubmit={handleQuickCreate}
                     loading={false}
                     cancelHref="#"

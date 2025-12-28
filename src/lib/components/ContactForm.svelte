@@ -10,20 +10,21 @@
         User,
         Search,
     } from "@lucide/svelte";
-
+    import { goto } from "$app/navigation";
     import { listContacts } from "../../routes/contacts/list.remote";
+    import { toast } from "svelte-sonner";
 
     import Button from "./ui/button/button.svelte";
     import AsyncButton from "./ui/AsyncButton.svelte";
 
     interface Props {
         initialData?: any;
-        onsubmit?: (data: any) => Promise<void>;
-        remoteFunction?: any;
-        preflightSchema?: any;
+        remoteFunction: any;
+        schema: any;
         onSuccess?: (result: any) => void;
-        loading?: boolean;
         cancelHref?: string;
+        // For update forms, we need the ID
+        contactId?: string;
     }
 
     let {
@@ -35,81 +36,17 @@
             relations: [],
             tags: [],
         },
-        onsubmit,
         remoteFunction,
-        preflightSchema,
+        schema,
         onSuccess,
-        loading = false,
         cancelHref = "/contacts",
+        contactId,
     }: Props = $props();
 
-    function prepareData() {
-        // Convert null values to undefined to satisfy zod/mini optional schemas
-        const cleanedContact = Object.fromEntries(
-            Object.entries(contact).map(([k, v]) => [
-                k,
-                v === null ? undefined : v,
-            ]),
-        );
-
-        return {
-            contact: cleanedContact,
-            emails: emails.filter((e) => e.value),
-            phones: phones.filter((p) => p.value),
-            addresses: addresses.filter((a) => a.street || a.city),
-            relationIds: relations.map((r) => ({
-                targetContactId: r.targetContactId,
-                relationType: r.relationType,
-            })),
-            tagNames: tagsInput
-                .split(",")
-                .map((t: string) => t.trim())
-                .filter(Boolean),
-        };
-    }
-
-    // Remove separate enhanceAttr and rely on manual submission due to library behavior
-
     // svelte-ignore state_referenced_locally
-    const isNew = !initialData.contact.id;
+    const isNew = !contactId;
 
-    // Determine the path to the display name field issues based on the schema structure
-    // createNewContact uses { contact: { displayName: ... } }
-    // updateExistingContact uses { data: { contact: { displayName: ... } } }
-    const displayNameIssues = $derived.by(() => {
-        if (!remoteFunction) return [];
-        try {
-            // Try both common structures
-            return (
-                remoteFunction.fields?.contact?.displayName?.issues() ||
-                remoteFunction.fields?.data?.contact?.displayName?.issues() ||
-                []
-            );
-        } catch (e) {
-            return [];
-        }
-    });
-
-    function validateField() {
-        if (remoteFunction?.validate) {
-            // Construct payload for validation - heuristic matching handleSubmit
-            const data = prepareData();
-            let payload: any = data;
-            if (!isNew && initialData.contact.id) {
-                payload = { id: initialData.contact.id, data };
-            }
-            remoteFunction.validate(payload);
-        }
-    }
-
-    // svelte-ignore state_referenced_locally
-    let contact: any = $state({
-        isPublic: false,
-        ...initialData.contact,
-        birthday: initialData.contact.birthday
-            ? initialData.contact.birthday.split("T")[0]
-            : "",
-    });
+    // Local state for arrays that aren't directly bound to form fields
     // svelte-ignore state_referenced_locally
     let emails = $state([...(initialData.emails || [])]);
     // svelte-ignore state_referenced_locally
@@ -131,7 +68,7 @@
         contactSearch.length > 1
             ? allContacts.filter(
                   (c) =>
-                      c.id !== contact.id &&
+                      c.id !== contactId &&
                       (c.displayName
                           ?.toLowerCase()
                           .includes(contactSearch.toLowerCase()) ||
@@ -155,81 +92,124 @@
         });
     });
 
-    // Do not pre-fill empty items if they are empty, as requested
-
     function addEmail() {
-        emails.push({ value: "", type: "work", primary: false });
+        emails = [...emails, { value: "", type: "work", primary: false }];
     }
     function removeEmail(index: number) {
-        emails.splice(index, 1);
+        emails = emails.filter((_, i) => i !== index);
     }
 
     function addPhone() {
-        phones.push({ value: "", type: "mobile", primary: false });
+        phones = [...phones, { value: "", type: "mobile", primary: false }];
     }
     function removePhone(index: number) {
-        phones.splice(index, 1);
+        phones = phones.filter((_, i) => i !== index);
     }
 
     function addAddress() {
-        addresses.push({ street: "", city: "", type: "other", primary: false });
+        addresses = [
+            ...addresses,
+            { street: "", city: "", type: "other", primary: false },
+        ];
     }
     function removeAddress(index: number) {
-        addresses.splice(index, 1);
+        addresses = addresses.filter((_, i) => i !== index);
     }
 
     function addRelation(targetContact: any) {
         if (relations.find((r) => r.targetContactId === targetContact.id))
             return;
-        relations.push({
-            targetContactId: targetContact.id,
-            relationType: "cooperates with",
-            targetContact,
-        });
+        relations = [
+            ...relations,
+            {
+                targetContactId: targetContact.id,
+                relationType: "cooperates with",
+                targetContact,
+            },
+        ];
         contactSearch = "";
     }
 
     function removeRelation(index: number) {
-        relations.splice(index, 1);
+        relations = relations.filter((_, i) => i !== index);
     }
 
-    async function handleSubmit(e: Event) {
-        e.preventDefault();
+    // Compute the enhance attributes
+    // For create: schema expects { contact: {...}, emails: [...], ... }
+    // For update: schema expects { id: string, data: { contact: {...}, ... } }
+    const enhanceAttr = $derived.by(() => {
+        if (!remoteFunction || !schema) return {};
 
-        const data = prepareData();
+        return remoteFunction
+            .preflight(schema)
+            .enhance(async ({ submit }: any) => {
+                try {
+                    // Prepare array data that isn't captured by form fields
+                    const arrayData = {
+                        emails: emails.filter((e) => e.value),
+                        phones: phones.filter((p) => p.value),
+                        addresses: addresses.filter((a) => a.street || a.city),
+                        relationIds: relations.map((r) => ({
+                            targetContactId: r.targetContactId,
+                            relationType: r.relationType,
+                        })),
+                        tagNames: tagsInput
+                            .split(",")
+                            .map((t: string) => t.trim())
+                            .filter(Boolean),
+                    };
 
-        // Construct payload
-        let payload: any = data;
-        if (!isNew && initialData.contact.id) {
-            payload = { id: initialData.contact.id, data };
-        }
+                    const result: any = await submit(arrayData);
 
-        // Manual validation if remoteFunction is provided
-        if (remoteFunction?.validate) {
-            try {
-                const isValid = await remoteFunction.validate(payload);
-                if (!isValid) return;
-            } catch (err) {
-                console.error("Validation error:", err);
-                return;
-            }
-        }
+                    if (result?.error) {
+                        toast.error(
+                            result.error.message ||
+                                "Oh no! Something went wrong",
+                        );
+                        return;
+                    }
+                    toast.success("Successfully saved!");
+                    if (onSuccess) {
+                        onSuccess(result);
+                    } else {
+                        goto("/contacts");
+                    }
+                } catch (error: unknown) {
+                    const err = error as { message?: string };
+                    toast.error(err?.message || "Oh no! Something went wrong");
+                }
+            });
+    });
 
-        if (onsubmit) {
-            await onsubmit(data); // Consumer expects raw data
-        } else if (remoteFunction) {
-            try {
-                // Call remote function programmatically
-                const result = await remoteFunction(payload);
-                if (onSuccess) onSuccess(result);
-            } catch (error) {
-                console.error("Submission error:", error);
-            }
+    // Helper to get field bindings - handles both create and update schemas
+    function getContactField(fieldName: string) {
+        // For create: fields.contact.displayName
+        // For update: fields.data.contact.displayName
+        if (isNew) {
+            return remoteFunction?.fields?.contact?.[fieldName];
+        } else {
+            return remoteFunction?.fields?.data?.contact?.[fieldName];
         }
     }
+
+    // Get issues for a contact field
+    const getIssues = (fieldName: string) => {
+        const field = getContactField(fieldName);
+        return field?.issues?.() ?? [];
+    };
+
+    // Initial birthday value
+    const initialBirthday = initialData.contact?.birthday
+        ? initialData.contact.birthday.split("T")[0]
+        : "";
 </script>
 
-<form onsubmit={handleSubmit} class="space-y-8">
+<form {...enhanceAttr} class="space-y-8">
+    <!-- Hidden ID field for updates -->
+    {#if !isNew && contactId}
+        <input {...remoteFunction.fields.id.as("hidden", contactId)} />
+    {/if}
+
     <div class="space-y-4">
         <h3 class="text-lg font-medium flex items-center gap-2">
             <User size={20} class="text-blue-500" />
@@ -242,18 +222,40 @@
                     class="block text-sm font-medium text-gray-700"
                     >Display Name <span class="text-red-500">*</span></label
                 >
-                <input
-                    type="text"
-                    id="displayName"
-                    bind:value={contact.displayName}
-                    onblur={validateField}
-                    class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {displayNameIssues.length >
-                    0
-                        ? 'border-red-500 ring-1 ring-red-500'
-                        : 'border-gray-300'}"
-                    required
-                />
-                {#each displayNameIssues as issue}
+                {#if isNew}
+                    <input
+                        {...remoteFunction.fields.contact.displayName.as(
+                            "text",
+                        )}
+                        id="displayName"
+                        value={remoteFunction.fields.contact.displayName.value() ??
+                            initialData.contact?.displayName ??
+                            ""}
+                        class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {getIssues(
+                            'displayName',
+                        ).length > 0
+                            ? 'border-red-500 ring-1 ring-red-500'
+                            : 'border-gray-300'}"
+                        onblur={() => remoteFunction.validate()}
+                    />
+                {:else}
+                    <input
+                        {...remoteFunction.fields.data.contact.displayName.as(
+                            "text",
+                        )}
+                        id="displayName"
+                        value={remoteFunction.fields.data.contact.displayName.value() ??
+                            initialData.contact?.displayName ??
+                            ""}
+                        class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {getIssues(
+                            'displayName',
+                        ).length > 0
+                            ? 'border-red-500 ring-1 ring-red-500'
+                            : 'border-gray-300'}"
+                        onblur={() => remoteFunction.validate()}
+                    />
+                {/if}
+                {#each getIssues("displayName") as issue}
                     <p class="mt-1 text-xs text-red-600">{issue.message}</p>
                 {/each}
             </div>
@@ -263,12 +265,27 @@
                     class="block text-sm font-medium text-gray-700"
                     >Given Name</label
                 >
-                <input
-                    type="text"
-                    id="givenName"
-                    bind:value={contact.givenName}
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                {#if isNew}
+                    <input
+                        {...remoteFunction.fields.contact.givenName.as("text")}
+                        id="givenName"
+                        value={remoteFunction.fields.contact.givenName.value() ??
+                            initialData.contact?.givenName ??
+                            ""}
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                {:else}
+                    <input
+                        {...remoteFunction.fields.data.contact.givenName.as(
+                            "text",
+                        )}
+                        id="givenName"
+                        value={remoteFunction.fields.data.contact.givenName.value() ??
+                            initialData.contact?.givenName ??
+                            ""}
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                {/if}
             </div>
             <div>
                 <label
@@ -276,12 +293,27 @@
                     class="block text-sm font-medium text-gray-700"
                     >Family Name</label
                 >
-                <input
-                    type="text"
-                    id="familyName"
-                    bind:value={contact.familyName}
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                {#if isNew}
+                    <input
+                        {...remoteFunction.fields.contact.familyName.as("text")}
+                        id="familyName"
+                        value={remoteFunction.fields.contact.familyName.value() ??
+                            initialData.contact?.familyName ??
+                            ""}
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                {:else}
+                    <input
+                        {...remoteFunction.fields.data.contact.familyName.as(
+                            "text",
+                        )}
+                        id="familyName"
+                        value={remoteFunction.fields.data.contact.familyName.value() ??
+                            initialData.contact?.familyName ??
+                            ""}
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                {/if}
             </div>
             <div>
                 <label
@@ -289,33 +321,76 @@
                     class="block text-sm font-medium text-gray-700"
                     >Birthday</label
                 >
-                <input
-                    type="date"
-                    id="birthday"
-                    bind:value={contact.birthday}
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                {#if isNew}
+                    <input
+                        {...remoteFunction.fields.contact.birthday.as("date")}
+                        id="birthday"
+                        value={remoteFunction.fields.contact.birthday.value() ??
+                            initialBirthday}
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                {:else}
+                    <input
+                        {...remoteFunction.fields.data.contact.birthday.as(
+                            "date",
+                        )}
+                        id="birthday"
+                        value={remoteFunction.fields.data.contact.birthday.value() ??
+                            initialBirthday}
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                {/if}
             </div>
         </div>
         <div>
             <label for="notes" class="block text-sm font-medium text-gray-700"
                 >Notes</label
             >
-            <textarea
-                id="notes"
-                bind:value={contact.notes}
-                rows="3"
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            ></textarea>
+            {#if isNew}
+                <textarea
+                    {...remoteFunction.fields.contact.notes.as("text")}
+                    id="notes"
+                    value={remoteFunction.fields.contact.notes.value() ??
+                        initialData.contact?.notes ??
+                        ""}
+                    rows="3"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                ></textarea>
+            {:else}
+                <textarea
+                    {...remoteFunction.fields.data.contact.notes.as("text")}
+                    id="notes"
+                    value={remoteFunction.fields.data.contact.notes.value() ??
+                        initialData.contact?.notes ??
+                        ""}
+                    rows="3"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                ></textarea>
+            {/if}
         </div>
 
         <div class="flex items-center gap-2 pt-2">
-            <input
-                type="checkbox"
-                id="isPublic"
-                bind:checked={contact.isPublic}
-                class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-            />
+            {#if isNew}
+                <input
+                    {...remoteFunction.fields.contact.isPublic.as("checkbox")}
+                    id="isPublic"
+                    checked={remoteFunction.fields.contact.isPublic.value() ??
+                        initialData.contact?.isPublic ??
+                        false}
+                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+            {:else}
+                <input
+                    {...remoteFunction.fields.data.contact.isPublic.as(
+                        "checkbox",
+                    )}
+                    id="isPublic"
+                    checked={remoteFunction.fields.data.contact.isPublic.value() ??
+                        initialData.contact?.isPublic ??
+                        false}
+                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+            {/if}
             <label for="isPublic" class="text-sm font-medium text-gray-700">
                 Public Profile (Allow unauthenticated viewing)
             </label>
@@ -666,7 +741,11 @@
         <Button href={cancelHref} variant="secondary" type="button"
             >Cancel</Button
         >
-        <AsyncButton type="submit" {loading} loadingLabel="Saving...">
+        <AsyncButton
+            type="submit"
+            loading={remoteFunction.pending}
+            loadingLabel="Saving..."
+        >
             Save Contact
         </AsyncButton>
     </div>

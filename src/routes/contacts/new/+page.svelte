@@ -3,18 +3,10 @@
     import { createNewContact } from "./create.remote";
     import ContactForm from "$lib/components/ContactForm.svelte";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
-    import { toast } from "svelte-sonner";
 
     import { ContactInputSchema } from "$lib/validations/contacts";
 
-    let loading = $derived(createNewContact.pending > 0);
-
-    async function handleSuccess(result: any) {
-        if (result?.error) {
-            toast.error(result.error.message || "Oh no! Something went wrong");
-            return;
-        }
-        toast.success("Contact created successfully");
+    function handleSuccess(result: any) {
         if (result?.id) {
             goto(`/contacts/${result.id}`);
         } else {
@@ -30,9 +22,8 @@
             <h1 class="text-2xl font-bold mb-6">Create New Contact</h1>
             <ContactForm
                 remoteFunction={createNewContact}
-                preflightSchema={ContactInputSchema}
+                schema={ContactInputSchema}
                 onSuccess={handleSuccess}
-                {loading}
             />
         </div>
     </div>
