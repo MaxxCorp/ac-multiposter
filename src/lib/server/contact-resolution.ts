@@ -8,12 +8,11 @@ import type { ExternalEvent } from './sync/types';
  * 1. First event contact tagged as "Employee"
  * 2. First location contact (if no Employee-tagged event contact exists)
  */
-export async function resolveEventContact(event: ExternalEvent): Promise<{
+export async function resolveContactForEventId(eventId: string | undefined): Promise<{
 	name: string;
 	email: string;
 	phone: string;
 } | null> {
-	const eventId = event.metadata?.eventId;
 	if (!eventId) {
 		return null;
 	}
@@ -35,9 +34,9 @@ export async function resolveEventContact(event: ExternalEvent): Promise<{
 			return {
 				name: contact.displayName || `${contact.givenName || ''} ${contact.familyName || ''}`.trim(),
 				email: (contact as any).emails?.find((e: any) => e.primary)?.value ||
-				       (contact as any).emails?.[0]?.value || '',
+					(contact as any).emails?.[0]?.value || '',
 				phone: (contact as any).phones?.find((p: any) => p.primary)?.value ||
-				       (contact as any).phones?.[0]?.value || ''
+					(contact as any).phones?.[0]?.value || ''
 			};
 		}
 	}
@@ -63,9 +62,9 @@ export async function resolveEventContact(event: ExternalEvent): Promise<{
 				return {
 					name: contact.displayName || `${contact.givenName || ''} ${contact.familyName || ''}`.trim(),
 					email: (contact as any).emails?.find((e: any) => e.primary)?.value ||
-					       (contact as any).emails?.[0]?.value || '',
+						(contact as any).emails?.[0]?.value || '',
 					phone: (contact as any).phones?.find((p: any) => p.primary)?.value ||
-					       (contact as any).phones?.[0]?.value || ''
+						(contact as any).phones?.[0]?.value || ''
 				};
 			}
 		}
@@ -73,4 +72,8 @@ export async function resolveEventContact(event: ExternalEvent): Promise<{
 
 	// 3. No contact found
 	return null;
+}
+
+export async function resolveEventContact(event: ExternalEvent) {
+	return resolveContactForEventId(event.metadata?.eventId);
 }

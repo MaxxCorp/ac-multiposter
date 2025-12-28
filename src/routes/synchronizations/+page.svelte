@@ -292,21 +292,25 @@
 									onchange={() => toggleSelection(config.id)}
 									class="mt-1 w-4 h-4 text-blue-600"
 								/>
-								<div class="flex-1">
+								<div class="flex-1 w-full min-w-0">
 									<div class="flex items-start gap-3 mb-2">
-										<div class="flex-1">
+										<div class="flex-1 min-w-0">
 											<h2 class="text-xl font-semibold">
 												<a
 													href={`/synchronizations/${config.id}`}
 													class="hover:underline text-blue-600 flex items-center gap-2"
 												>
-													<Icon class="h-5 w-5" />
+													<Icon
+														class="h-5 w-5 flex-shrink-0"
+													/>
 													{getProviderLabel(
 														config.providerType,
 													)}
 												</a>
 											</h2>
-											<p class="text-sm text-gray-500">
+											<p
+												class="text-sm text-gray-500 break-all"
+											>
 												{config.providerId}
 											</p>
 										</div>

@@ -9,6 +9,8 @@
         Info,
         Download,
         Pencil,
+        Phone,
+        Mail,
     } from "@lucide/svelte";
 
     import Button from "../ui/button/button.svelte";
@@ -83,8 +85,8 @@
 <div class="space-y-8">
     <!-- Header with Title and QR -->
     <div class="flex flex-col md:flex-row justify-between items-start gap-6">
-        <div class="flex-1 space-y-4">
-            <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2 flex-wrap">
                 <h1 class="text-3xl font-bold text-gray-900">
                     {event.summary}
                 </h1>
@@ -103,48 +105,12 @@
                     </span>
                 {/if}
             </div>
-
-            <div class="flex flex-col gap-2 text-gray-600">
-                <div class="flex items-center gap-2">
-                    <Calendar size={18} class="text-blue-500" />
-                    <span class="font-medium">{startDisplay}</span>
-                    {#if isMultiDay && endDisplay}
-                        - <span class="font-medium">{endDisplay}</span>
-                    {:else if event.endDateTime}
-                        - <span class="font-medium"
-                            >{formatTime(event.endDateTime)}</span
-                        >
-                    {/if}
-                </div>
-                {#if event.location}
-                    <div class="flex items-center gap-2">
-                        <MapPin size={18} class="text-red-500" />
-                        <span>{event.location}</span>
-                    </div>
-                {/if}
-                {#if event.categoryBerlinDotDe}
-                    <div class="flex items-center gap-2">
-                        <TagIcon size={18} class="text-purple-500" />
-                        <span>{event.categoryBerlinDotDe}</span>
-                    </div>
-                {/if}
-                {#if event.ticketPrice}
-                    <div class="flex items-center gap-2">
-                        <Euro size={18} class="text-green-600" />
-                        <span>{event.ticketPrice}</span>
-                    </div>
-                {/if}
-                {#if acceptedCount}
-                    <div class="flex items-center gap-2">
-                        <Users size={18} class="text-indigo-500" />
-                        <span>{occupancyDisplay()}</span>
-                    </div>
-                {/if}
-            </div>
         </div>
 
         {#if event.qrCodePath}
-            <div class="bg-white p-2 border rounded-xl shadow-sm flex-shrink-0">
+            <div
+                class="bg-white p-2 border rounded-xl shadow-sm flex-shrink-0 flex flex-col items-center"
+            >
                 <img
                     src={event.qrCodePath}
                     alt="Scan to view event"
@@ -159,24 +125,171 @@
         {/if}
     </div>
 
-    <!-- Description -->
-    {#if event.description}
-        <div class="prose max-w-none text-gray-700 space-y-2">
-            <h3
-                class="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2"
-            >
-                <Info size={16} /> About this event
-            </h3>
-            <div class="whitespace-pre-wrap">{event.description}</div>
-        </div>
-    {/if}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Event Details Column -->
+        <div class="space-y-6">
+            <section>
+                <h3
+                    class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2"
+                >
+                    <Info size={16} /> Key Details
+                </h3>
+                <ul class="space-y-3">
+                    <li class="flex items-center gap-3 text-gray-700">
+                        <Calendar
+                            size={18}
+                            class="text-blue-500 flex-shrink-0"
+                        />
+                        <div>
+                            <span class="font-medium block">{startDisplay}</span
+                            >
+                            {#if isMultiDay && endDisplay}
+                                <span class="text-sm text-gray-500 block"
+                                    >to {endDisplay}</span
+                                >
+                            {:else if event.endDateTime}
+                                <span class="text-sm text-gray-500 block"
+                                    >until {formatTime(event.endDateTime)}</span
+                                >
+                            {/if}
+                        </div>
+                    </li>
+                    {#if event.location}
+                        <li class="flex items-center gap-3 text-gray-700">
+                            <MapPin
+                                size={18}
+                                class="text-red-500 flex-shrink-0"
+                            />
+                            <a
+                                href="https://www.google.com/maps/search/?api=1&query={encodeURIComponent(
+                                    event.location,
+                                )}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="hover:underline text-blue-600 break-all"
+                            >
+                                {event.location}
+                            </a>
+                        </li>
+                    {/if}
+                    {#if event.categoryBerlinDotDe}
+                        <li class="flex items-center gap-3 text-gray-700">
+                            <TagIcon
+                                size={18}
+                                class="text-purple-500 flex-shrink-0"
+                            />
+                            <span>{event.categoryBerlinDotDe}</span>
+                        </li>
+                    {/if}
+                    {#if event.ticketPrice}
+                        <li class="flex items-center gap-3 text-gray-700">
+                            <Euro
+                                size={18}
+                                class="text-green-600 flex-shrink-0"
+                            />
+                            <span>{event.ticketPrice}</span>
+                        </li>
+                    {/if}
+                    {#if acceptedCount}
+                        <li class="flex items-center gap-3 text-gray-700">
+                            <Users
+                                size={18}
+                                class="text-indigo-500 flex-shrink-0"
+                            />
+                            <span>{occupancyDisplay()}</span>
+                        </li>
+                    {/if}
+                </ul>
+            </section>
 
-    <!-- Resources (only if auth user can see them? Or public? Schema implies public views get stripped of some things usually, but for now we show what we have) -->
-    <!-- Ideally we might hide internal resources from public view, but let's assume if it's public, basic info is fine. 
-         Actually, the Contact logic stripped relations. Event resources might be internal logic (like "Room 101").
-         Let's skip displaying resources in the public view for now to be safe, or just show them if they seem safe.
-         Given the user wants a "Public View", usually it's "What, When, Where".
-    -->
+            {#if event.resolvedContact}
+                <section>
+                    <h3
+                        class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2"
+                    >
+                        <Users size={16} /> Contact
+                    </h3>
+                    <div
+                        class="bg-gray-50 p-4 rounded-lg relative border border-gray-100"
+                    >
+                        <div class="flex gap-4 items-start">
+                            {#if event.resolvedContact.qrCodeDataUrl}
+                                <div
+                                    class="bg-white p-1 rounded border shadow-sm flex-shrink-0"
+                                >
+                                    <img
+                                        src={event.resolvedContact
+                                            .qrCodeDataUrl}
+                                        alt="Contact QR"
+                                        class="w-16 h-16"
+                                    />
+                                </div>
+                            {/if}
+                            <div
+                                class="flex flex-col gap-1 text-sm min-w-0 flex-1"
+                            >
+                                <p class="font-bold text-gray-900 truncate">
+                                    {event.resolvedContact.name}
+                                </p>
+                                {#if event.resolvedContact.phone}
+                                    <a
+                                        href="tel:{event.resolvedContact.phone}"
+                                        class="flex items-center gap-2 text-blue-600 hover:underline truncate"
+                                    >
+                                        <Phone size={14} />
+                                        {event.resolvedContact.phone}
+                                    </a>
+                                {/if}
+                                {#if event.resolvedContact.email}
+                                    <a
+                                        href="mailto:{event.resolvedContact
+                                            .email}"
+                                        class="flex items-center gap-2 text-blue-600 hover:underline truncate"
+                                    >
+                                        <Mail size={14} />
+                                        {event.resolvedContact.email}
+                                    </a>
+                                {/if}
+
+                                <a
+                                    href={`data:text/vcard;charset=utf-8,${encodeURIComponent(
+                                        `BEGIN:VCARD
+VERSION:3.0
+FN:${event.resolvedContact.name}
+EMAIL:${event.resolvedContact.email}
+TEL:${event.resolvedContact.phone}
+END:VCARD`,
+                                    )}`}
+                                    download={`${event.resolvedContact.name.replace(/[^a-z0-9]/gi, "_")}.vcf`}
+                                    class="inline-flex items-center gap-1 mt-2 text-xs font-medium text-gray-600 hover:text-gray-900 border px-2 py-1 rounded bg-white hover:bg-gray-50 w-max transition-colors"
+                                >
+                                    <Download size={12} /> Save Contact
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            {/if}
+        </div>
+
+        <!-- Description Column -->
+        <div class="space-y-6">
+            {#if event.description}
+                <section>
+                    <h3
+                        class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2"
+                    >
+                        <Info size={16} /> About this event
+                    </h3>
+                    <div
+                        class="prose max-w-none text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-100"
+                    >
+                        {event.description}
+                    </div>
+                </section>
+            {/if}
+        </div>
+    </div>
 
     <!-- Actions -->
     <div class="flex flex-wrap gap-4 pt-8 border-t">

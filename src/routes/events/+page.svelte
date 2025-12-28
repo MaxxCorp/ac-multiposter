@@ -237,13 +237,13 @@
 											toggleSelection(event.id)}
 										class="mt-1 w-4 h-4 text-blue-600"
 									/>
-									<div class="flex-1">
+									<div class="flex-1 w-full min-w-0">
 										<div
 											class="flex items-start gap-3 mb-2"
 										>
-											<div class="flex-1">
+											<div class="flex-1 min-w-0">
 												<h2
-													class="text-xl font-semibold"
+													class="text-xl font-semibold break-words"
 												>
 													<a
 														href={`/events/${event.id}`}
@@ -271,14 +271,14 @@
 											</div>
 											{#if event.location}
 												<div
-													class="flex items-center gap-2"
+													class="flex items-center gap-2 min-w-0"
 												>
 													<MapPin
 														size={14}
-														class="text-red-500"
+														class="text-red-500 shrink-0"
 													/>
 													<span
-														class="text-xs text-gray-400 truncate"
+														class="text-xs text-gray-400 truncate min-w-0"
 														>{event.location}</span
 													>
 												</div>

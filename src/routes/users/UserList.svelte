@@ -97,10 +97,12 @@
                                 <UserIcon class="w-6 h-6 text-gray-500" />
                             </div>
                         {/if}
-                        <div class="flex-1">
+                        <div class="flex-1 w-full min-w-0">
                             <div class="flex items-start gap-3 mb-2">
-                                <div class="flex-1">
-                                    <h2 class="text-xl font-semibold">
+                                <div class="flex-1 min-w-0">
+                                    <h2
+                                        class="text-xl font-semibold break-words"
+                                    >
                                         <a
                                             href={`/users/${user.id}`}
                                             class="hover:underline text-blue-600"
@@ -108,7 +110,7 @@
                                             {user.name}
                                         </a>
                                     </h2>
-                                    <p class="text-gray-600">
+                                    <p class="text-gray-600 break-all">
                                         {user.email}
                                     </p>
                                 </div>

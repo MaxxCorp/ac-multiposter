@@ -6,6 +6,9 @@ import { eq } from 'drizzle-orm';
 import type { Event } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 
+import { resolveContactForEventId } from '$lib/server/contact-resolution';
+import QRCode from 'qrcode';
+
 /**
  * Query: Read a single event by ID
  */
@@ -65,11 +68,38 @@ export const readEvent = query(z.string(), async (eventId: string): Promise<Even
 		}
 	}
 
+	// 7. Resolve contact info
+	const resolvedContact = await resolveContactForEventId(eventId);
+	let resolvedContactWithQr = null;
+
+	if (resolvedContact) {
+		// Generate vCard
+		const vCard = `BEGIN:VCARD
+VERSION:3.0
+FN:${resolvedContact.name}
+EMAIL:${resolvedContact.email}
+TEL:${resolvedContact.phone}
+END:VCARD`;
+
+		// Generate QR Code
+		try {
+			const qrCodeDataUrl = await QRCode.toDataURL(vCard);
+			resolvedContactWithQr = {
+				...resolvedContact,
+				qrCodeDataUrl,
+			};
+		} catch (err) {
+			console.error('Failed to generate contact QR code:', err);
+			resolvedContactWithQr = { ...resolvedContact };
+		}
+	}
+
 	return {
 		...requestEvent,
-		resourceIds: resources.map(r => r.resourceId),
-		contactIds: contacts.map(c => c.contactId),
+		resourceIds: resources.map((r) => r.resourceId),
+		contactIds: contacts.map((c) => c.contactId),
 		participationStatuses,
-		maxOccupancy
+		maxOccupancy,
+		resolvedContact: resolvedContactWithQr,
 	} as Event;
 });

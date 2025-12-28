@@ -13,8 +13,8 @@
 
 	const dataPromise = Promise.all([
 		readEvent(eventId),
-		listResourcesWithHierarchy(),
-		listLocations(),
+		page.data.user ? listResourcesWithHierarchy() : Promise.resolve([]),
+		page.data.user ? listLocations() : Promise.resolve([]),
 	]);
 
 	let mode = $state<"view" | "edit">(

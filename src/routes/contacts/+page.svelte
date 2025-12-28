@@ -97,15 +97,17 @@
                                     onchange={() => toggleSelection(contact.id)}
                                     class="mt-1 w-4 h-4 text-blue-600 rounded"
                                 />
-                                <div class="flex-1">
-                                    <div class="flex items-center gap-3 mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-start gap-3 mb-2">
                                         <div
-                                            class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"
+                                            class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"
                                         >
                                             <UserIcon size={20} />
                                         </div>
-                                        <div>
-                                            <h2 class="text-xl font-semibold">
+                                        <div class="min-w-0 flex-1">
+                                            <h2
+                                                class="text-xl font-semibold break-words"
+                                            >
                                                 <a
                                                     href={`/contacts/${contact.id}`}
                                                     class="hover:underline text-blue-600"

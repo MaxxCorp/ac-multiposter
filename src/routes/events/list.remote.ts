@@ -19,6 +19,12 @@ export type Event = Omit<DbEvent, 'createdAt' | 'updatedAt' | 'startDateTime' | 
 	contactIds?: string[];
 	participationStatuses?: Record<string, string>;
 	maxOccupancy?: number | null;
+	resolvedContact?: {
+		name: string;
+		email: string;
+		phone: string;
+		qrCodeDataUrl?: string;
+	} | null;
 };
 
 /**

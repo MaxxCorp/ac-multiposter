@@ -215,7 +215,9 @@
 </script>
 
 <div class="bg-white shadow rounded-lg p-6 space-y-4">
-    <div class="flex justify-between items-start mb-6">
+    <div
+        class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6"
+    >
         <div>
             <h1 class="text-3xl font-bold mb-2">{event.summary}</h1>
             <p class="text-sm text-gray-500">
@@ -225,7 +227,7 @@
                 {/if}
             </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
             <AsyncButton
                 type="button"
                 loadingLabel="Deleting..."
@@ -756,7 +758,7 @@
             )}
         />
 
-        <div class="flex gap-3 mt-6">
+        <div class="flex flex-wrap gap-3 mt-6">
             <AsyncButton
                 type="submit"
                 loadingLabel="Saving..."
