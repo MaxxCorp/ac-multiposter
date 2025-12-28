@@ -1,10 +1,19 @@
 <script lang="ts">
 	import { CircleCheck, Clock, CircleAlert, RefreshCw } from "@lucide/svelte";
 
-	export let enabled: boolean;
-	export let lastSyncAt: Date | null = null;
-	export let syncing: boolean = false;
-	export let size: "sm" | "md" | "lg" = "md";
+	interface Props {
+		enabled: boolean;
+		lastSyncAt?: Date | null;
+		syncing?: boolean;
+		size?: "sm" | "md" | "lg";
+	}
+
+	let {
+		enabled,
+		lastSyncAt = null,
+		syncing = false,
+		size = "md",
+	}: Props = $props();
 
 	const sizeClasses = {
 		sm: "h-4 w-4",
@@ -12,9 +21,9 @@
 		lg: "h-6 w-6",
 	};
 
-	$: iconClass = sizeClasses[size];
+	const iconClass = $derived(sizeClasses[size]);
 
-	$: statusInfo = (() => {
+	const statusInfo = $derived.by(() => {
 		if (syncing) {
 			return {
 				icon: RefreshCw,
@@ -60,16 +69,18 @@
 			label: "Up to date",
 			animate: false,
 		};
-	})();
+	});
 </script>
 
 <div class="inline-flex items-center gap-2">
-	<svelte:component
-		this={statusInfo.icon}
-		class="{iconClass} {statusInfo.color} {statusInfo.animate
-			? 'animate-spin'
-			: ''}"
-	/>
+	{#if statusInfo.icon}
+		{@const Icon = statusInfo.icon}
+		<Icon
+			class="{iconClass} {statusInfo.color} {statusInfo.animate
+				? 'animate-spin'
+				: ''}"
+		/>
+	{/if}
 	<span class="text-sm {statusInfo.color}">
 		{statusInfo.label}
 	</span>

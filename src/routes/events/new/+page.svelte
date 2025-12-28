@@ -147,21 +147,26 @@
 	<h1 class="text-3xl font-bold mb-6">Create New Event</h1>
 
 	<form
-		{...createEvent.enhance(async ({ submit }) => {
-			try {
-				const result: any = await submit();
-				if (result?.error) {
+		{...createEvent
+			.preflight(createEventSchema)
+			.enhance(async ({ submit }) => {
+				try {
+					const result: any = await submit();
+					if (result?.error) {
+						toast.error(
+							result.error.message ||
+								"Oh no! Something went wrong",
+						);
+						return;
+					}
+					toast.success("Successfully Saved!");
+					await goto("/events");
+				} catch (error: any) {
 					toast.error(
-						result.error.message || "Oh no! Something went wrong",
+						error?.message || "Oh no! Something went wrong",
 					);
-					return;
 				}
-				toast.success("Successfully Saved!");
-				await goto("/events");
-			} catch (error: any) {
-				toast.error(error?.message || "Oh no! Something went wrong");
-			}
-		})}
+			})}
 		class="space-y-4"
 	>
 		{#if computedStartDateTime}
