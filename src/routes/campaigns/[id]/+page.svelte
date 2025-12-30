@@ -15,6 +15,7 @@
 		<CampaignForm
 			remoteFunc={updateCampaign}
 			validationSchema={updateCampaignSchema}
+			isUpdating={true}
 			{campaign}
 		/>
 	{:else}

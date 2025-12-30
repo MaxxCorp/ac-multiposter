@@ -15,14 +15,14 @@
     let {
         remoteFunc,
         validationSchema,
+        isUpdating = false,
         campaign = null,
     }: {
         remoteFunc: typeof updateCampaign | typeof createCampaign;
         validationSchema: any;
+        isUpdating?: boolean;
         campaign?: Campaign | null;
     } = $props();
-
-    const isEditing = !!campaign;
 
     async function handleSubmit(submit: () => Promise<any>) {
         try {
@@ -87,7 +87,7 @@
         </div>
 
         <h2 class="text-xl font-semibold mb-4">
-            {isEditing ? "Edit Campaign" : "Create Campaign"}
+            {isUpdating ? "Edit Campaign" : "Create Campaign"}
         </h2>
 
         <form
@@ -96,7 +96,7 @@
                 .enhance(async ({ submit }) => handleSubmit(submit))}
             class="space-y-4"
         >
-            {#if isEditing && campaign}
+            {#if isUpdating && campaign}
                 <input
                     {...(remoteFunc as typeof updateCampaign).fields.id.as(
                         "hidden",
@@ -116,6 +116,7 @@
                         ? 'border-red-500'
                         : 'border-gray-300'}"
                     placeholder="Enter campaign name"
+                    value={isUpdating ? campaign?.name : ""}
                     onblur={() => remoteFunc.validate()}
                 />
                 {#each remoteFunc.fields.name.issues() ?? [] as issue}
@@ -137,6 +138,9 @@
                         ? 'border-red-500'
                         : 'border-gray-300'}"
                     placeholder={"{}"}
+                    value={isUpdating
+                        ? JSON.stringify(campaign?.content)
+                        : "{}"}
                     onblur={() => remoteFunc.validate()}
                 ></textarea>
                 {#each remoteFunc.fields.content.issues() ?? [] as issue}
@@ -155,7 +159,7 @@
                     loadingLabel="Saving..."
                     loading={remoteFunc.pending}
                 >
-                    {isEditing ? "Save Changes" : "Create Campaign"}
+                    {isUpdating ? "Save Changes" : "Create Campaign"}
                 </AsyncButton>
                 <Button variant="secondary" href="/campaigns" size="default">
                     Cancel
@@ -164,4 +168,3 @@
         </form>
     </div>
 </div>
-lk
