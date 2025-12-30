@@ -13,7 +13,7 @@
     } from "$lib/validations/resource";
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
-    import ContactManager from "$lib/components/ContactManager.svelte";
+    import ContactManager from "$lib/components/contacts/ContactManager.svelte";
 
     // Extended Resource type that includes parent relationships from read.remote
     type ResourceWithParents = Resource & { parentResourceIds?: string[] };

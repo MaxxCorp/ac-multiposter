@@ -12,7 +12,7 @@
     import { updateLocationSchema } from "$lib/validations/location";
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
-    import ContactManager from "$lib/components/ContactManager.svelte";
+    import ContactManager from "$lib/components/contacts/ContactManager.svelte";
 </script>
 
 <div class="container mx-auto px-4 py-8">

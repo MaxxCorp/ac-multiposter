@@ -9,7 +9,7 @@
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import { FEATURES } from "$lib/features";
     import { goto } from "$app/navigation";
-    import ContactManager from "$lib/components/ContactManager.svelte";
+    import ContactManager from "$lib/components/contacts/ContactManager.svelte";
 
     let { user }: { user: User } = $props();
 

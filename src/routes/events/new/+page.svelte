@@ -11,7 +11,7 @@
 	import { Button } from "$lib/components/ui/button";
 	import { toast } from "svelte-sonner";
 	import { createEventSchema } from "$lib/validations/event";
-	import ContactManager from "$lib/components/ContactManager.svelte";
+	import ContactManager from "$lib/components/contacts/ContactManager.svelte";
 
 	// Form state
 	let isAllDay = $state(false);
