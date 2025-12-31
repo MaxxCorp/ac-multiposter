@@ -85,8 +85,13 @@
                             <li
                                 class="flex items-center justify-between group flex-wrap"
                             >
-                                <span class="text-gray-700 font-medium"
-                                    >{email.value}</span
+                                <span class="text-gray-700"
+                                    ><a
+                                        href="mailto:{email.value}"
+                                        class="flex items-center gap-2 text-blue-600 hover:underline break-all text-pretty"
+                                    >
+                                        {email.value}
+                                    </a></span
                                 >
                                 <span
                                     class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded capitalize"
@@ -110,8 +115,13 @@
                             <li
                                 class="flex items-center justify-between group flex-wrap"
                             >
-                                <span class="text-gray-700 font-medium"
-                                    >{phone.value}</span
+                                <span class="text-gray-700"
+                                    ><a
+                                        href="tel:{phone.value}"
+                                        class="flex items-center gap-2 text-blue-600 hover:underline break-all text-pretty"
+                                    >
+                                        {phone.value}
+                                    </a></span
                                 >
                                 <span
                                     class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded capitalize"

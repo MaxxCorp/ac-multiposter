@@ -243,7 +243,7 @@
 										>
 											<div class="flex-1 min-w-0">
 												<h2
-													class="text-xl font-semibold break-words"
+													class="text-xl font-semibold break-all text-pretty"
 												>
 													<a
 														href={`/events/${event.id}`}
@@ -263,7 +263,7 @@
 													class="text-blue-500"
 												/>
 												<span
-													class="text-xs text-gray-500"
+													class="text-xs text-gray-500 break-all text-pretty"
 													>{formatEventTime(
 														event,
 													)}</span
@@ -278,7 +278,7 @@
 														class="text-red-500 shrink-0"
 													/>
 													<span
-														class="text-xs text-gray-400 truncate min-w-0"
+														class="text-xs text-gray-400 break-all text-pretty"
 														>{event.location}</span
 													>
 												</div>

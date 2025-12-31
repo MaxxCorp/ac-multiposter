@@ -100,7 +100,7 @@
 										>
 											<div class="flex-1 min-w-0">
 												<h2
-													class="text-xl font-semibold break-words"
+													class="text-xl font-semibold break-all text-pretty"
 												>
 													<a
 														href={`/campaigns/${campaign.id}`}
@@ -110,14 +110,6 @@
 													</a>
 												</h2>
 											</div>
-										</div>
-										<div class="mt-2">
-											<pre
-												class="bg-gray-50 p-4 rounded text-sm overflow-auto">{JSON.stringify(
-													campaign.content,
-													null,
-													2,
-												)}</pre>
 										</div>
 										<div class="mt-3">
 											<p
