@@ -11,7 +11,9 @@
         Pencil,
         Phone,
         Mail,
+        Share2,
     } from "@lucide/svelte";
+    import { onMount } from "svelte";
 
     import Button from "../ui/button/button.svelte";
     import type { Event } from "../../../routes/events/list.remote";
@@ -80,6 +82,25 @@
         }
         return text;
     });
+
+    let canShare = $state(false);
+    onMount(() => {
+        canShare = !!navigator.share;
+    });
+
+    async function handleShare() {
+        try {
+            await navigator.share({
+                title: event.summary,
+                text: event.description || `Event: ${event.summary}`,
+                url: window.location.href,
+            });
+        } catch (err) {
+            if (err instanceof Error && err.name !== "AbortError") {
+                console.error("Error sharing:", err);
+            }
+        }
+    }
 </script>
 
 <div class="space-y-8">
@@ -300,6 +321,16 @@
                 variant="outline"
             >
                 <Download size={18} /> Add to Calendar (.ics)
+            </Button>
+        {/if}
+
+        {#if canShare}
+            <Button
+                variant="outline"
+                class="flex items-center gap-2"
+                onclick={handleShare}
+            >
+                <Share2 size={18} /> Share
             </Button>
         {/if}
 

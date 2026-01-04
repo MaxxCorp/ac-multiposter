@@ -7,8 +7,11 @@
         Download,
         Pencil,
         Earth,
+        Share2,
     } from "@lucide/svelte";
     import Button from "../ui/button/button.svelte";
+    import { onMount } from "svelte";
+
 
     let { contact, canEdit = false, onedit } = $props();
 
@@ -17,6 +20,25 @@
             `${contact.givenName || ""} ${contact.familyName || ""}`.trim() ||
             "Unnamed Contact",
     );
+
+    let canShare = $state(false);
+    onMount(() => {
+        canShare = !!navigator.share;
+    });
+
+    async function handleShare() {
+        try {
+            await navigator.share({
+                title: fullName,
+                text: contact.notes || `Contact details for ${fullName}`,
+                url: window.location.href,
+            });
+        } catch (err) {
+            if (err instanceof Error && err.name !== "AbortError") {
+                console.error("Error sharing:", err);
+            }
+        }
+    }
 </script>
 
 <div class="space-y-8">
@@ -185,7 +207,18 @@
             </Button>
         {/if}
 
+        {#if canShare}
+            <Button
+                variant="outline"
+                class="flex items-center gap-2"
+                onclick={handleShare}
+            >
+                <Share2 size={18} /> Share
+            </Button>
+        {/if}
+
         {#if canEdit}
+
             <Button
                 variant="default"
                 class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
