@@ -8,7 +8,7 @@ import type { ExternalEvent } from './sync/types';
  * 1. First event contact tagged as "Employee"
  * 2. First location contact (if no Employee-tagged event contact exists)
  */
-export async function resolveContactForEventId(eventId: string | undefined): Promise<{
+export async function resolveContactForEventId(eventId: string | undefined, filterWorkOnly = false): Promise<{
 	name: string;
 	email: string;
 	phone: string;
@@ -16,6 +16,14 @@ export async function resolveContactForEventId(eventId: string | undefined): Pro
 	if (!eventId) {
 		return null;
 	}
+
+	// Helper to find data
+	const findData = (items: any[], type: string) => {
+		if (filterWorkOnly) {
+			return items?.find((item: any) => item.type?.toLowerCase() === 'work')?.value || '';
+		}
+		return items?.find((item: any) => item.primary)?.value || items?.[0]?.value || '';
+	};
 
 	// 1. Check for event contacts tagged as "Employee"
 	const eventContacts = await getEntityContacts('event', eventId, true);
@@ -33,10 +41,8 @@ export async function resolveContactForEventId(eventId: string | undefined): Pro
 		if (hasEmployeeTag) {
 			return {
 				name: contact.displayName || `${contact.givenName || ''} ${contact.familyName || ''}`.trim(),
-				email: (contact as any).emails?.find((e: any) => e.primary)?.value ||
-					(contact as any).emails?.[0]?.value || '',
-				phone: (contact as any).phones?.find((p: any) => p.primary)?.value ||
-					(contact as any).phones?.[0]?.value || ''
+				email: findData((contact as any).emails, 'email'),
+				phone: findData((contact as any).phones, 'phone')
 			};
 		}
 	}
@@ -61,10 +67,8 @@ export async function resolveContactForEventId(eventId: string | undefined): Pro
 				const contact = locationContacts[0];
 				return {
 					name: contact.displayName || `${contact.givenName || ''} ${contact.familyName || ''}`.trim(),
-					email: (contact as any).emails?.find((e: any) => e.primary)?.value ||
-						(contact as any).emails?.[0]?.value || '',
-					phone: (contact as any).phones?.find((p: any) => p.primary)?.value ||
-						(contact as any).phones?.[0]?.value || ''
+					email: findData((contact as any).emails, 'email'),
+					phone: findData((contact as any).phones, 'phone')
 				};
 			}
 		}

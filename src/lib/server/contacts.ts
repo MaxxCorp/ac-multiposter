@@ -79,36 +79,71 @@ async function generateContactAssets(contactId: string, origin?: string) {
         card.addPropertyWithValue('note', data.notes);
     }
 
+    // Public vCard generation (Work data only)
+    const publicCard = new ICAL.Component(['vcard', [], []]);
+    publicCard.addPropertyWithValue('version', '4.0');
+    if (fullName) publicCard.addPropertyWithValue('fn', fullName);
+    publicCard.addPropertyWithValue('n', [
+        data.familyName || '',
+        data.givenName || '',
+        data.middleName || '',
+        data.honorificPrefix || '',
+        data.honorificSuffix || ''
+    ]);
+
+    data.emails?.filter((e: any) => e.type?.toLowerCase() === 'work').forEach((e: any) => {
+        const prop = publicCard.addPropertyWithValue('email', e.value);
+        if (e.type) prop.setParameter('type', e.type.toLowerCase());
+    });
+
+    data.phones?.filter((p: any) => p.type?.toLowerCase() === 'work').forEach((p: any) => {
+        const prop = publicCard.addPropertyWithValue('tel', p.value);
+        if (p.type) prop.setParameter('type', p.type.toLowerCase());
+    });
+
+    data.addresses?.filter((a: any) => a.type?.toLowerCase() === 'work').forEach((a: any) => {
+        const adrValue = [
+            '',
+            a.addressSuffix || '',
+            `${a.street || ''} ${a.houseNumber || ''}`.trim(),
+            a.city || '',
+            a.state || '',
+            a.zip || '',
+            a.country || ''
+        ];
+        const prop = publicCard.addPropertyWithValue('adr', adrValue);
+        if (a.type) prop.setParameter('type', a.type.toLowerCase());
+    });
+
     const storage = getStorageProvider();
     const fullNameSlug = fullName.replace(/\s+/g, '_');
 
     const oldVCardPath = data.vCardPath;
-    const oldQRCodePath = data.qrCodePath;
+    const oldQrCodePath = data.qrCodePath;
 
-    // vCard Upload
+    // Upload vCards
     const vCardFileName = `contacts/${contactId}/${fullNameSlug}.vcf`;
     const vCardUrl = await storage.put(vCardFileName, card.toString(), 'text/vcard');
 
-    // QR Code generation
+    const publicVCardFileName = `contacts/${contactId}/${fullNameSlug}_public.vcf`;
+    await storage.put(publicVCardFileName, publicCard.toString(), 'text/vcard');
 
+    // QR Code generation
     const baseUrl = env.PUBLIC_BASE_URL || origin || "";
-    if (!baseUrl) {
-        console.warn(`[Assets] No PUBLIC_BASE_URL or derivation origin found for contact ${contactId}. QR code will have relative URL.`);
-    }
-    const contactUrl = `${baseUrl}/contacts/${contactId}`;
+    const contactUrl = `${baseUrl}/contacts/${contactId}/view`;
 
     // Generate QR as Buffer
     const qrBuffer = await QRCode.toBuffer(contactUrl, {
         width: 300,
         margin: 2,
-        color: {
-            dark: '#1e40af', // blue-800
-            light: '#ffffff'
-        }
+        color: { dark: '#1e40af', light: '#ffffff' }
     });
 
     const qrCodeFileName = `contacts/${contactId}/qr.png`;
     const qrCodeUrl = await storage.put(qrCodeFileName, qrBuffer, 'image/png');
+
+    const publicQrCodeFileName = `contacts/${contactId}/qr_public.png`;
+    await storage.put(publicQrCodeFileName, qrBuffer, 'image/png');
 
     // Update paths in DB
     await db.update(contact)
@@ -119,12 +154,8 @@ async function generateContactAssets(contactId: string, origin?: string) {
         .where(eq(contact.id, contactId));
 
     // Clean up old assets if paths changed
-    if (oldVCardPath && oldVCardPath !== vCardUrl) {
-        await storage.delete(oldVCardPath);
-    }
-    if (oldQRCodePath && oldQRCodePath !== qrCodeUrl) {
-        await storage.delete(oldQRCodePath);
-    }
+    if (oldVCardPath && oldVCardPath !== vCardUrl) await storage.delete(oldVCardPath);
+    if (oldQrCodePath && oldQrCodePath !== qrCodeUrl) await storage.delete(oldQrCodePath);
 }
 
 export interface ContactData {
@@ -143,12 +174,9 @@ export async function createContact(data: ContactData) {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'contacts');
 
-    console.log(`[Contacts] createContact called with:`, JSON.stringify(data, null, 2));
-    console.log(`[Contacts] relationIds received:`, data.relationIds);
-    console.log(`[Contacts] tagNames received:`, data.tagNames);
 
     const contactId = await db.transaction(async (tx) => {
-        console.log(`[Contacts] Creating contact for user: ${user.id}`);
+
 
         // Insert main contact
         const [newContact] = await tx.insert(contact).values({
@@ -169,20 +197,20 @@ export async function createContact(data: ContactData) {
 
         // Insert emails
         if (data.emails && data.emails.length > 0) {
-            console.log(`[Contacts] Inserting ${data.emails.length} emails for contact ${id}`);
+
             const emailsToInsert = data.emails.map(e => ({
                 contactId: id,
                 value: e.value,
                 type: e.type || 'other',
                 primary: !!e.primary
             }));
-            console.log(`[Contacts] Emails: ${JSON.stringify(emailsToInsert)}`);
+
             await tx.insert(contactEmail).values(emailsToInsert);
         }
 
         // Insert phones
         if (data.phones && data.phones.length > 0) {
-            console.log(`[Contacts] Inserting ${data.phones.length} phones for contact ${id}`);
+
             const phonesToInsert = data.phones.map(p => ({
                 contactId: id,
                 value: p.value,
@@ -194,7 +222,7 @@ export async function createContact(data: ContactData) {
 
         // Insert addresses
         if (data.addresses && data.addresses.length > 0) {
-            console.log(`[Contacts] Inserting ${data.addresses.length} addresses for contact ${id}`);
+
             const addressesToInsert = data.addresses.map(a => ({
                 contactId: id,
                 street: a.street || null,
@@ -212,7 +240,7 @@ export async function createContact(data: ContactData) {
 
         // Insert relations
         if (data.relationIds && data.relationIds.length > 0) {
-            console.log(`[Contacts] Inserting ${data.relationIds.length} relations for contact ${id}`);
+
             const relationsToInsert = data.relationIds.map(r => ({
                 contactId: id,
                 targetContactId: r.targetContactId,
@@ -223,7 +251,7 @@ export async function createContact(data: ContactData) {
 
         // Insert tags
         if (data.tagNames && data.tagNames.length > 0) {
-            console.log(`[Contacts] Processing ${data.tagNames.length} tags: ${data.tagNames.join(', ')}`);
+
             for (const tagName of data.tagNames) {
                 // Find or create tag
                 let tagId: string;
@@ -269,16 +297,16 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'contacts');
 
-    console.log(`[Contacts] updateContact(${id}) called with:`, JSON.stringify(data, null, 2));
+
 
     const isAdmin = parseRoles(user).includes('admin');
 
     await db.transaction(async (tx) => {
-        console.log(`[Contacts] Updating contact ${id}. isAdmin=${isAdmin}`);
+
 
         // Update main contact
         if (data.contact) {
-            console.log(`[Contacts] Updating main contact fields: ${JSON.stringify(data.contact)}`);
+
             const updateSet: any = {
                 updatedAt: new Date()
             };
@@ -315,29 +343,12 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
 
         // Emails
         if (data.emails !== undefined) {
-            console.log(`[Contacts] Updating emails for contact ${id}`);
-            const currentEmails = await tx.select().from(contactEmail).where(eq(contactEmail.contactId, id));
-            const currentEmailValues = currentEmails.map(e => e.value);
 
-            const targetEmails = data.emails || [];
-            const targetEmailValues = targetEmails.map(e => e.value);
+            await tx.delete(contactEmail).where(eq(contactEmail.contactId, id));
 
-            // Delete removed
-            const toDelete = currentEmails.filter(e => !targetEmailValues.includes(e.value));
-            if (toDelete.length > 0) {
-                console.log(`[Contacts] Deleting ${toDelete.length} emails: ${toDelete.map(e => e.value).join(', ')}`);
-                await tx.delete(contactEmail).where(and(
-                    eq(contactEmail.contactId, id),
-                    inArray(contactEmail.value, toDelete.map(e => e.value))
-                ));
-            }
-
-            // Add new
-            const toAdd = targetEmails.filter(e => !currentEmailValues.includes(e.value));
-            if (toAdd.length > 0) {
-                console.log(`[Contacts] Adding ${toAdd.length} new emails`);
+            if (data.emails.length > 0) {
                 await tx.insert(contactEmail).values(
-                    toAdd.map(e => ({
+                    data.emails.map(e => ({
                         contactId: id,
                         value: e.value,
                         type: e.type || 'other',
@@ -349,27 +360,12 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
 
         // Phones
         if (data.phones !== undefined) {
-            console.log(`[Contacts] Updating phones for contact ${id}`);
-            const currentPhones = await tx.select().from(contactPhone).where(eq(contactPhone.contactId, id));
-            const currentPhoneValues = currentPhones.map(p => p.value);
 
-            const targetPhones = data.phones || [];
-            const targetPhoneValues = targetPhones.map(p => p.value);
+            await tx.delete(contactPhone).where(eq(contactPhone.contactId, id));
 
-            const toDelete = currentPhones.filter(p => !targetPhoneValues.includes(p.value));
-            if (toDelete.length > 0) {
-                console.log(`[Contacts] Deleting ${toDelete.length} phones`);
-                await tx.delete(contactPhone).where(and(
-                    eq(contactPhone.contactId, id),
-                    inArray(contactPhone.value, toDelete.map(p => p.value))
-                ));
-            }
-
-            const toAdd = targetPhones.filter(p => !currentPhoneValues.includes(p.value));
-            if (toAdd.length > 0) {
-                console.log(`[Contacts] Adding ${toAdd.length} new phones`);
+            if (data.phones.length > 0) {
                 await tx.insert(contactPhone).values(
-                    toAdd.map(p => ({
+                    data.phones.map(p => ({
                         contactId: id,
                         value: p.value,
                         type: p.type || 'other',
@@ -381,7 +377,7 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
 
         // Addresses
         if (data.addresses !== undefined) {
-            console.log(`[Contacts] Replacing addresses for contact ${id}`);
+
             // Addresses are harder to diff by value, so we'll stick to delete-reinsert but only if they changed
             await tx.delete(contactAddress).where(eq(contactAddress.contactId, id));
             const targetAddresses = data.addresses || [];
@@ -405,7 +401,7 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
 
         // Relations
         if (data.relationIds !== undefined) {
-            console.log(`[Contacts] Updating relations for contact ${id}`);
+
             const currentRelations = await tx.select().from(contactRelation).where(eq(contactRelation.contactId, id));
             const currentTargetIds = currentRelations.map(r => r.targetContactId);
 
@@ -434,7 +430,7 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
 
         // Tags
         if (data.tagNames !== undefined) {
-            console.log(`[Contacts] Updating tags for contact ${id}`);
+
             const currentTagAssociations = await tx.query.contactTag.findMany({
                 where: (ct, { eq }) => eq(ct.contactId, id),
                 with: { tag: true }
@@ -711,6 +707,6 @@ export async function updateAssociationStatus(type: 'event', entityId: string, c
         ))
         .returning();
 
-    console.log(`[Contacts] Updated status for event ${entityId}, contact ${contactId}. Rows affected: ${result.length}`);
+
 }
 

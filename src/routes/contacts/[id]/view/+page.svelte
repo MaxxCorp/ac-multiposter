@@ -1,21 +1,22 @@
 <script lang="ts">
     import { page } from "$app/state";
-    import { readContact } from "./read.remote";
-    import { updateExistingContact } from "./update.remote";
-    import ContactForm from "$lib/components/contacts/ContactForm.svelte";
+    import { readContact } from "../read.remote";
+    import ContactView from "$lib/components/contacts/ContactView.svelte";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import { goto } from "$app/navigation";
 
-    import { ContactUpdateSchema } from "$lib/validations/contacts";
-
     const contactId = page.params.id || "";
     let itemsPromise = $state(readContact(contactId));
 
-    function handleSuccess(result: any) {
-        // Redirect to view page on success
-        goto(`/contacts/${contactId}/view`);
+    // Check if the user is authorized to edit
+    function checkCanEdit(contact: any) {
+        const user = page.data.user as any;
+        return (
+            !!user &&
+            (user.id === contact.userId || (user.roles || []).includes("admin"))
+        );
     }
 </script>
 
@@ -50,28 +51,10 @@
                 <div
                     class="bg-white shadow-xl rounded-2xl p-8 border border-gray-100"
                 >
-                    <div class="flex justify-between items-center mb-4">
-                        <h1 class="text-2xl font-bold">Edit Contact</h1>
-                        <button
-                            class="text-sm text-gray-500 hover:text-gray-700 underline"
-                            onclick={() => goto(`/contacts/${contactId}/view`)}
-                        >
-                            Cancel Edit
-                        </button>
-                    </div>
-                    <ContactForm
-                        remoteFunction={updateExistingContact}
-                        schema={ContactUpdateSchema}
-                        onSuccess={handleSuccess}
-                        contactId={contact.id}
-                        initialData={{
-                            contact,
-                            emails: contact.emails,
-                            phones: contact.phones,
-                            addresses: contact.addresses,
-                            tags: contact.tags,
-                            relations: contact.relations,
-                        }}
+                    <ContactView
+                        {contact}
+                        canEdit={checkCanEdit(contact)}
+                        onedit={() => goto(`/contacts/${contact.id}`)}
                     />
                 </div>
             {/if}

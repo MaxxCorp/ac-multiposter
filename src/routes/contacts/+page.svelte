@@ -109,7 +109,7 @@
                                                 class="text-xl font-semibold break-words"
                                             >
                                                 <a
-                                                    href={`/contacts/${contact.id}`}
+                                                    href={`/contacts/${contact.id}/view`}
                                                     class="hover:underline text-blue-600"
                                                 >
                                                     {contact.displayName ||
@@ -195,7 +195,7 @@
 
                                 <div class="flex flex-col gap-2 shrink-0">
                                     <Button
-                                        href={`/contacts/${contact.id}?edit=true`}
+                                        href={`/contacts/${contact.id}`}
                                         variant="default"
                                         size="default"
                                     >

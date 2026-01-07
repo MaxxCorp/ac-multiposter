@@ -140,50 +140,43 @@
     const enhanceAttr = $derived.by(() => {
         if (!remoteFunction) return {};
 
-        return remoteFunction.enhance(async ({ submit }: any) => {
+        return remoteFunction.enhance(async (args: any) => {
+            const { formData: providedFormData, form, submit } = args;
+
+            // Fallback: if formData is undefined, try to create it from the form element
+            const formData =
+                providedFormData || (form ? new FormData(form) : undefined);
+
+            if (!formData) {
+                toast.error("Form error: Could not capture form data.");
+                return;
+            }
+
             try {
-                // Prepare array data that isn't captured by form fields
-                const arrayData = {
-                    emails: emails.filter((e) => e.value),
-                    phones: phones.filter((p) => p.value),
-                    addresses: addresses
-                        .filter((a) => a.street || a.city)
-                        .map((a) => ({
-                            ...a,
-                            addressSuffix: a.addressSuffix || null,
-                            state: a.state || null,
-                        })),
-                    relationIds: relations.map((r) => ({
-                        targetContactId: r.targetContactId,
-                        relationType: r.relationType,
-                    })),
-                    tagNames: tagsInput
-                        .split(",")
-                        .map((t: string) => t.trim())
-                        .filter(Boolean),
-                };
+                // Extract contact fields from FormData to ensure we have the latest values
+                // We do this because submit(payload) replaces the default form submission,
+                // so we must manually include the contact fields.
+                // (Old contactData block removed)
 
-                // Capture all data
-                let payload: any = { ...arrayData };
+                // Determine prefix based on mode
+                // (Imperative logic removed, relying on hidden inputs)
 
-                if (!isNew && contactId) {
-                    // For updates, the schema expects { id: string, data: { ... } }
-                    payload = {
-                        id: contactId,
-                        data: { ...arrayData },
-                    };
-                }
+                // Log the FormData for debugging (convert to object)
+                const fdObj: any = {};
+                formData.forEach((value: FormDataEntryValue, key: string) => {
+                    // Handle multiple values
+                    if (fdObj[key]) {
+                        if (!Array.isArray(fdObj[key]))
+                            fdObj[key] = [fdObj[key]];
+                        fdObj[key].push(value);
+                    } else {
+                        fdObj[key] = value;
+                    }
+                });
 
-                console.log(
-                    "[ContactForm] Submitting payload:",
-                    JSON.stringify(payload, null, 2),
-                );
+                const result: any = await submit(formData);
 
-                const result: any = await submit(payload);
-
-                console.log("[ContactForm] Result:", result);
-
-                if (result?.error) {
+                if (result.type === "failure") {
                     toast.error(
                         result.error.message || "Oh no! Something went wrong",
                     );
@@ -224,6 +217,22 @@
     const initialBirthday = initialData.contact?.birthday
         ? initialData.contact.birthday.split("T")[0]
         : "";
+
+    // Serialized data for submission
+    const emailsJson = $derived(JSON.stringify(emails.filter((e) => e.value)));
+    const phonesJson = $derived(JSON.stringify(phones.filter((p) => p.value)));
+    const addressesJson = $derived(
+        JSON.stringify(addresses.filter((a) => a.street || a.city)),
+    );
+    const relationsJson = $derived(JSON.stringify(relations));
+    const tagsJson = $derived(
+        JSON.stringify(
+            tagsInput
+                .split(",")
+                .map((t: string) => t.trim())
+                .filter(Boolean),
+        ),
+    );
 </script>
 
 <form {...enhanceAttr} class="space-y-8">
@@ -231,6 +240,13 @@
     {#if !isNew && contactId}
         <input {...remoteFunction.fields.id.as("hidden", contactId)} />
     {/if}
+
+    <!-- Hidden JSON fields for arrays -->
+    <input type="hidden" name="emailsJson" value={emailsJson} />
+    <input type="hidden" name="phonesJson" value={phonesJson} />
+    <input type="hidden" name="addressesJson" value={addressesJson} />
+    <input type="hidden" name="relationsJson" value={relationsJson} />
+    <input type="hidden" name="tagsJson" value={tagsJson} />
 
     <div class="space-y-4">
         <h3 class="text-lg font-medium flex items-center gap-2">

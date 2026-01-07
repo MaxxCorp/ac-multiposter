@@ -2,12 +2,12 @@ import { globalEvents, type EventPayload } from '$lib/server/events';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export const GET = async (event: RequestEvent) => {
-    console.log('[SSE] Connection attempt from', event.request.headers.get('user-agent'));
+
 
     const session = event.locals.session;
     const user = event.locals.user;
 
-    console.log('[SSE] Auth check:', { hasSession: !!session, hasUser: !!user, userId: user?.id });
+
 
     if (!session || !user) {
         console.log('[SSE] Returning 401 Unauthorized');

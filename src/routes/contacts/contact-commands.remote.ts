@@ -12,7 +12,8 @@ import { z } from 'zod/mini';
  */
 
 // Command for creating a contact programmatically
-export const createContactCommand = command(ContactInputSchema, async (data) => {
+export const createContactCommand = command(ContactInputSchema as any, async (input) => {
+    const data = input as any;
     // Sanitize contact data
     const {
         birthday,
@@ -24,11 +25,11 @@ export const createContactCommand = command(ContactInputSchema, async (data) => 
             ...rest,
             birthday: (birthday && !isNaN(new Date(birthday).getTime())) ? new Date(birthday) : null,
         } as any,
-        emails: data.emails,
-        phones: data.phones,
-        addresses: data.addresses,
-        relationIds: data.relationIds,
-        tagNames: data.tagNames,
+        emails: data.emails || undefined,
+        phones: data.phones || undefined,
+        addresses: data.addresses || undefined,
+        relationIds: data.relationIds || undefined,
+        tagNames: data.tagNames || undefined,
     });
 
     await listContacts().refresh();
@@ -37,7 +38,8 @@ export const createContactCommand = command(ContactInputSchema, async (data) => 
 });
 
 // Command for updating a contact programmatically
-export const updateContactCommand = command(ContactUpdateSchema, async ({ id, data }) => {
+export const updateContactCommand = command(ContactUpdateSchema as any, async (input) => {
+    const { id, data } = input as any;
     // Sanitize contact data to exclude immutable metadata that might cause type errors (strings vs Dates)
     let sanitizedContact = undefined;
     if (data.contact) {
@@ -58,11 +60,11 @@ export const updateContactCommand = command(ContactUpdateSchema, async ({ id, da
 
     const result = await updateContact(id, {
         contact: sanitizedContact,
-        emails: data.emails,
-        phones: data.phones,
-        addresses: data.addresses,
-        relationIds: data.relationIds,
-        tagNames: data.tagNames,
+        emails: data.emails || undefined,
+        phones: data.phones || undefined,
+        addresses: data.addresses || undefined,
+        relationIds: data.relationIds || undefined,
+        tagNames: data.tagNames || undefined,
     } as any);
 
     await readContact(id).refresh();

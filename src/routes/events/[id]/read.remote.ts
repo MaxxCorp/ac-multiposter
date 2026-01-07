@@ -1,5 +1,6 @@
 import { z } from 'zod/mini';
 import { query } from '$app/server';
+import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { event, eventResource, eventContact, resource } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -23,10 +24,15 @@ export const readEvent = query(z.string(), async (eventId: string): Promise<Even
 	}
 
 	// 2. Check Authorization
+	// 2. Check Authorization
 	// If NOT public, enforce authentication and access control
 	if (!row.isPublic) {
-		const user = getAuthenticatedUser();
-		ensureAccess(user, 'events');
+		try {
+			const user = getAuthenticatedUser();
+			ensureAccess(user, 'events');
+		} catch (e) {
+			throw error(401, 'Unauthorized');
+		}
 	}
 
 	// 3. Transform data
@@ -70,17 +76,31 @@ export const readEvent = query(z.string(), async (eventId: string): Promise<Even
 
 	// 7. Resolve contact info
 	let resolvedContactWithQr = null;
+
+	let userForResolution = null;
 	try {
-		const resolvedContact = await resolveContactForEventId(eventId);
+		userForResolution = getAuthenticatedUser();
+	} catch {
+		// User not authenticated
+	}
+	const filterWorkOnly = !userForResolution;
+
+	try {
+		const resolvedContact = await resolveContactForEventId(eventId, filterWorkOnly);
 
 		if (resolvedContact) {
 			// Generate vCard
-			const vCard = `BEGIN:VCARD
+			let vCard = `BEGIN:VCARD
 VERSION:3.0
-FN:${resolvedContact.name}
-EMAIL:${resolvedContact.email}
-TEL:${resolvedContact.phone}
-END:VCARD`;
+FN:${resolvedContact.name}`;
+
+			if (resolvedContact.email) {
+				vCard += `\nEMAIL:${resolvedContact.email}`;
+			}
+			if (resolvedContact.phone) {
+				vCard += `\nTEL:${resolvedContact.phone}`;
+			}
+			vCard += `\nEND:VCARD`;
 
 			// Generate QR Code
 			try {
@@ -96,6 +116,7 @@ END:VCARD`;
 		}
 	} catch (err) {
 		console.error('Failed to resolve contact for event:', err);
+		// We do not rethrow, just let it be null
 	}
 
 	return {

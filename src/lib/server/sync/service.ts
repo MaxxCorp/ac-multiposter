@@ -843,7 +843,7 @@ export class SyncService {
 	 * Used after create/update/delete operations to immediately push changes
 	 */
 	async syncSpecificEvents(userId: string, eventIds: string[]): Promise<void> {
-		console.log(`[SyncService] Syncing specific events for user ${userId}:`, eventIds);
+
 
 		try {
 			// Get all enabled sync configs for this user that support push
@@ -862,15 +862,15 @@ export class SyncService {
 			);
 
 			if (pushConfigs.length === 0) {
-				console.log(`[SyncService] No push-enabled sync configs found for user ${userId}`);
+
 				return;
 			}
 
-			console.log(`[SyncService] Found ${pushConfigs.length} push-enabled sync configs`);
+
 
 			for (const configRow of pushConfigs) {
 				const config = this.rowToConfig(configRow);
-				console.log(`[SyncService] Processing sync config: ${config.id} (${config.providerType})`);
+
 
 				try {
 					const provider = await this.getProviderInstance(config);
@@ -884,7 +884,7 @@ export class SyncService {
 				}
 			}
 
-			console.log(`[SyncService] Completed syncing specific events`);
+
 		} catch (error: any) {
 			console.error(`[SyncService] Error in syncSpecificEvents:`, error);
 			// Don't throw - sync failures shouldn't break CRUD operations
@@ -899,7 +899,7 @@ export class SyncService {
 		provider: SyncProvider,
 		eventId: string
 	): Promise<void> {
-		console.log(`[SyncService] Syncing event ${eventId} with config ${config.id}`);
+
 
 		try {
 			// Check if event exists
@@ -931,7 +931,7 @@ export class SyncService {
 
 			if (mapping) {
 				// Update existing event
-				console.log(`[SyncService] Updating event ${eventId} on provider (external ID: ${mapping.externalId})`);
+
 
 				// Check if this event was recently synced from provider (within last 30 seconds)
 				// This prevents echo loops where: provider → pull → local update → push back
@@ -952,7 +952,7 @@ export class SyncService {
 					.where(eq(syncMappingTable.id, mapping.id));
 			} else {
 				// Create new event
-				console.log(`[SyncService] Creating new event ${eventId} on provider`);
+
 				const externalEvent = await this.mapInternalToExternal(eventRow, config.providerType);
 				const { externalId, etag } = await provider.pushEvent(externalEvent);
 
@@ -969,7 +969,7 @@ export class SyncService {
 				console.log(`[SyncService] Created mapping for event ${eventId} → external ${externalId}`);
 			}
 
-			console.log(`[SyncService] Successfully synced event ${eventId}`);
+
 		} catch (error: any) {
 			console.error(`[SyncService] Failed to sync event ${eventId}:`, error);
 			// Log but don't throw - we want to continue with other events
@@ -980,7 +980,7 @@ export class SyncService {
 	 * Delete event mappings for specific events (called after event deletion)
 	 */
 	async deleteEventMappings(userId: string, eventIds: string[]): Promise<void> {
-		console.log(`[SyncService] Deleting event mappings for user ${userId}:`, eventIds);
+
 
 		try {
 			// Get all sync configs for this user
@@ -1035,7 +1035,7 @@ export class SyncService {
 					);
 			}
 
-			console.log(`[SyncService] Completed deleting event mappings`);
+
 		} catch (error: any) {
 			console.error(`[SyncService] Error in deleteEventMappings:`, error);
 			// Don't throw - sync failures shouldn't break delete operations

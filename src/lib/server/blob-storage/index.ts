@@ -16,10 +16,10 @@ export function getStorageProvider(): BlobStorageProvider {
     const isVercel = env.VERCEL === '1' || !!env.BLOB_READ_WRITE_TOKEN;
 
     if (isVercel) {
-        console.log('[Storage] Using Vercel Blob Storage');
+
         provider = new VercelBlobStorageProvider();
     } else {
-        console.log('[Storage] Using Local File Storage');
+
         provider = new LocalBlobStorageProvider();
     }
 

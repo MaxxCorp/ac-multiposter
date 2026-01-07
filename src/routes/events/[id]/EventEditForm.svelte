@@ -16,10 +16,12 @@
         event,
         resources,
         locations,
+        onSuccess,
     }: {
         event: Event;
         resources: ResourceWithHierarchy[];
         locations: Location[];
+        onSuccess?: () => void;
     } = $props();
 
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -262,7 +264,11 @@
                         return;
                     }
                     toast.success("Successfully saved!");
-                    goto("/events");
+                    if (onSuccess) {
+                        onSuccess();
+                    } else {
+                        goto("/events");
+                    }
                 } catch (error: any) {
                     toast.error(
                         error?.message || "Oh no! Something went wrong",

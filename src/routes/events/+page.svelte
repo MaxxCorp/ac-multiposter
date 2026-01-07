@@ -70,8 +70,6 @@
 	let sseSetupAttempted = false;
 
 	async function setupSSEWithFetch() {
-		console.log("[SSE Client] Attempting to connect with fetch...");
-
 		abortController = new AbortController();
 
 		try {
@@ -82,8 +80,6 @@
 					Accept: "text/event-stream",
 				},
 			});
-
-			console.log("[SSE Client] Response status:", response.status);
 
 			if (!response.ok) {
 				console.error(
@@ -98,8 +94,6 @@
 				return;
 			}
 
-			console.log("[SSE Client] Connection opened successfully");
-
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = "";
@@ -108,7 +102,7 @@
 				const { done, value } = await reader.read();
 
 				if (done) {
-					console.log("[SSE Client] Stream closed");
+					// Connection closed
 					break;
 				}
 
@@ -126,14 +120,11 @@
 
 					if (eventMatch && dataMatch) {
 						const eventType = eventMatch[1];
-						console.log("[SSE Client] Received event:", eventType);
 
 						if (
-							[
-								"event-created",
-								"event-updated",
-								"event-deleted",
-							].includes(eventType)
+							["event-created", "event-updated"].includes(
+								eventType,
+							)
 						) {
 							itemsPromise = listEvents();
 						}
@@ -142,18 +133,17 @@
 			}
 		} catch (error: unknown) {
 			if (error instanceof Error && error.name === "AbortError") {
-				console.log("[SSE Client] Connection aborted");
+				// Connection aborted
 			} else if (
 				error instanceof TypeError &&
 				error.message.includes("input stream")
 			) {
 				// This happens during HMR reloads - ignore silently
-				console.log(
-					"[SSE Client] Stream interrupted (likely HMR reload)",
-				);
 			} else {
 				console.error("[SSE Client] Error:", error);
 			}
+			// Ensure reader is cancelled if it exists (though scope prevents access here unless I move it up)
+			// But actually, checking error types is enough logging. Cleaning up is handled by the effect return.
 		}
 	}
 
@@ -174,7 +164,6 @@
 
 		return () => {
 			if (abortController) {
-				console.log("[SSE Client] Cleaning up connection");
 				abortController.abort();
 				abortController = null;
 			}
@@ -246,7 +235,7 @@
 													class="text-xl font-semibold break-all text-pretty"
 												>
 													<a
-														href={`/events/${event.id}`}
+														href={`/events/${event.id}/view`}
 														class="hover:underline text-blue-600"
 													>
 														{event.summary}
@@ -302,7 +291,7 @@
 									</div>
 									<div class="flex flex-col gap-2 shrink-0">
 										<Button
-											href={`/events/${event.id}?edit=true`}
+											href={`/events/${event.id}`}
 											variant="default"
 											size="default"
 											class="text-center"

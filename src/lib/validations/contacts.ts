@@ -95,6 +95,12 @@ export const ContactInputSchema = z.object({
         relationType: z.string(),
     })), z.null()])),
     tagNames: z.optional(z.union([z.array(z.string()), z.null()])),
+    // Serialized JSON fields for FormData transport
+    emailsJson: z.optional(z.string()),
+    phonesJson: z.optional(z.string()),
+    addressesJson: z.optional(z.string()),
+    relationsJson: z.optional(z.string()),
+    tagsJson: z.optional(z.string()),
 });
 
 export const ContactUpdateSchema = z.object({
@@ -139,6 +145,12 @@ export const ContactUpdateSchema = z.object({
         })), z.null()])),
         tagNames: z.optional(z.union([z.array(z.string()), z.null()])),
     }),
+    // Serialized JSON fields for FormData transport (Moved to root)
+    emailsJson: z.optional(z.string()),
+    phonesJson: z.optional(z.string()),
+    addressesJson: z.optional(z.string()),
+    relationsJson: z.optional(z.string()),
+    tagsJson: z.optional(z.string()),
 });
 
 export const AssociationSchema = z.object({
