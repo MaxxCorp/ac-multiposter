@@ -43,7 +43,7 @@
 						{event}
 						{resources}
 						{locations}
-						onSuccess={() => goto(`/events/${eventId}/view`)}
+						onSuccess={() => goto(`/events`)}
 					/>
 				</div>
 			{:else}

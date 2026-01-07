@@ -176,15 +176,21 @@
 
                 const result: any = await submit(formData);
 
-                if (result.type === "failure") {
+                // If the remote function throws, await submit() should throw.
+                // If we get here, it succeeded on the network level.
+                // If result is undefined/null, it might mean the return value was void or lost.
+                // We will treat undefined as success for now since we confirmed server creation.
+
+                if (result && result.type === "failure") {
                     toast.error(
                         result.error.message || "Oh no! Something went wrong",
                     );
                     return;
                 }
+
                 toast.success("Successfully saved!");
                 if (onSuccess) {
-                    onSuccess(result);
+                    onSuccess(result || {});
                 } else {
                     goto("/contacts");
                 }

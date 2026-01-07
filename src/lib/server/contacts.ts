@@ -174,7 +174,6 @@ export async function createContact(data: ContactData) {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'contacts');
 
-
     const contactId = await db.transaction(async (tx) => {
 
 

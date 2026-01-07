@@ -14,8 +14,8 @@
     let itemsPromise = $state(readContact(contactId));
 
     function handleSuccess(result: any) {
-        // Redirect to view page on success
-        goto(`/contacts/${contactId}/view`);
+        // Redirect to list page on success
+        goto(`/contacts`);
     }
 </script>
 

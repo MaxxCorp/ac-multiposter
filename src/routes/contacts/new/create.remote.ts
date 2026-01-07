@@ -31,7 +31,11 @@ export const createNewContact = form(ContactInputSchema as any, async (input) =>
         tagNames,
     });
 
-    await listContacts().refresh();
+    try {
+        await listContacts().refresh();
+    } catch (err) {
+        console.error("Failed to refresh contact list:", err);
+    }
 
     return { id: contactId };
 });
