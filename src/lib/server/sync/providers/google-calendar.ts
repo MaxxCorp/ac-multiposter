@@ -303,14 +303,13 @@ export class GoogleCalendarProvider implements SyncProvider {
 		const expiresAt = new Date(parseInt(response.data.expiration || '0'));
 
 		return {
-			id: crypto.randomUUID(),
 			syncConfigId: this.config.id,
 			providerId: this.config.providerId,
 			resourceId: response.data.resourceId || resourceId,
 			channelId,
 			expiresAt,
 			createdAt: new Date()
-		};
+		} as WebhookSubscription;
 	}
 
 	async renewWebhook(subscription: WebhookSubscription): Promise<WebhookSubscription> {

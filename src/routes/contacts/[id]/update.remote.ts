@@ -25,9 +25,9 @@ export const updateExistingContact = form(ContactUpdateSchema, async ({ id, data
 
     const result = await updateContact(id, {
         contact: sanitizedContact,
-        emails: data.emails?.map(e => ({ ...e, id: crypto.randomUUID(), contactId: id })),
-        phones: data.phones?.map(p => ({ ...p, id: crypto.randomUUID(), contactId: id })),
-        addresses: data.addresses?.map(a => ({ ...a, id: crypto.randomUUID(), contactId: id })),
+        emails: data.emails,
+        phones: data.phones,
+        addresses: data.addresses,
         relationIds: data.relationIds,
         tagNames: data.tagNames,
     } as any);

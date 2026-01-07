@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb, integer, index, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 
 /**
@@ -7,7 +7,7 @@ import { user } from "./auth-schema";
  */
 export const event = pgTable("event", {
   // Core identification
-  id: text("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -203,5 +203,15 @@ export const event = pgTable("event", {
   index("event_user_id_idx").on(table.userId),
 ]);
 
+import { relations } from 'drizzle-orm';
+import { eventResource } from './resources-schema';
+import { eventContact } from './contacts-schema';
+
+export const eventRelations = relations(event, ({ many }) => ({
+  resources: many(eventResource),
+  contacts: many(eventContact)
+}));
+
 export type Event = typeof event.$inferSelect;
+
 export type NewEvent = typeof event.$inferInsert;

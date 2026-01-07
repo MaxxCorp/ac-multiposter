@@ -127,15 +127,15 @@ export class SyncService {
 			const config = this.rowToConfig(configRow);
 
 			// Create operation record
-			operationId = crypto.randomUUID();
-			await db.insert(syncOperationTable).values({
-				id: operationId,
+			const [operationRow] = await db.insert(syncOperationTable).values({
 				syncConfigId: configId,
 				operation: 'pull',
 				status: 'pending',
 				entityType: 'event',
 				startedAt: new Date()
-			});
+			}).returning({ id: syncOperationTable.id });
+
+			operationId = operationRow.id;
 
 			// Initialize provider
 			const provider = await this.getProviderInstance(config);
@@ -269,7 +269,6 @@ export class SyncService {
 					const { externalId, etag } = await provider.pushEvent(externalEvent);
 
 					await db.insert(syncMappingTable).values({
-						id: crypto.randomUUID(),
 						syncConfigId: config.id,
 						eventId: event.id,
 						externalId: externalId,
@@ -477,7 +476,6 @@ export class SyncService {
 
 						// Create mapping to link this local event to the external one
 						await db.insert(syncMappingTable).values({
-							id: crypto.randomUUID(),
 							syncConfigId: config.id,
 							eventId: recentEvent.id,
 							externalId: externalEvent.externalId,
@@ -493,10 +491,9 @@ export class SyncService {
 
 			// Create new event - no matching local event found
 			const internalEvent = await this.mapExternalToInternalWithContacts(externalEvent, config.userId);
-			const [newEvent] = await db.insert(eventTable).values(internalEvent).returning();
+			const [newEvent] = await db.insert(eventTable).values(internalEvent).returning({ id: eventTable.id });
 
 			await db.insert(syncMappingTable).values({
-				id: crypto.randomUUID(),
 				syncConfigId: config.id,
 				eventId: newEvent.id,
 				externalId: externalEvent.externalId,
@@ -751,7 +748,6 @@ export class SyncService {
 		}
 
 		return {
-			id: crypto.randomUUID(),
 			userId: resolvedUserId,
 			summary: external.summary,
 			description: external.description ?? null,
@@ -962,7 +958,6 @@ export class SyncService {
 
 				// Create mapping immediately to prevent duplicates if webhook fires quickly
 				await db.insert(syncMappingTable).values({
-					id: crypto.randomUUID(),
 					syncConfigId: config.id,
 					eventId: eventRow.id,
 					externalId: externalId,

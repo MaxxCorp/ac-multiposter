@@ -17,9 +17,6 @@ import { env } from '$env/dynamic/private';
  * Designed according to Google People API documentation.
  */
 
-// Helper to generate IDs
-const generateId = () => crypto.randomUUID();
-
 /**
  * Generate vCard and QR Code for a contact
  */
@@ -53,17 +50,17 @@ async function generateContactAssets(contactId: string, origin?: string) {
         data.honorificSuffix || ''
     ]);
 
-    data.emails?.forEach(e => {
+    data.emails?.forEach((e: any) => {
         const prop = card.addPropertyWithValue('email', e.value);
         if (e.type) prop.setParameter('type', e.type.toLowerCase());
     });
 
-    data.phones?.forEach(p => {
+    data.phones?.forEach((p: any) => {
         const prop = card.addPropertyWithValue('tel', p.value);
         if (p.type) prop.setParameter('type', p.type.toLowerCase());
     });
 
-    data.addresses?.forEach(a => {
+    data.addresses?.forEach((a: any) => {
         // ADR: post-office box; extended address; street address; locality; region; postal code; country name
         const adrValue = [
             '', // po box
@@ -131,10 +128,10 @@ async function generateContactAssets(contactId: string, origin?: string) {
 }
 
 export interface ContactData {
-    contact: typeof contact.$inferInsert;
-    emails?: (typeof contactEmail.$inferInsert)[];
-    phones?: (typeof contactPhone.$inferInsert)[];
-    addresses?: (typeof contactAddress.$inferInsert)[];
+    contact: Partial<typeof contact.$inferInsert> & { displayName: string };
+    emails?: (Omit<typeof contactEmail.$inferInsert, 'contactId'> & { contactId?: string })[];
+    phones?: (Omit<typeof contactPhone.$inferInsert, 'contactId'> & { contactId?: string })[];
+    addresses?: (Omit<typeof contactAddress.$inferInsert, 'contactId'> & { contactId?: string })[];
     relationIds?: { targetContactId: string, relationType: string }[];
     tagNames?: string[];
 }
@@ -146,51 +143,87 @@ export async function createContact(data: ContactData) {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'contacts');
 
+    console.log(`[Contacts] createContact called with:`, JSON.stringify(data, null, 2));
+    console.log(`[Contacts] relationIds received:`, data.relationIds);
+    console.log(`[Contacts] tagNames received:`, data.tagNames);
+
     const contactId = await db.transaction(async (tx) => {
-        const id = data.contact.id || generateId();
+        console.log(`[Contacts] Creating contact for user: ${user.id}`);
 
         // Insert main contact
-        await tx.insert(contact).values({
-            ...data.contact,
-            id: id,
-            userId: user.id
-        });
+        const [newContact] = await tx.insert(contact).values({
+            userId: user.id,
+            displayName: data.contact.displayName,
+            givenName: data.contact.givenName || null,
+            familyName: data.contact.familyName || null,
+            middleName: data.contact.middleName || null,
+            honorificPrefix: data.contact.honorificPrefix || null,
+            honorificSuffix: data.contact.honorificSuffix || null,
+            birthday: data.contact.birthday || null,
+            gender: data.contact.gender || null,
+            notes: data.contact.notes || null,
+            isPublic: data.contact.isPublic || false
+        }).returning({ id: contact.id });
+
+        const id = newContact.id;
 
         // Insert emails
         if (data.emails && data.emails.length > 0) {
-            await tx.insert(contactEmail).values(
-                data.emails.map(e => ({ ...e, id: e.id || generateId(), contactId: id }))
-            );
+            console.log(`[Contacts] Inserting ${data.emails.length} emails for contact ${id}`);
+            const emailsToInsert = data.emails.map(e => ({
+                contactId: id,
+                value: e.value,
+                type: e.type || 'other',
+                primary: !!e.primary
+            }));
+            console.log(`[Contacts] Emails: ${JSON.stringify(emailsToInsert)}`);
+            await tx.insert(contactEmail).values(emailsToInsert);
         }
 
         // Insert phones
         if (data.phones && data.phones.length > 0) {
-            await tx.insert(contactPhone).values(
-                data.phones.map(p => ({ ...p, id: p.id || generateId(), contactId: id }))
-            );
+            console.log(`[Contacts] Inserting ${data.phones.length} phones for contact ${id}`);
+            const phonesToInsert = data.phones.map(p => ({
+                contactId: id,
+                value: p.value,
+                type: p.type || 'other',
+                primary: !!p.primary
+            }));
+            await tx.insert(contactPhone).values(phonesToInsert);
         }
 
         // Insert addresses
         if (data.addresses && data.addresses.length > 0) {
-            await tx.insert(contactAddress).values(
-                data.addresses.map(a => ({ ...a, id: a.id || generateId(), contactId: id }))
-            );
+            console.log(`[Contacts] Inserting ${data.addresses.length} addresses for contact ${id}`);
+            const addressesToInsert = data.addresses.map(a => ({
+                contactId: id,
+                street: a.street || null,
+                houseNumber: a.houseNumber || null,
+                addressSuffix: a.addressSuffix || null,
+                zip: a.zip || null,
+                city: a.city || null,
+                state: a.state || null,
+                country: a.country || null,
+                type: a.type || 'other',
+                primary: !!a.primary
+            }));
+            await tx.insert(contactAddress).values(addressesToInsert);
         }
 
         // Insert relations
         if (data.relationIds && data.relationIds.length > 0) {
-            await tx.insert(contactRelation).values(
-                data.relationIds.map(r => ({
-                    id: generateId(),
-                    contactId: id,
-                    targetContactId: r.targetContactId,
-                    relationType: r.relationType
-                }))
-            );
+            console.log(`[Contacts] Inserting ${data.relationIds.length} relations for contact ${id}`);
+            const relationsToInsert = data.relationIds.map(r => ({
+                contactId: id,
+                targetContactId: r.targetContactId,
+                relationType: r.relationType
+            }));
+            await tx.insert(contactRelation).values(relationsToInsert);
         }
 
         // Insert tags
         if (data.tagNames && data.tagNames.length > 0) {
+            console.log(`[Contacts] Processing ${data.tagNames.length} tags: ${data.tagNames.join(', ')}`);
             for (const tagName of data.tagNames) {
                 // Find or create tag
                 let tagId: string;
@@ -201,12 +234,11 @@ export async function createContact(data: ContactData) {
                 if (existingTag) {
                     tagId = existingTag.id;
                 } else {
-                    tagId = generateId();
-                    await tx.insert(tag).values({
-                        id: tagId,
+                    const [newTag] = await tx.insert(tag).values({
                         name: tagName,
                         userId: user.id
-                    });
+                    }).returning({ id: tag.id });
+                    tagId = newTag.id;
                 }
 
                 await tx.insert(contactTag).values({
@@ -237,12 +269,30 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'contacts');
 
+    console.log(`[Contacts] updateContact(${id}) called with:`, JSON.stringify(data, null, 2));
+
     const isAdmin = parseRoles(user).includes('admin');
 
     await db.transaction(async (tx) => {
+        console.log(`[Contacts] Updating contact ${id}. isAdmin=${isAdmin}`);
+
         // Update main contact
         if (data.contact) {
-            const updateSet = { ...data.contact, updatedAt: new Date() };
+            console.log(`[Contacts] Updating main contact fields: ${JSON.stringify(data.contact)}`);
+            const updateSet: any = {
+                updatedAt: new Date()
+            };
+            if (data.contact.displayName !== undefined) updateSet.displayName = data.contact.displayName;
+            if (data.contact.givenName !== undefined) updateSet.givenName = data.contact.givenName;
+            if (data.contact.familyName !== undefined) updateSet.familyName = data.contact.familyName;
+            if (data.contact.middleName !== undefined) updateSet.middleName = data.contact.middleName;
+            if (data.contact.honorificPrefix !== undefined) updateSet.honorificPrefix = data.contact.honorificPrefix;
+            if (data.contact.honorificSuffix !== undefined) updateSet.honorificSuffix = data.contact.honorificSuffix;
+            if (data.contact.birthday !== undefined) updateSet.birthday = data.contact.birthday;
+            if (data.contact.gender !== undefined) updateSet.gender = data.contact.gender;
+            if (data.contact.notes !== undefined) updateSet.notes = data.contact.notes;
+            if (data.contact.isPublic !== undefined) updateSet.isPublic = data.contact.isPublic;
+
             const query = tx.update(contact).set(updateSet);
 
             if (isAdmin) {
@@ -252,40 +302,128 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
             }
         }
 
-        // Replace related fields if provided (naive implementation: delete and re-insert)
+        // SECURITY: Verify ownership before updating relations if not admin
+        if (!isAdmin) {
+            const ownedContact = await tx.select({ id: contact.id }).from(contact).where(and(eq(contact.id, id), eq(contact.userId, user.id))).limit(1);
+            if (ownedContact.length === 0) {
+                throw new Error("You do not have permission to update this contact");
+            }
+        }
+
+        // Surgical update for related fields
+
+
+        // Emails
         if (data.emails !== undefined) {
-            await tx.delete(contactEmail).where(eq(contactEmail.contactId, id));
-            if (data.emails.length > 0) {
+            console.log(`[Contacts] Updating emails for contact ${id}`);
+            const currentEmails = await tx.select().from(contactEmail).where(eq(contactEmail.contactId, id));
+            const currentEmailValues = currentEmails.map(e => e.value);
+
+            const targetEmails = data.emails || [];
+            const targetEmailValues = targetEmails.map(e => e.value);
+
+            // Delete removed
+            const toDelete = currentEmails.filter(e => !targetEmailValues.includes(e.value));
+            if (toDelete.length > 0) {
+                console.log(`[Contacts] Deleting ${toDelete.length} emails: ${toDelete.map(e => e.value).join(', ')}`);
+                await tx.delete(contactEmail).where(and(
+                    eq(contactEmail.contactId, id),
+                    inArray(contactEmail.value, toDelete.map(e => e.value))
+                ));
+            }
+
+            // Add new
+            const toAdd = targetEmails.filter(e => !currentEmailValues.includes(e.value));
+            if (toAdd.length > 0) {
+                console.log(`[Contacts] Adding ${toAdd.length} new emails`);
                 await tx.insert(contactEmail).values(
-                    data.emails.map(e => ({ ...e, id: e.id || generateId(), contactId: id }))
+                    toAdd.map(e => ({
+                        contactId: id,
+                        value: e.value,
+                        type: e.type || 'other',
+                        primary: !!e.primary
+                    }))
                 );
             }
         }
 
+        // Phones
         if (data.phones !== undefined) {
-            await tx.delete(contactPhone).where(eq(contactPhone.contactId, id));
-            if (data.phones.length > 0) {
+            console.log(`[Contacts] Updating phones for contact ${id}`);
+            const currentPhones = await tx.select().from(contactPhone).where(eq(contactPhone.contactId, id));
+            const currentPhoneValues = currentPhones.map(p => p.value);
+
+            const targetPhones = data.phones || [];
+            const targetPhoneValues = targetPhones.map(p => p.value);
+
+            const toDelete = currentPhones.filter(p => !targetPhoneValues.includes(p.value));
+            if (toDelete.length > 0) {
+                console.log(`[Contacts] Deleting ${toDelete.length} phones`);
+                await tx.delete(contactPhone).where(and(
+                    eq(contactPhone.contactId, id),
+                    inArray(contactPhone.value, toDelete.map(p => p.value))
+                ));
+            }
+
+            const toAdd = targetPhones.filter(p => !currentPhoneValues.includes(p.value));
+            if (toAdd.length > 0) {
+                console.log(`[Contacts] Adding ${toAdd.length} new phones`);
                 await tx.insert(contactPhone).values(
-                    data.phones.map(p => ({ ...p, id: p.id || generateId(), contactId: id }))
+                    toAdd.map(p => ({
+                        contactId: id,
+                        value: p.value,
+                        type: p.type || 'other',
+                        primary: !!p.primary
+                    }))
                 );
             }
         }
 
+        // Addresses
         if (data.addresses !== undefined) {
+            console.log(`[Contacts] Replacing addresses for contact ${id}`);
+            // Addresses are harder to diff by value, so we'll stick to delete-reinsert but only if they changed
             await tx.delete(contactAddress).where(eq(contactAddress.contactId, id));
-            if (data.addresses.length > 0) {
+            const targetAddresses = data.addresses || [];
+            if (targetAddresses.length > 0) {
                 await tx.insert(contactAddress).values(
-                    data.addresses.map(a => ({ ...a, id: a.id || generateId(), contactId: id }))
+                    targetAddresses.map(a => ({
+                        contactId: id,
+                        street: a.street || null,
+                        houseNumber: a.houseNumber || null,
+                        addressSuffix: a.addressSuffix || null,
+                        zip: a.zip || null,
+                        city: a.city || null,
+                        state: a.state || null,
+                        country: a.country || null,
+                        type: a.type || 'other',
+                        primary: !!a.primary
+                    }))
                 );
             }
         }
 
+        // Relations
         if (data.relationIds !== undefined) {
-            await tx.delete(contactRelation).where(eq(contactRelation.contactId, id));
-            if (data.relationIds.length > 0) {
+            console.log(`[Contacts] Updating relations for contact ${id}`);
+            const currentRelations = await tx.select().from(contactRelation).where(eq(contactRelation.contactId, id));
+            const currentTargetIds = currentRelations.map(r => r.targetContactId);
+
+            const targetRelationIds = data.relationIds || [];
+            const targetIds = targetRelationIds.map(r => r.targetContactId);
+
+            const toDelete = currentRelations.filter(r => !targetIds.includes(r.targetContactId));
+            if (toDelete.length > 0) {
+                await tx.delete(contactRelation).where(and(
+                    eq(contactRelation.contactId, id),
+                    inArray(contactRelation.targetContactId, toDelete.map(r => r.targetContactId))
+                ));
+            }
+
+            const toAdd = targetRelationIds.filter(r => !currentTargetIds.includes(r.targetContactId));
+            if (toAdd.length > 0) {
                 await tx.insert(contactRelation).values(
-                    data.relationIds.map(r => ({
-                        id: generateId(),
+                    toAdd.map(r => ({
                         contactId: id,
                         targetContactId: r.targetContactId,
                         relationType: r.relationType
@@ -294,33 +432,50 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
             }
         }
 
+        // Tags
         if (data.tagNames !== undefined) {
-            await tx.delete(contactTag).where(eq(contactTag.contactId, id));
-            if (data.tagNames.length > 0) {
-                for (const tagName of data.tagNames) {
-                    let tagId: string;
-                    const existingTag = await tx.query.tag.findFirst({
-                        where: (t, { and, eq }) => and(eq(t.userId, user.id), eq(t.name, tagName))
-                    });
+            console.log(`[Contacts] Updating tags for contact ${id}`);
+            const currentTagAssociations = await tx.query.contactTag.findMany({
+                where: (ct, { eq }) => eq(ct.contactId, id),
+                with: { tag: true }
+            });
+            const currentTagNames = currentTagAssociations.map(ct => ct.tag.name);
+            const targetTagNames = data.tagNames || [];
 
-                    if (existingTag) {
-                        tagId = existingTag.id;
-                    } else {
-                        tagId = generateId();
-                        await tx.insert(tag).values({
-                            id: tagId,
-                            name: tagName,
-                            userId: user.id
-                        });
-                    }
+            // Delete removed tags
+            const toRemove = currentTagAssociations.filter(ct => !targetTagNames.includes(ct.tag.name));
+            if (toRemove.length > 0) {
+                await tx.delete(contactTag).where(and(
+                    eq(contactTag.contactId, id),
+                    inArray(contactTag.tagId, toRemove.map(ct => ct.tagId))
+                ));
+            }
 
-                    await tx.insert(contactTag).values({
-                        contactId: id,
-                        tagId
-                    });
+            // Add new tags
+            const toAdd = targetTagNames.filter(name => !currentTagNames.includes(name));
+            for (const tagName of toAdd) {
+                let tagId: string;
+                const existingTag = await tx.query.tag.findFirst({
+                    where: (t, { and, eq }) => and(eq(t.userId, user.id), eq(t.name, tagName))
+                });
+
+                if (existingTag) {
+                    tagId = existingTag.id;
+                } else {
+                    const [newTag] = await tx.insert(tag).values({
+                        name: tagName,
+                        userId: user.id
+                    }).returning({ id: tag.id });
+                    tagId = newTag.id;
                 }
+
+                await tx.insert(contactTag).values({
+                    contactId: id,
+                    tagId
+                });
             }
         }
+
     });
 
     // Re-generate assets
@@ -548,16 +703,14 @@ export async function updateAssociationStatus(type: 'event', entityId: string, c
         throw new Error('Only event associations support participation status');
     }
 
-    console.log(`[Contacts] Updating participation status for event ${entityId}, contact ${contactId} to ${status}`);
-
     const result = await db.update(eventContact)
         .set({ participationStatus: status })
         .where(and(
             eq(eventContact.eventId, entityId),
             eq(eventContact.contactId, contactId)
-        ));
+        ))
+        .returning();
 
-    // Note: Drizzle's update doesn't return the number of rows by default in all drivers, 
-    // but we can check if it worked by querying if we really wanted to.
-    // For now, we'll assume success if no error was thrown.
+    console.log(`[Contacts] Updated status for event ${entityId}, contact ${contactId}. Rows affected: ${result.length}`);
 }
+

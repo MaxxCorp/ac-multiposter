@@ -46,11 +46,9 @@ export const create = command(CreateSyncSchema, async (input) => {
 	}
 
 	// Create sync config
-	const newConfigId = crypto.randomUUID();
-	const config = await db
+	const [config] = await db
 		.insert(syncConfig)
 		.values({
-			id: newConfigId,
 			userId: user.id,
 			providerId: input.providerId,
 			providerType: input.providerType,
@@ -63,6 +61,8 @@ export const create = command(CreateSyncSchema, async (input) => {
 		})
 		.returning();
 
+	const newConfigId = config.id;
+
 	// Setup webhook for push notifications if direction is pull or bidirectional
 	if (input.direction === 'pull' || input.direction === 'bidirectional') {
 		try {
@@ -74,5 +74,5 @@ export const create = command(CreateSyncSchema, async (input) => {
 		}
 	}
 
-	return config[0];
+	return config;
 });

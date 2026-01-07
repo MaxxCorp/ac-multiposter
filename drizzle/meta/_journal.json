@@ -127,6 +127,27 @@
       "when": 1766808296389,
       "tag": "0017_early_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1767783210169,
+      "tag": "0018_workable_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1767783849435,
+      "tag": "0019_thin_morlocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1767784234724,
+      "tag": "0020_keen_joystick",
+      "breakpoints": true
     }
   ]
 }

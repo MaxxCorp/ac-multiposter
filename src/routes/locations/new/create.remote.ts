@@ -11,7 +11,6 @@ export const createLocation = form(createLocationSchema, async (data) => {
         ensureAccess(user, 'locations');
 
         const result = await db.insert(location).values({
-            id: crypto.randomUUID(),
             userId: user.id,
             name: data.name,
             street: data.street,
@@ -26,7 +25,7 @@ export const createLocation = form(createLocationSchema, async (data) => {
             longitude: data.longitude,
             what3words: data.what3words,
             inclusivitySupport: data.inclusivitySupport
-        }).returning();
+        }).returning({ id: location.id });
 
         const row = result[0];
         if (!row) {

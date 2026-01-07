@@ -15,9 +15,9 @@ export const createNewContact = form(ContactInputSchema, async (data) => {
             ...rest,
             birthday: (birthday && !isNaN(new Date(birthday).getTime())) ? new Date(birthday) : null,
         } as any,
-        emails: data.emails?.map(e => ({ ...e, id: crypto.randomUUID(), contactId: '' })),
-        phones: data.phones?.map(p => ({ ...p, id: crypto.randomUUID(), contactId: '' })),
-        addresses: data.addresses?.map(a => ({ ...a, id: crypto.randomUUID(), contactId: '' })),
+        emails: data.emails,
+        phones: data.phones,
+        addresses: data.addresses,
         relationIds: data.relationIds,
         tagNames: data.tagNames,
     });

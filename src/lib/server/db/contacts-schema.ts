@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, primaryKey, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 import { location, resource } from "./resources-schema";
 import { event } from "./events-schema";
@@ -7,7 +7,7 @@ import { event } from "./events-schema";
  * Contacts table based on Google People API Person resource
  */
 export const contact = pgTable("contact", {
-    id: text("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
@@ -41,8 +41,8 @@ export const contact = pgTable("contact", {
  * Contact Email Addresses
  */
 export const contactEmail = pgTable("contact_email", {
-    id: text("id").primaryKey(),
-    contactId: text("contact_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
     value: text("value").notNull(),
@@ -56,8 +56,8 @@ export const contactEmail = pgTable("contact_email", {
  * Contact Phone Numbers
  */
 export const contactPhone = pgTable("contact_phone", {
-    id: text("id").primaryKey(),
-    contactId: text("contact_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
     value: text("value").notNull(),
@@ -71,8 +71,8 @@ export const contactPhone = pgTable("contact_phone", {
  * Contact Physical Addresses
  */
 export const contactAddress = pgTable("contact_address", {
-    id: text("id").primaryKey(),
-    contactId: text("contact_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
     street: text("street"),
@@ -96,7 +96,7 @@ export const userContact = pgTable("user_contact", {
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
-    contactId: text("contact_id")
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
 }, (table) => [
@@ -106,10 +106,10 @@ export const userContact = pgTable("user_contact", {
 ]);
 
 export const locationContact = pgTable("location_contact", {
-    locationId: text("location_id")
+    locationId: uuid("location_id")
         .notNull()
         .references(() => location.id, { onDelete: "cascade" }),
-    contactId: text("contact_id")
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
 }, (table) => [
@@ -119,10 +119,10 @@ export const locationContact = pgTable("location_contact", {
 ]);
 
 export const resourceContact = pgTable("resource_contact", {
-    resourceId: text("resource_id")
+    resourceId: uuid("resource_id")
         .notNull()
         .references(() => resource.id, { onDelete: "cascade" }),
-    contactId: text("contact_id")
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
 }, (table) => [
@@ -132,10 +132,10 @@ export const resourceContact = pgTable("resource_contact", {
 ]);
 
 export const eventContact = pgTable("event_contact", {
-    eventId: text("event_id")
+    eventId: uuid("event_id")
         .notNull()
         .references(() => event.id, { onDelete: "cascade" }),
-    contactId: text("contact_id")
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
     participationStatus: text("participation_status").default("needsAction").notNull(), // accepted, declined, tentative, needsAction
@@ -149,11 +149,11 @@ export const eventContact = pgTable("event_contact", {
  * Contact Relations (Self-referential many-to-many)
  */
 export const contactRelation = pgTable("contact_relation", {
-    id: text("id").primaryKey(),
-    contactId: text("contact_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
-    targetContactId: text("target_contact_id")
+    targetContactId: uuid("target_contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
     relationType: text("relation_type").notNull(), // e.g., 'reports to', 'cooperates with'
@@ -167,7 +167,7 @@ export const contactRelation = pgTable("contact_relation", {
  * Global Tags Table
  */
 export const tag = pgTable("tag", {
-    id: text("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
     userId: text("user_id")
         .notNull()
@@ -182,10 +182,10 @@ export const tag = pgTable("tag", {
  * Contact-Tag Join Table
  */
 export const contactTag = pgTable("contact_tag", {
-    contactId: text("contact_id")
+    contactId: uuid("contact_id")
         .notNull()
         .references(() => contact.id, { onDelete: "cascade" }),
-    tagId: text("tag_id")
+    tagId: uuid("tag_id")
         .notNull()
         .references(() => tag.id, { onDelete: "cascade" }),
 }, (table) => [
@@ -301,4 +301,9 @@ export const eventContactRelations = relations(eventContact, ({ one }) => ({
         fields: [eventContact.contactId],
         references: [contact.id],
     }),
+    event: one(event, {
+        fields: [eventContact.eventId],
+        references: [event.id],
+    }),
 }));
+

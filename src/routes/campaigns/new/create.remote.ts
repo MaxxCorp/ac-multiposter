@@ -10,24 +10,23 @@ export const createCampaign = form(createCampaignSchema, async (data) => {
 	try {
 		const user = getAuthenticatedUser();
 		ensureAccess(user, 'campaigns');
-		
+
 		const result = await db
 			.insert(campaign)
 			.values({
-				id: crypto.randomUUID(),
 				userId: user.id,
 				name: data.name,
 				content: typeof data.content === 'string' ? JSON.parse(data.content) : data.content,
 			})
-			.returning();
-		
+			.returning({ id: campaign.id });
+
 		const row = result[0];
 		if (!row) {
 			throw new Error('Failed to create campaign');
 			// return { error: { message: 'Failed to create campaign' } };
 		}
 
-	
+
 		await listCampaigns().refresh();
 		return { success: true };
 	} catch (error: any) {
@@ -37,11 +36,11 @@ export const createCampaign = form(createCampaignSchema, async (data) => {
 			throw error
 
 		}
-		
+
 		// Otherwise it's a real error, return it
-		return { 
-			success: false, 
-			error: error?.message || 'An unexpected error occurred' 
+		return {
+			success: false,
+			error: error?.message || 'An unexpected error occurred'
 		};
 	}
 });

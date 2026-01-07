@@ -28,9 +28,6 @@ export const createEvent = form(eventSchema, async (data) => {
 			}
 		}
 
-		// Generate a unique ID for the event
-		const id = crypto.randomUUID();
-
 		// Convert ISO string dates to Date objects if provided
 		const startDateTime = data.startDateTime ? new Date(data.startDateTime) : null;
 		const endDateTime = data.endDateTime ? new Date(data.endDateTime) : null;
@@ -38,8 +35,7 @@ export const createEvent = form(eventSchema, async (data) => {
 		const reminders = data.reminders;
 
 		// Insert the event
-		const result = await db.insert(event).values({
-			id,
+		const [row] = await db.insert(event).values({
 			userId: user.id,
 			summary: data.summary,
 			description: data.description || null,
@@ -69,13 +65,13 @@ export const createEvent = form(eventSchema, async (data) => {
 			isPublic: !!data.isPublic,
 			categoryBerlinDotDe: data.categoryBerlinDotDe || null,
 			ticketPrice: data.ticketPrice || null,
-		}).returning();
+		}).returning({ id: event.id });
 
-		// Optionally check insert result
-		const row = result[0];
 		if (!row) {
 			throw new Error('Failed to create event');
 		}
+		const id = row.id;
+
 
 		// Associate resources with the event if provided
 		if (data.resourceIds && data.resourceIds.length > 0) {

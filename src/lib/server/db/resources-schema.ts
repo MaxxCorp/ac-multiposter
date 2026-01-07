@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, doublePrecision, primaryKey, index, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, doublePrecision, primaryKey, index, jsonb, integer, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 import { event } from "./events-schema";
 
@@ -7,7 +7,7 @@ import { event } from "./events-schema";
  * Stores physical locations where resources can be found or events can take place.
  */
 export const location = pgTable("location", {
-    id: text("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
@@ -38,11 +38,11 @@ export const location = pgTable("location", {
  * Stores bookable items like rooms, equipment, etc.
  */
 export const resource = pgTable("resource", {
-    id: text("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id")
         .notNull()
         .references(() => user.id, { onDelete: "cascade" }),
-    locationId: text("location_id")
+    locationId: uuid("location_id")
         .references(() => location.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     description: text("description"),
@@ -65,10 +65,10 @@ export const resource = pgTable("resource", {
  * A resource can be a child of multiple parents (shared resource).
  */
 export const resourceRelation = pgTable("resource_relation", {
-    parentResourceId: text("parent_resource_id")
+    parentResourceId: uuid("parent_resource_id")
         .notNull()
         .references(() => resource.id, { onDelete: "cascade" }),
-    childResourceId: text("child_resource_id")
+    childResourceId: uuid("child_resource_id")
         .notNull()
         .references(() => resource.id, { onDelete: "cascade" }),
 }, (table) => [
@@ -82,10 +82,10 @@ export const resourceRelation = pgTable("resource_relation", {
  * Associates resources with events.
  */
 export const eventResource = pgTable("event_resource", {
-    eventId: text("event_id")
+    eventId: uuid("event_id")
         .notNull()
         .references(() => event.id, { onDelete: "cascade" }),
-    resourceId: text("resource_id")
+    resourceId: uuid("resource_id")
         .notNull()
         .references(() => resource.id, { onDelete: "cascade" }),
 }, (table) => [
@@ -93,3 +93,44 @@ export const eventResource = pgTable("event_resource", {
     index("event_resource_event_idx").on(table.eventId),
     index("event_resource_resource_idx").on(table.resourceId),
 ]);
+
+import { relations } from 'drizzle-orm';
+
+export const locationRelations = relations(location, ({ many }) => ({
+    resources: many(resource),
+}));
+
+export const resourceRelations = relations(resource, ({ one, many }) => ({
+    location: one(location, {
+        fields: [resource.locationId],
+        references: [location.id],
+    }),
+    eventResources: many(eventResource),
+    childRelations: many(resourceRelation, { relationName: 'parentResource' }),
+    parentRelations: many(resourceRelation, { relationName: 'childResource' }),
+}));
+
+export const resourceRelationRelations = relations(resourceRelation, ({ one }) => ({
+    parentResource: one(resource, {
+        fields: [resourceRelation.parentResourceId],
+        references: [resource.id],
+        relationName: 'parentResource',
+    }),
+    childResource: one(resource, {
+        fields: [resourceRelation.childResourceId],
+        references: [resource.id],
+        relationName: 'childResource',
+    }),
+}));
+
+export const eventResourceRelations = relations(eventResource, ({ one }) => ({
+    event: one(event, {
+        fields: [eventResource.eventId],
+        references: [event.id],
+    }),
+    resource: one(resource, {
+        fields: [eventResource.resourceId],
+        references: [resource.id],
+    }),
+}));
+

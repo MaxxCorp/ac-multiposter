@@ -10,8 +10,6 @@ export const createResource = form(createResourceSchema, async (data) => {
         const user = getAuthenticatedUser();
         ensureAccess(user, 'resources');
 
-        const newResourceId = crypto.randomUUID();
-
         // Parse allocationCalendars from JSON string
         let parsedCalendars: Array<{ provider: string; calendarId: string }> | null = null;
         if (data.allocationCalendars) {
@@ -22,8 +20,7 @@ export const createResource = form(createResourceSchema, async (data) => {
             }
         }
 
-        const result = await db.insert(resource).values({
-            id: newResourceId,
+        const [row] = await db.insert(resource).values({
             userId: user.id,
             name: data.name,
             description: data.description,
@@ -31,12 +28,12 @@ export const createResource = form(createResourceSchema, async (data) => {
             locationId: data.locationId || null,
             allocationCalendars: parsedCalendars,
             maxOccupancy: data.maxOccupancy,
-        }).returning();
+        }).returning({ id: resource.id });
 
-        const row = result[0];
         if (!row) {
             throw new Error('Failed to create resource');
         }
+        const newResourceId = row.id;
 
         // Create parent-child relationships if parent resources are specified
         if (data.parentResourceIds && data.parentResourceIds.length > 0) {

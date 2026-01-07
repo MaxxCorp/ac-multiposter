@@ -63,18 +63,29 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 		.set(updateData)
 		.where(and(eq(event.id, data.id), eq(event.userId, user.id)));
 
-	// Update event-resource associations (always update, even if empty)
+	// Update event-resource associations
 	{
 		const { eventResource } = await import('$lib/server/db/schema');
+		const { inArray } = await import('drizzle-orm');
 
-		// Delete existing associations
-		await db.delete(eventResource).where(eq(eventResource.eventId, data.id));
+		const currentResources = await db.select().from(eventResource).where(eq(eventResource.eventId, data.id));
+		const currentResourceIds = currentResources.map(r => r.resourceId);
+		const targetResourceIds = data.resourceIds || [];
 
-		// Create new associations if any
-		const resourceIds = data.resourceIds || [];
-		if (resourceIds.length > 0) {
+		// Delete removed resources
+		const toDelete = currentResourceIds.filter(id => !targetResourceIds.includes(id));
+		if (toDelete.length > 0) {
+			await db.delete(eventResource).where(and(
+				eq(eventResource.eventId, data.id),
+				inArray(eventResource.resourceId, toDelete)
+			));
+		}
+
+		// Add new resources
+		const toAdd = targetResourceIds.filter(id => !currentResourceIds.includes(id));
+		if (toAdd.length > 0) {
 			await db.insert(eventResource).values(
-				resourceIds.map(resourceId => ({
+				toAdd.map(resourceId => ({
 					eventId: data.id,
 					resourceId,
 				}))
@@ -82,24 +93,36 @@ export const updateEvent = form(updateEventSchema, async (data) => {
 		}
 	}
 
-	// Update event-contact associations (always update, even if empty)
+	// Update event-contact associations
 	{
 		const { eventContact } = await import('$lib/server/db/schema');
+		const { inArray } = await import('drizzle-orm');
 
-		// Delete existing associations
-		await db.delete(eventContact).where(eq(eventContact.eventId, data.id));
+		const currentContacts = await db.select().from(eventContact).where(eq(eventContact.eventId, data.id));
+		const currentContactIds = currentContacts.map(c => c.contactId);
+		const targetContactIds = data.contactIds ? JSON.parse(data.contactIds as string) : [];
 
-		// Create new associations if any
-		const contactIds = data.contactIds ? JSON.parse(data.contactIds as string) : [];
-		if (contactIds.length > 0) {
+		// Delete removed contacts
+		const toDelete = currentContactIds.filter(id => !targetContactIds.includes(id));
+		if (toDelete.length > 0) {
+			await db.delete(eventContact).where(and(
+				eq(eventContact.eventId, data.id),
+				inArray(eventContact.contactId, toDelete)
+			));
+		}
+
+		// Add new contacts (preserves existing contacts and their statuses!)
+		const toAdd = targetContactIds.filter((id: string) => !currentContactIds.includes(id));
+		if (toAdd.length > 0) {
 			await db.insert(eventContact).values(
-				contactIds.map((contactId: string) => ({
+				toAdd.map((contactId: string) => ({
 					eventId: data.id,
 					contactId,
 				}))
 			);
 		}
 	}
+
 
 	// Trigger sync to external providers (non-blocking)
 	syncService.syncSpecificEvents(user.id, [data.id]).catch((error) => {

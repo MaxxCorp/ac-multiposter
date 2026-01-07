@@ -127,7 +127,6 @@ export class EmailProvider implements SyncProvider {
 
 			// Store campaign in database
 			await db.insert(emailCampaign).values({
-				id: crypto.randomUUID(),
 				syncConfigId: this.config.id,
 				eventId: event.metadata?.eventId || event.externalId,
 				eventSummary: event.summary,
@@ -181,14 +180,13 @@ export class EmailProvider implements SyncProvider {
 			const response = await this.makeBrevoRequest('POST', '/webhooks', webhookData);
 
 			return {
-				id: crypto.randomUUID(),
 				syncConfigId: this.config.id,
 				providerId: this.config.providerId,
 				resourceId: response.id.toString(),
 				channelId: response.id.toString(),
 				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Brevo webhooks don't expire
 				createdAt: new Date()
-			};
+			} as WebhookSubscription;
 		} catch (error) {
 			console.error('[EmailProvider] Failed to setup Brevo webhook:', error);
 			throw new Error(`Failed to setup webhook: ${error}`);
@@ -225,7 +223,6 @@ export class EmailProvider implements SyncProvider {
 				if (campaign) {
 					// Store the email event
 					await db.insert(emailEvent).values({
-						id: crypto.randomUUID(),
 						emailCampaignId: campaign.id,
 						recipientEmail: event.email,
 						eventType: event.event,

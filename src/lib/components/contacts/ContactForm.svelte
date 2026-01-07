@@ -138,47 +138,69 @@
     // For create: schema expects { contact: {...}, emails: [...], ... }
     // For update: schema expects { id: string, data: { contact: {...}, ... } }
     const enhanceAttr = $derived.by(() => {
-        if (!remoteFunction || !schema) return {};
+        if (!remoteFunction) return {};
 
-        return remoteFunction
-            .preflight(schema)
-            .enhance(async ({ submit }: any) => {
-                try {
-                    // Prepare array data that isn't captured by form fields
-                    const arrayData = {
-                        emails: emails.filter((e) => e.value),
-                        phones: phones.filter((p) => p.value),
-                        addresses: addresses.filter((a) => a.street || a.city),
-                        relationIds: relations.map((r) => ({
-                            targetContactId: r.targetContactId,
-                            relationType: r.relationType,
+        return remoteFunction.enhance(async ({ submit }: any) => {
+            try {
+                // Prepare array data that isn't captured by form fields
+                const arrayData = {
+                    emails: emails.filter((e) => e.value),
+                    phones: phones.filter((p) => p.value),
+                    addresses: addresses
+                        .filter((a) => a.street || a.city)
+                        .map((a) => ({
+                            ...a,
+                            addressSuffix: a.addressSuffix || null,
+                            state: a.state || null,
                         })),
-                        tagNames: tagsInput
-                            .split(",")
-                            .map((t: string) => t.trim())
-                            .filter(Boolean),
+                    relationIds: relations.map((r) => ({
+                        targetContactId: r.targetContactId,
+                        relationType: r.relationType,
+                    })),
+                    tagNames: tagsInput
+                        .split(",")
+                        .map((t: string) => t.trim())
+                        .filter(Boolean),
+                };
+
+                // Capture all data
+                let payload: any = { ...arrayData };
+
+                if (!isNew && contactId) {
+                    // For updates, the schema expects { id: string, data: { ... } }
+                    payload = {
+                        id: contactId,
+                        data: { ...arrayData },
                     };
-
-                    const result: any = await submit(arrayData);
-
-                    if (result?.error) {
-                        toast.error(
-                            result.error.message ||
-                                "Oh no! Something went wrong",
-                        );
-                        return;
-                    }
-                    toast.success("Successfully saved!");
-                    if (onSuccess) {
-                        onSuccess(result);
-                    } else {
-                        goto("/contacts");
-                    }
-                } catch (error: unknown) {
-                    const err = error as { message?: string };
-                    toast.error(err?.message || "Oh no! Something went wrong");
                 }
-            });
+
+                console.log(
+                    "[ContactForm] Submitting payload:",
+                    JSON.stringify(payload, null, 2),
+                );
+
+                const result: any = await submit(payload);
+
+                console.log("[ContactForm] Result:", result);
+
+                if (result?.error) {
+                    toast.error(
+                        result.error.message || "Oh no! Something went wrong",
+                    );
+                    return;
+                }
+                toast.success("Successfully saved!");
+                if (onSuccess) {
+                    onSuccess(result);
+                } else {
+                    goto("/contacts");
+                }
+            } catch (error: unknown) {
+                console.error("[ContactForm] Error:", error);
+                const err = error as { message?: string };
+                toast.error(err?.message || "Oh no! Something went wrong");
+            }
+        });
     });
 
     // Helper to get field bindings - handles both create and update schemas
@@ -466,7 +488,8 @@
                             <div class="flex-1 text-sm">
                                 <span class="font-medium">
                                     {rel.targetContact?.displayName ||
-                                        `${rel.targetContact?.givenName || ""} ${rel.targetContact?.familyName || ""}`.trim()}
+                                        `${rel.targetContact?.givenName || ""} ${rel.targetContact?.familyName || ""}`.trim() ||
+                                        rel.targetContactId}
                                 </span>
                             </div>
                             <div class="w-48">

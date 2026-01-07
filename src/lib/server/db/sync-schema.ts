@@ -1,11 +1,11 @@
-import { pgTable, text, timestamp, boolean, jsonb, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb, integer, index, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 
 /**
  * Sync provider configurations - each represents a configured sync connection
  */
 export const syncConfig = pgTable("sync_config", {
-	id: text("id").primaryKey(),
+	id: uuid("id").primaryKey().defaultRandom(),
 	userId: text("user_id")
 		.notNull()
 		.references(() => user.id, { onDelete: "cascade" }),
@@ -32,8 +32,8 @@ export const syncConfig = pgTable("sync_config", {
  * Tracks individual sync operations for auditing and retry
  */
 export const syncOperation = pgTable("sync_operation", {
-	id: text("id").primaryKey(),
-	syncConfigId: text("sync_config_id")
+	id: uuid("id").primaryKey().defaultRandom(),
+	syncConfigId: uuid("sync_config_id")
 		.notNull()
 		.references(() => syncConfig.id, { onDelete: "cascade" }),
 	operation: text("operation").notNull(), // 'pull', 'push', 'delete'
@@ -57,9 +57,9 @@ export const syncOperation = pgTable("sync_operation", {
  * Maps internal events to external provider events
  */
 export const syncMapping = pgTable("sync_mapping", {
-	id: text("id").primaryKey(),
-	eventId: text("event_id").notNull(), // References event.id
-	syncConfigId: text("sync_config_id")
+	id: uuid("id").primaryKey().defaultRandom(),
+	eventId: uuid("event_id").notNull(), // References event.id (which is now uuid)
+	syncConfigId: uuid("sync_config_id")
 		.notNull()
 		.references(() => syncConfig.id, { onDelete: "cascade" }),
 	externalId: text("external_id").notNull(), // Provider's event ID
@@ -79,8 +79,8 @@ export const syncMapping = pgTable("sync_mapping", {
  * Webhook subscriptions for push notifications
  */
 export const webhookSubscription = pgTable("webhook_subscription", {
-	id: text("id").primaryKey(),
-	syncConfigId: text("sync_config_id")
+	id: uuid("id").primaryKey().defaultRandom(),
+	syncConfigId: uuid("sync_config_id")
 		.notNull()
 		.references(() => syncConfig.id, { onDelete: "cascade" }),
 	providerId: text("provider_id").notNull(),
