@@ -1,0 +1,11 @@
+DATABASE_URL="postgresql://ac-multiposter:ac-multiposter@db-dev:5432/ac-multiposter"
+BETTER_AUTH_SECRET="your_secret_key_here"
+BETTER_AUTH_URL="http://localhost:5173" # Base URL of your app
+# GOOGLE_CLIENT_ID="your_google_client_id_here"
+# GOOGLE_CLIENT_SECRET="your_google_client_secret_here"
+# Optional Microsoft OAuth
+# MICROSOFT_CLIENT_ID=""
+# MICROSOFT_CLIENT_SECRET=""
+
+# Cron secret used by /api/sync/renew-webhooks
+# CRON_SECRET="your_cron_secret_here"
