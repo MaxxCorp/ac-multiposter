@@ -1,137 +1,124 @@
-import { form, getRequestEvent } from '$app/server';
+import { form } from '$app/server';
+import { error } from "@sveltejs/kit";
 import { db } from '$lib/server/db';
-import { event, eventResource } from '$lib/server/db/schema';
+import { event, eventResource, eventContact } from '$lib/server/db/schema';
 import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
-import { syncService } from '$lib/server/sync/service';
-import { eventSchema } from '$lib/validations/event';
+import { createEventSchema } from '$lib/validations/events';
 import { generateEventAssets } from '$lib/server/events/assets';
 
-/**
- * Form function for creating a new event
- * Uses shared Zod schema with manual date/time validation (zod/mini doesn't support refine())
- */
-export const createEvent = form(eventSchema, async (data) => {
+export const createNewEvent = form(createEventSchema, async (data) => {
+	console.log('--- createNewEvent START ---');
+	console.log('Raw Data:', JSON.stringify(data, null, 2));
 	try {
+		console.log('Authenticating user...');
 		const user = getAuthenticatedUser();
 		ensureAccess(user, 'events');
+		console.log('User authenticated:', user.id);
 
-		// Validate date/time ranges
-		if (data.startDate && data.endDate && data.endDate < data.startDate) {
-			throw new Error('End date must be the same as or after the start date');
-		}
-		if (data.startDateTime && data.endDateTime) {
-			const startDateTime = new Date(data.startDateTime);
-			const endDateTime = new Date(data.endDateTime);
-			if (endDateTime <= startDateTime) {
-				throw new Error('End date and time must be after the start date and time');
+		// Handle serialized reminders if provided
+		let reminders = data.reminders;
+		if (data.remindersJson) {
+			console.log('Parsing remindersJson...');
+			try {
+				reminders = JSON.parse(data.remindersJson);
+				console.log('Parsed reminders:', JSON.stringify(reminders));
+			} catch (e) {
+				console.error('Failed to parse remindersJson', e);
 			}
 		}
 
-		// Convert ISO string dates to Date objects if provided
-		const startDateTime = data.startDateTime ? new Date(data.startDateTime) : null;
-		const endDateTime = data.endDateTime ? new Date(data.endDateTime) : null;
+		// Convert and type-safety check start/end dates
+		if (!data.start) {
+			console.error('Missing start date');
+			error(400, 'Start date is required');
+		}
+		const start = new Date(data.start);
+		console.log('Parsed Start Date:', start);
 
-		const reminders = data.reminders;
+		if (isNaN(start.getTime())) {
+			console.error('Invalid start date', data.start);
+			error(400, `Invalid start date: ${data.start}`);
+		}
 
-		// Insert the event
-		const [row] = await db.insert(event).values({
+		// End date is optional in the database but we usually want one
+		let end: Date | null = null;
+		if (data.end) {
+			end = new Date(data.end);
+			console.log('Parsed End Date:', end);
+			if (isNaN(end.getTime())) {
+				console.warn(`Invalid end date provided: ${data.end}, setting to null`);
+				end = null;
+			}
+		}
+
+		const eventId = crypto.randomUUID();
+		console.log('Generated Event ID:', eventId);
+
+		// Perform insertion
+		console.log('Inserting event into DB...');
+		const [newEvent] = await db.insert(event).values({
+			id: eventId,
 			userId: user.id,
 			summary: data.summary,
 			description: data.description || null,
 			location: data.location || null,
-			startDate: data.startDate || null,
-			startDateTime,
-			startTimeZone: data.startTimeZone || null,
-			endDate: data.endDate || null,
-			endDateTime,
-			endTimeZone: data.endTimeZone || null,
-			eventType: data.eventType || 'default',
-			status: 'confirmed',
-			visibility: data.visibility || 'default',
-			transparency: data.transparency || 'opaque',
-			colorId: data.colorId || null,
-			recurrence: data.recurrence as any || null,
-			attendees: data.attendees as any || null,
-			reminders: reminders as any || null,
-			guestsCanInviteOthers: !!data.guestsCanInviteOthers,
-			guestsCanModify: !!data.guestsCanModify,
-			guestsCanSeeOtherGuests: !!data.guestsCanSeeOtherGuests,
-			attendeesOmitted: false,
-			anyoneCanAddSelf: false,
-			locked: false,
-			privateCopy: false,
-			sequence: 0,
-			isPublic: !!data.isPublic,
-			categoryBerlinDotDe: data.categoryBerlinDotDe || null,
-			ticketPrice: data.ticketPrice || null,
-		}).returning({ id: event.id });
+			startDateTime: start,
+			endDateTime: end,
+			recurrence: data.recurrence || null,
+			// Casting to any to bypass strict type check for JSON columns if needed
+			attendees: (data.attendees as any) || null,
+			reminders: reminders as any,
+			isPublic: data.isPublic === 'true',
+			guestsCanInviteOthers: data.guestsCanInviteOthers === 'true',
+			guestsCanModify: data.guestsCanModify === 'true',
+			guestsCanSeeOtherGuests: data.guestsCanSeeOtherGuests === 'true',
+		}).returning();
 
-		if (!row) {
-			throw new Error('Failed to create event');
-		}
-		const id = row.id;
+		console.log('Insert result:', newEvent);
 
-
-		// Associate resources with the event if provided
-		if (data.resourceIds && data.resourceIds.length > 0) {
-			await db.insert(eventResource).values(
-				data.resourceIds.map(resourceId => ({
-					eventId: id,
-					resourceId,
-				}))
-			);
+		if (!newEvent) {
+			console.error('No event returned from insert stub');
+			error(500, 'Failed to create event');
 		}
 
-
-		// Associate contacts with the event if provided
-		const contactIds = data.contactIds ? JSON.parse(data.contactIds as string) : [];
-		if (contactIds.length > 0) {
-			const { eventContact } = await import('$lib/server/db/schema');
-			await db.insert(eventContact).values(
-				contactIds.map((contactId: string) => ({
-					eventId: id,
-					contactId,
-				}))
-			);
+		// Associate resources if provided
+		const resourceIds = typeof data.resourceIds === 'string' ? JSON.parse(data.resourceIds) : data.resourceIds;
+		if (resourceIds && Array.isArray(resourceIds) && resourceIds.length > 0) {
+			console.log('Associating resources:', resourceIds);
+			const resourceAssociations = (resourceIds as string[]).map((resourceId: string) => ({
+				eventId: newEvent.id,
+				resourceId,
+			}));
+			await db.insert(eventResource).values(resourceAssociations);
 		}
 
-		// Trigger sync to external providers (non-blocking)
-		syncService.syncSpecificEvents(user.id, [id]).catch((error) => {
-			console.error('[createEvent] Failed to sync event to providers:', error);
-		});
+		// Associate contacts if provided
+		const contactIds = typeof data.contactIds === 'string' ? JSON.parse(data.contactIds) : data.contactIds;
+		console.log('Associating contacts:', contactIds);
+		if (contactIds && Array.isArray(contactIds) && contactIds.length > 0) {
+			const contactAssociations = contactIds.map((contactId: string) => ({
+				eventId: newEvent.id,
+				contactId,
+			}));
+			await db.insert(eventContact).values(contactAssociations);
+		}
 
-		// Generate assets (QR Code, iCal)
-		const origin = getRequestEvent()?.url.origin;
-		generateEventAssets(id, origin).catch((error) => {
-			console.error('[createEvent] Failed to generate event assets:', error);
-		});
+		console.log('Generating assets via create.remote...');
+		await generateEventAssets(newEvent.id);
 
-		// Refresh the list query and the read query for the new event
+		console.log('Event created successfully, refreshing list...');
 		await listEvents().refresh();
-		try {
-			// This might fail if the user doesn't have permissions to read access to the specific event right away or similar race conditions
-			// But for the creator it should be fine.
-			// However, `readEvent` requires an argument. `readEvent(id)`.
-			// We need to import it.
-			// Let's do it in a separate step or just assume the user navigates.
-			// If the user navigates to `events/[id]`, the page loader calls `readEvent`.
-			// The issue might be that `readEvent` is cached with a `null` result if it was accessed before creation? Unlikely for a UUID.
-			// The issue described is "failed to load event data" or "error 500".
-			// "Failed to load" implies `readEvent` returned null or threw error.
-			// "Error 500" implies server error.
-		} catch (e) {
-			// ignore
-		}
-
+		console.log('--- createNewEvent DONE ---');
 		return { success: true };
-	} catch (error: any) {
-		if (error?.status && error?.location) {
-			throw error;
+	} catch (err: any) {
+		console.error('--- createNewEvent ERROR ---', err);
+		if (err?.status && err?.location) {
+			error(500, err.message);
 		}
 		return {
 			success: false,
-			error: error?.message || 'An unexpected error occurred'
+			error: err?.message || 'An unexpected error occurred'
 		};
 	}
 });

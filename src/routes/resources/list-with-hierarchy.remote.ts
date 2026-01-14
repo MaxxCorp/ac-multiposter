@@ -21,8 +21,7 @@ export const listResourcesWithHierarchy = query(async (): Promise<ResourceWithHi
     // Fetch all resources
     const resources = await db
         .select()
-        .from(resource)
-        .where(eq(resource.userId, user.id));
+        .from(resource);
 
     // Fetch all relationships
     const relations = await db

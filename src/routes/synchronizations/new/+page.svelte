@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { create, type CreateSyncInput } from "./create.remote";
+	import { create } from "./create.remote";
+	import type { CreateSynchronizationInput as CreateSyncInput } from "$lib/validations/synchronizations";
 	import { list } from "../list.remote";
 	import { goto } from "$app/navigation";
 	import {

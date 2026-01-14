@@ -8,7 +8,7 @@
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import { goto } from "$app/navigation";
 
-    import { ContactUpdateSchema } from "$lib/validations/contacts";
+    import { updateContactSchema } from "$lib/validations/contacts";
 
     const contactId = page.params.id || "";
     let itemsPromise = $state(readContact(contactId));
@@ -61,7 +61,7 @@
                     </div>
                     <ContactForm
                         remoteFunction={updateExistingContact}
-                        schema={ContactUpdateSchema}
+                        schema={updateContactSchema}
                         onSuccess={handleSuccess}
                         contactId={contact.id}
                         initialData={{

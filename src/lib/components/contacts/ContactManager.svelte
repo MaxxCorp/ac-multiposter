@@ -17,13 +17,12 @@
         addAssociation,
         removeAssociation,
         fetchEntityContacts,
-        updateAssociationStatusRemote,
+        updateAssociationStatus as updateAssociationStatusRemote,
     } from "../../../routes/contacts/associate.remote";
-    import ContactQuickForm from "./ContactQuickForm.svelte";
-    import {
-        createContactCommand,
-        updateContactCommand,
-    } from "../../../routes/contacts/contact-commands.remote";
+    import ContactForm from "./ContactForm.svelte";
+
+    import { createNewContact } from "../../../routes/contacts/new/create.remote";
+    import { updateExistingContact } from "../../../routes/contacts/[id]/update.remote";
     import { toast } from "svelte-sonner";
 
     let { type, entityId = null, onchange = null } = $props();
@@ -95,61 +94,50 @@
         }
     }
 
-    async function handleQuickCreate(data: any) {
-        try {
-            const result = await createContactCommand(data);
-            if (result.id) {
-                if (entityId) {
-                    // Automatically associate the new contact
-                    await (addAssociation as any)({
-                        type,
-                        entityId,
-                        contactId: result.id,
-                    });
-                }
-                const newContact = (await (listContacts as any)()).find(
-                    (c: Contact) => c.id === result.id,
-                );
-                if (newContact) {
-                    associatedContacts = [...associatedContacts, newContact];
-                    allContacts = [newContact, ...allContacts];
-                    if (onchange) onchange(associatedContacts.map((c) => c.id));
-                }
-                showQuickCreate = false;
-                toast.success("Contact created and associated");
+    async function handleQuickCreateSuccess(result: any) {
+        if (result.id) {
+            if (entityId) {
+                // Automatically associate the new contact
+                // Note: Ideally this should be handled by the server action if we pass context,
+                // but for now we do it here.
+                await (addAssociation as any)({
+                    type,
+                    entityId,
+                    contactId: result.id,
+                });
             }
-        } catch (error: any) {
-            toast.error(error.message || "Failed to create contact");
+            const newContact = (await (listContacts as any)()).find(
+                (c: Contact) => c.id === result.id,
+            );
+            if (newContact) {
+                associatedContacts = [...associatedContacts, newContact];
+                allContacts = [newContact, ...allContacts];
+                if (onchange) onchange(associatedContacts.map((c) => c.id));
+            }
+            showQuickCreate = false;
+            toast.success("Contact created and associated");
         }
     }
 
-    async function handleInPlaceUpdate(data: any) {
+    async function handleInPlaceUpdateSuccess(result: any) {
         if (!editingContact) return;
         const targetId = editingContact.id;
-        try {
-            const result = await updateContactCommand({
-                id: targetId,
-                data,
-            });
 
-            // Refresh local state
-            const updatedContact = (await (listContacts as any)()).find(
-                (c: Contact) => c.id === targetId,
+        // Refresh local state
+        const updatedContact = (await (listContacts as any)()).find(
+            (c: Contact) => c.id === targetId,
+        );
+        if (updatedContact) {
+            associatedContacts = associatedContacts.map((ac) =>
+                ac.id === updatedContact.id ? updatedContact : ac,
             );
-            if (updatedContact) {
-                associatedContacts = associatedContacts.map((ac) =>
-                    ac.id === updatedContact.id ? updatedContact : ac,
-                );
-                allContacts = allContacts.map((c) =>
-                    c.id === updatedContact.id ? updatedContact : c,
-                );
-            }
-
-            editingContact = null;
-            toast.success("Contact updated");
-        } catch (error: any) {
-            toast.error(error.message || "Failed to update contact");
+            allContacts = allContacts.map((c) =>
+                c.id === updatedContact.id ? updatedContact : c,
+            );
         }
+
+        editingContact = null;
+        toast.success("Contact updated");
     }
 
     async function updateStatus(contact: Contact, status: string) {
@@ -337,7 +325,8 @@
             </div>
 
             {#if editingContact}
-                <ContactQuickForm
+                <ContactForm
+                    remoteFunction={updateExistingContact}
                     initialData={{
                         contact: editingContact,
                         emails: editingContact.emails,
@@ -346,14 +335,14 @@
                         relations: editingContact.relations,
                         tags: editingContact.tags,
                     }}
-                    onsubmit={handleInPlaceUpdate}
-                    loading={false}
+                    contactId={editingContact.id}
+                    onSuccess={handleInPlaceUpdateSuccess}
                     cancelHref="#"
                 />
             {:else}
-                <ContactQuickForm
-                    onsubmit={handleQuickCreate}
-                    loading={false}
+                <ContactForm
+                    remoteFunction={createNewContact}
+                    onSuccess={handleQuickCreateSuccess}
                     cancelHref="#"
                 />
             {/if}

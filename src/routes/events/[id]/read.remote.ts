@@ -1,130 +1,88 @@
-import { z } from 'zod/mini';
 import { query } from '$app/server';
-import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { event, eventResource, eventContact, resource } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { event, eventResource, eventContact, contact, contactEmail, contactPhone } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 import type { Event } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
-
-import { resolveContactForEventId } from '$lib/server/contact-resolution';
-import QRCode from 'qrcode';
+import * as v from 'valibot';
 
 /**
- * Query: Read a single event by ID
+ * Query: Read an event by ID
+ * Note: Only allowing access to events owned by the user, or public events
  */
-export const readEvent = query(z.string(), async (eventId: string): Promise<Event | null> => {
-	// 1. Fetch the event directly without auth check first
-	const row = await db.query.event.findFirst({
-		where: (table, { eq }) => eq(table.id, eventId),
-	});
+export const readEvent = query(v.string(), async (eventId: string): Promise<Event | null> => {
+	const user = getAuthenticatedUser();
+	ensureAccess(user, 'events');
 
-	if (!row) {
-		return null;
-	}
-
-	// 2. Check Authorization
-	// 2. Check Authorization
-	// If NOT public, enforce authentication and access control
-	if (!row.isPublic) {
-		try {
-			const user = getAuthenticatedUser();
-			ensureAccess(user, 'events');
-		} catch (e) {
-			throw error(401, 'Unauthorized');
-		}
-	}
-
-	// 3. Transform data
-	const requestEvent = {
-		...row,
-		createdAt: row.createdAt.toISOString(),
-		updatedAt: row.updatedAt.toISOString(),
-		startDateTime: row.startDateTime?.toISOString() ?? null,
-		endDateTime: row.endDateTime?.toISOString() ?? null,
-	};
-
-	// 4. Fetch associated resources
-	const resources = await db
+	const [result] = await db
 		.select()
+		.from(event)
+		.where(and(
+			eq(event.id, eventId),
+		));
+
+	if (!result) return null;
+
+	// Fetch related resources and contacts
+	const resources = await db
+		.select({ id: eventResource.resourceId })
 		.from(eventResource)
 		.where(eq(eventResource.eventId, eventId));
 
-	// 5. Fetch associated contacts
 	const contacts = await db
-		.select()
+		.select({
+			id: eventContact.contactId,
+			displayName: contact.displayName,
+			givenName: contact.givenName,
+			familyName: contact.familyName,
+			qrCodePath: contact.qrCodePath,
+		})
 		.from(eventContact)
+		.innerJoin(contact, eq(eventContact.contactId, contact.id))
 		.where(eq(eventContact.eventId, eventId));
 
-	const participationStatuses: Record<string, string> = {};
-	for (const c of contacts) {
-		participationStatuses[c.contactId] = c.participationStatus;
-	}
+	// Resolve primary contact details
+	let resolvedContact = null;
+	if (contacts.length > 0) {
+		const primaryContact = contacts[0];
 
-	// 6. Fetch max occupancy of first attached resource
-	let maxOccupancy = null;
-	if (resources.length > 0) {
-		const [res] = await db
-			.select()
-			.from(resource)
-			.where(eq(resource.id, resources[0].resourceId))
+		// Fetch email and phone
+		const [email] = await db
+			.select({ value: contactEmail.value })
+			.from(contactEmail)
+			.where(and(
+				eq(contactEmail.contactId, primaryContact.id),
+				eq(contactEmail.primary, true)
+			))
 			.limit(1);
-		if (res) {
-			maxOccupancy = res.maxOccupancy;
-		}
-	}
 
-	// 7. Resolve contact info
-	let resolvedContactWithQr = null;
+		const [phone] = await db
+			.select({ value: contactPhone.value })
+			.from(contactPhone)
+			.where(and(
+				eq(contactPhone.contactId, primaryContact.id),
+				eq(contactPhone.primary, true)
+			))
+			.limit(1);
 
-	let userForResolution = null;
-	try {
-		userForResolution = getAuthenticatedUser();
-	} catch {
-		// User not authenticated
-	}
-	const filterWorkOnly = !userForResolution;
-
-	try {
-		const resolvedContact = await resolveContactForEventId(eventId, filterWorkOnly);
-
-		if (resolvedContact) {
-			// Generate vCard
-			let vCard = `BEGIN:VCARD
-VERSION:3.0
-FN:${resolvedContact.name}`;
-
-			if (resolvedContact.email) {
-				vCard += `\nEMAIL:${resolvedContact.email}`;
-			}
-			if (resolvedContact.phone) {
-				vCard += `\nTEL:${resolvedContact.phone}`;
-			}
-			vCard += `\nEND:VCARD`;
-
-			// Generate QR Code
-			try {
-				const qrCodeDataUrl = await QRCode.toDataURL(vCard);
-				resolvedContactWithQr = {
-					...resolvedContact,
-					qrCodeDataUrl,
-				};
-			} catch (err) {
-				console.error('Failed to generate contact QR code:', err);
-				resolvedContactWithQr = { ...resolvedContact };
-			}
-		}
-	} catch (err) {
-		console.error('Failed to resolve contact for event:', err);
-		// We do not rethrow, just let it be null
+		resolvedContact = {
+			name: primaryContact.displayName || `${primaryContact.givenName || ''} ${primaryContact.familyName || ''}`.trim(),
+			email: email?.value || '',
+			phone: phone?.value || '',
+			qrCodeDataUrl: primaryContact.qrCodePath || undefined
+		};
 	}
 
 	return {
-		...requestEvent,
-		resourceIds: resources.map((r) => r.resourceId),
-		contactIds: contacts.map((c) => c.contactId),
-		participationStatuses,
-		maxOccupancy,
-		resolvedContact: resolvedContactWithQr,
+		...result,
+		createdAt: result.createdAt.toISOString(),
+		updatedAt: result.updatedAt.toISOString(),
+		startDateTime: result.startDateTime?.toISOString() ?? null,
+		endDateTime: result.endDateTime?.toISOString() ?? null,
+		qrCodePath: result.qrCodePath,
+		iCalPath: result.iCalPath,
+		resourceIds: resources.map(r => r.id),
+		contactIds: contacts.map(c => c.id),
+		resolvedContact,
 	} as Event;
 });

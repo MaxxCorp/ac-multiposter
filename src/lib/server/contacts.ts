@@ -255,7 +255,7 @@ export async function createContact(data: ContactData) {
                 // Find or create tag
                 let tagId: string;
                 const existingTag = await tx.query.tag.findFirst({
-                    where: (t, { and, eq }) => and(eq(t.userId, user.id), eq(t.name, tagName))
+                    where: (t, { eq }) => eq(t.name, tagName)
                 });
 
                 if (existingTag) {
@@ -321,21 +321,9 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
             if (data.contact.isPublic !== undefined) updateSet.isPublic = data.contact.isPublic;
 
             const query = tx.update(contact).set(updateSet);
-
-            if (isAdmin) {
-                await query.where(eq(contact.id, id));
-            } else {
-                await query.where(and(eq(contact.id, id), eq(contact.userId, user.id)));
-            }
+            await query.where(eq(contact.id, id));
         }
 
-        // SECURITY: Verify ownership before updating relations if not admin
-        if (!isAdmin) {
-            const ownedContact = await tx.select({ id: contact.id }).from(contact).where(and(eq(contact.id, id), eq(contact.userId, user.id))).limit(1);
-            if (ownedContact.length === 0) {
-                throw new Error("You do not have permission to update this contact");
-            }
-        }
 
         // Surgical update for related fields
 
@@ -451,7 +439,7 @@ export async function updateContact(id: string, data: Partial<ContactData>) {
             for (const tagName of toAdd) {
                 let tagId: string;
                 const existingTag = await tx.query.tag.findFirst({
-                    where: (t, { and, eq }) => and(eq(t.userId, user.id), eq(t.name, tagName))
+                    where: (t, { eq }) => eq(t.name, tagName)
                 });
 
                 if (existingTag) {
@@ -503,7 +491,7 @@ export async function deleteContact(id: string) {
     }
 
     return await db.delete(contact)
-        .where(and(eq(contact.id, id), eq(contact.userId, user.id)));
+        .where(eq(contact.id, id));
 }
 
 /**
@@ -562,26 +550,7 @@ export async function getContact(id: string) {
 
     if (!contactRecord) return null;
 
-    const event = getRequestEvent();
-    const user = event.locals.user as any;
-
-    // Check if user is the owner, or an admin, or has full contacts feature access
-    const isAuthorized = user && (
-        contactRecord.userId === user.id ||
-        parseRoles(user).includes('admin') ||
-        hasAccess(user, 'contacts')
-    );
-
-    if (!isAuthorized) {
-        if (!contactRecord.isPublic) {
-            throw new Error('Forbidden: You do not have access to this contact');
-        }
-        // Publicly accessible, but strip sensitive data (relations)
-        return {
-            ...contactRecord,
-            relations: []
-        };
-    }
+    return contactRecord;
 
     return contactRecord;
 }

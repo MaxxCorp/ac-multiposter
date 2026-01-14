@@ -1,4 +1,4 @@
-import { z } from 'zod/mini';
+import * as v from 'valibot';
 import { command } from '$app/server';
 import { db } from '$lib/server/db';
 import { contact } from '$lib/server/db/schema';
@@ -7,7 +7,7 @@ import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { listContacts } from '../list.remote';
 import { getStorageProvider } from '$lib/server/blob-storage';
 
-const deleteContactsSchema = z.array(z.string());
+const deleteContactsSchema = v.array(v.string());
 
 export const deleteExistingContact = command(deleteContactsSchema, async (ids) => {
     const user = getAuthenticatedUser();
@@ -17,11 +17,11 @@ export const deleteExistingContact = command(deleteContactsSchema, async (ids) =
 
     // Fetch contacts to get asset paths before deletion
     const contactsToDelete = await db.query.contact.findMany({
-        where: (table, { and, eq, inArray }) => and(eq(table.userId, user.id), inArray(table.id, ids))
+        where: (table, { inArray }) => inArray(table.id, ids)
     });
 
     const result = await db.delete(contact)
-        .where(and(eq(contact.userId, user.id), inArray(contact.id, ids)))
+        .where(inArray(contact.id, ids))
         .returning({ id: contact.id });
 
     const deletedIds = result.map(r => r.id);

@@ -1,17 +1,17 @@
+import * as v from 'valibot';
 import { command } from '$app/server';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { db } from '$lib/server/db';
-import { syncConfig } from '$lib/server/db/sync-schema';
-import { account } from '$lib/server/db/schema';
+import { syncConfig, account } from '$lib/server/db/schema'; // Updated syncConfig import path
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { SyncDirection } from '$lib/server/sync/types';
 import { syncService } from '$lib/server/sync/service';
-import { CreateSyncSchema, type CreateSyncInput } from '$lib/validations/sync';
-export type { CreateSyncInput };
+import { createSynchronizationSchema } from '$lib/validations/synchronizations';
+import { list as listSynchronizations } from '../list.remote'; // New import
+import { nanoid } from 'nanoid'; // New import
 
-
-export const create = command(CreateSyncSchema, async (input) => {
+export const create = command(createSynchronizationSchema, async (input) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'synchronizations');
 
@@ -73,6 +73,8 @@ export const create = command(CreateSyncSchema, async (input) => {
 			// User can still manually sync or retry webhook setup later
 		}
 	}
+
+	await listSynchronizations().refresh();
 
 	return config;
 });

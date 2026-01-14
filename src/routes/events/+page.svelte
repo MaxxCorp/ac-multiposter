@@ -65,109 +65,14 @@
 		return "Time not specified";
 	}
 
-	// Track when items are resolved and setup SSE for real-time updates
-	let abortController: AbortController | null = null;
-	let sseSetupAttempted = false;
-
-	async function setupSSEWithFetch() {
-		abortController = new AbortController();
-
-		try {
-			const response = await fetch("/api/events/sse", {
-				credentials: "include", // This ensures cookies are sent
-				signal: abortController.signal,
-				headers: {
-					Accept: "text/event-stream",
-				},
-			});
-
-			if (!response.ok) {
-				console.error(
-					"[SSE Client] Failed with status:",
-					response.status,
-				);
-				return;
-			}
-
-			if (!response.body) {
-				console.error("[SSE Client] No response body");
-				return;
-			}
-
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = "";
-
-			while (true) {
-				const { done, value } = await reader.read();
-
-				if (done) {
-					// Connection closed
-					break;
-				}
-
-				buffer += decoder.decode(value, { stream: true });
-
-				// Process complete SSE messages
-				const lines = buffer.split("\n\n");
-				buffer = lines.pop() || ""; // Keep incomplete message in buffer
-
-				for (const message of lines) {
-					if (message.startsWith(":")) continue; // Ignore heartbeats
-
-					const eventMatch = message.match(/^event: (.+)$/m);
-					const dataMatch = message.match(/^data: (.+)$/m);
-
-					if (eventMatch && dataMatch) {
-						const eventType = eventMatch[1];
-
-						if (
-							["event-created", "event-updated"].includes(
-								eventType,
-							)
-						) {
-							itemsPromise = listEvents();
-						}
-					}
-				}
-			}
-		} catch (error: unknown) {
-			if (error instanceof Error && error.name === "AbortError") {
-				// Connection aborted
-			} else if (
-				error instanceof TypeError &&
-				error.message.includes("input stream")
-			) {
-				// This happens during HMR reloads - ignore silently
-			} else {
-				console.error("[SSE Client] Error:", error);
-			}
-			// Ensure reader is cancelled if it exists (though scope prevents access here unless I move it up)
-			// But actually, checking error types is enough logging. Cleaning up is handled by the effect return.
-		}
-	}
-
 	$effect(() => {
 		itemsPromise
 			.then((items) => {
 				resolvedItems = items;
-
-				// Try to setup SSE once after items are loaded
-				if (!sseSetupAttempted) {
-					sseSetupAttempted = true;
-					setupSSEWithFetch();
-				}
 			})
 			.catch(() => {
 				// Error handling is done in the {#await} block
 			});
-
-		return () => {
-			if (abortController) {
-				abortController.abort();
-				abortController = null;
-			}
-		};
 	});
 </script>
 

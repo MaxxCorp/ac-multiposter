@@ -2,7 +2,7 @@
     import { goto } from "$app/navigation";
     import { createLocation } from "./create.remote";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
-    import { createLocationSchema } from "$lib/validations/location";
+    import { createLocationSchema } from "$lib/validations/locations";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
     import { toast } from "svelte-sonner";
     import { Button } from "$lib/components/ui/button";
@@ -18,7 +18,7 @@
             <form
                 class="space-y-4"
                 {...createLocation
-                    .preflight(createLocationSchema)
+                    .preflight(createLocationSchema as any)
                     .enhance(async ({ submit }) => {
                         try {
                             const result: any = await submit();
@@ -154,7 +154,7 @@
                             >Latitude</span
                         >
                         <input
-                            {...createLocation.fields.latitude.as("number")}
+                            {...createLocation.fields.latitude.as("text")}
                             type="number"
                             step="any"
                             class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -166,7 +166,7 @@
                             >Longitude</span
                         >
                         <input
-                            {...createLocation.fields.longitude.as("number")}
+                            {...createLocation.fields.longitude.as("text")}
                             type="number"
                             step="any"
                             class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

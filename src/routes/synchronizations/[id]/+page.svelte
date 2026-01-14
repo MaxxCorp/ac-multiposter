@@ -2,7 +2,10 @@
 	import { page } from "$app/state";
 	import { goto } from "$app/navigation";
 	import { view, getOperations } from "./view.remote";
-	import { update, type UpdateSyncInput } from "./update.remote";
+	import {
+		updateSynchronization as update,
+		type UpdateSynchronizationInput as UpdateSyncInput,
+	} from "./update.remote";
 	import { removeBulk } from "./delete.remote";
 	import { sync } from "./sync.remote";
 	import DashboardCard from "$lib/components/ui/DashboardCard.svelte";
@@ -54,7 +57,8 @@
 		try {
 			isUpdating = true;
 			updateError = null;
-			await update({ id: configId, input });
+			await update({ id: configId, ...input });
+
 			version++; // Trigger re-fetch
 			toast.success(
 				currentConfig.enabled ? "Sync disabled" : "Sync enabled",

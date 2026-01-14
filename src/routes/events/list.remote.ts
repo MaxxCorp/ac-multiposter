@@ -5,7 +5,7 @@ import { listQuery } from '$lib/server/db/query-helpers';
 /**
  * Event interface matching the database schema
  */
-import type { Event as DbEvent } from '$lib/server/db/events-schema';
+import type { Event as DbEvent } from '$lib/server/db/schema';
 
 /**
  * Event interface matching the database schema, with dates serialized to strings
@@ -25,6 +25,8 @@ export type Event = Omit<DbEvent, 'createdAt' | 'updatedAt' | 'startDateTime' | 
 		phone: string;
 		qrCodeDataUrl?: string;
 	} | null;
+	qrCodePath?: string | null;
+	iCalPath?: string | null;
 };
 
 /**

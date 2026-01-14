@@ -1,4 +1,9 @@
-import { pgTable, text, timestamp, boolean, jsonb, index, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb, index } from "drizzle-orm/pg-core";
+import { relations } from 'drizzle-orm';
+import { campaign } from "./campaigns";
+import { contact, tag } from "./contacts";
+import { event } from "./events";
+import { location, resource } from "./resources";
 
 export const user = pgTable("user", {
     id: text("id").primaryKey(),
@@ -14,6 +19,8 @@ export const user = pgTable("user", {
         .$onUpdate(() => /* @__PURE__ */ new Date())
         .notNull(),
 });
+
+export type User = typeof user.$inferSelect;
 
 export const session = pgTable("session", {
     id: text("id").primaryKey(),
@@ -71,11 +78,15 @@ export const verification = pgTable("verification", {
     index("verification_identifier_idx").on(table.identifier),
 ]);
 
-import { relations } from 'drizzle-orm';
-
 export const userRelations = relations(user, ({ many }) => ({
     sessions: many(session),
     accounts: many(account),
+    campaigns: many(campaign),
+    contacts: many(contact),
+    tags: many(tag),
+    events: many(event),
+    locations: many(location),
+    resources: many(resource),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

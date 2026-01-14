@@ -1,60 +1,28 @@
 import { form } from '$app/server';
-import { db } from "$lib/server/db";
-import { resource, resourceRelation } from "$lib/server/db/schema";
-import { getAuthenticatedUser, ensureAccess } from "$lib/authorization";
-import { createResourceSchema } from "$lib/validations/resource";
+import { db } from '$lib/server/db';
+import { resource } from '$lib/server/db/schema';
 import { listResources } from '../list.remote';
+import { listResourcesWithHierarchy } from '../list-with-hierarchy.remote';
+import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
+import { createResourceSchema } from '$lib/validations/resources';
 
 export const createResource = form(createResourceSchema, async (data) => {
-    try {
-        const user = getAuthenticatedUser();
-        ensureAccess(user, 'resources');
+    const user = getAuthenticatedUser();
+    ensureAccess(user, 'resources');
 
-        // Parse allocationCalendars from JSON string
-        let parsedCalendars: Array<{ provider: string; calendarId: string }> | null = null;
-        if (data.allocationCalendars) {
-            try {
-                parsedCalendars = JSON.parse(data.allocationCalendars);
-            } catch {
-                // Invalid JSON, ignore
-            }
-        }
+    const maxOccupancy = data.maxOccupancy ? Number(data.maxOccupancy) : null;
 
-        const [row] = await db.insert(resource).values({
-            userId: user.id,
-            name: data.name,
-            description: data.description,
-            type: data.type,
-            locationId: data.locationId || null,
-            allocationCalendars: parsedCalendars,
-            maxOccupancy: data.maxOccupancy,
-        }).returning({ id: resource.id });
+    const result = await db.insert(resource).values({
+        userId: user.id,
+        name: data.name,
+        description: data.description || null,
+        type: data.type,
+        maxOccupancy: isNaN(maxOccupancy as any) ? null : maxOccupancy,
+        locationId: data.locationId || null,
+    }).returning();
 
-        if (!row) {
-            throw new Error('Failed to create resource');
-        }
-        const newResourceId = row.id;
 
-        // Create parent-child relationships if parent resources are specified
-        if (data.parentResourceIds && data.parentResourceIds.length > 0) {
-            await db.insert(resourceRelation).values(
-                data.parentResourceIds.map(parentId => ({
-                    parentResourceId: parentId,
-                    childResourceId: newResourceId,
-                }))
-            );
-        }
-
-        await listResources().refresh();
-        return { success: true };
-    } catch (error: any) {
-        console.error('[createResource] Error:', error);
-        if (error?.status && error?.location) {
-            throw error;
-        }
-        return {
-            success: false,
-            error: error?.message || 'An unexpected error occurred'
-        };
-    }
+    await listResources().refresh();
+    await listResourcesWithHierarchy().refresh();
+    return result[0];
 });

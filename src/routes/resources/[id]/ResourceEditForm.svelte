@@ -10,7 +10,7 @@
     import {
         updateResourceSchema,
         type AllocationCalendar,
-    } from "$lib/validations/resource";
+    } from "$lib/validations/resources";
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import ContactManager from "$lib/components/contacts/ContactManager.svelte";
@@ -33,20 +33,23 @@
     const initialHasParent = !!(
         resource.parentResourceIds && resource.parentResourceIds.length > 0
     );
+    // svelte-ignore state_referenced_locally
     const initialAllocationCalendars = Array.isArray(
         resource.allocationCalendars,
     )
         ? (resource.allocationCalendars as AllocationCalendar[])
         : [];
+    // svelte-ignore state_referenced_locally
     const initialParentIds = resource.parentResourceIds;
 
     // Initialize state from extracted values
+
     let hasParent = $state(initialHasParent);
     let allocationCalendars = $state<AllocationCalendar[]>(
         initialAllocationCalendars,
     );
 
-    // Set initial parent resource IDs if they exist
+    // svelte-ignore state_referenced_locally
     if (hasParent && initialParentIds) {
         updateResource.fields.parentResourceIds.set(initialParentIds);
     }
@@ -109,7 +112,7 @@
     <h2 class="text-xl font-semibold mb-4">Edit Resource</h2>
     <form
         {...updateResource
-            .preflight(updateResourceSchema)
+            .preflight(updateResourceSchema as any)
             .enhance(async ({ submit }) => {
                 try {
                     const result: any = await submit();

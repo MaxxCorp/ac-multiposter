@@ -9,7 +9,7 @@
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import { toast } from "svelte-sonner";
-    import { updateLocationSchema } from "$lib/validations/location";
+    import { updateLocationSchema } from "$lib/validations/locations";
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import ContactManager from "$lib/components/contacts/ContactManager.svelte";
@@ -61,7 +61,7 @@
                     <h2 class="text-xl font-semibold mb-4">Edit Location</h2>
                     <form
                         {...updateLocation
-                            .preflight(updateLocationSchema)
+                            .preflight(updateLocationSchema as any)
                             .enhance(async ({ submit }) => {
                                 try {
                                     const result: any = await submit();
@@ -248,7 +248,7 @@
                                 >
                                 <input
                                     {...updateLocation.fields.latitude.as(
-                                        "number",
+                                        "text",
                                     )}
                                     type="number"
                                     step="any"
@@ -266,7 +266,7 @@
                                 >
                                 <input
                                     {...updateLocation.fields.longitude.as(
-                                        "number",
+                                        "text",
                                     )}
                                     type="number"
                                     step="any"

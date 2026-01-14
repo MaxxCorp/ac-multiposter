@@ -1,10 +1,11 @@
 <script lang="ts">
     import type { User } from "../list.remote";
     import { updateUser } from "./update.remote";
-    import { deleteUsers } from "./delete.remote";
+    import { deleteUser } from "./delete.remote";
+
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
     import { toast } from "svelte-sonner";
-    import { updateUserSchema } from "$lib/validations/user";
+    import { updateUserSchema } from "$lib/validations/users";
     import { Button } from "$lib/components/ui/button";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import { FEATURES } from "$lib/features";
@@ -12,6 +13,19 @@
     import ContactManager from "$lib/components/contacts/ContactManager.svelte";
 
     let { user }: { user: User } = $props();
+
+    /**
+     * Helper to access fields on the remote function with correct typing
+     */
+    function getField(path: string): any {
+        const fields = (updateUser as any).fields;
+        const parts = path.split(".");
+        let current = fields;
+        for (const part of parts) {
+            current = current[part];
+        }
+        return current;
+    }
 
     // svelte-ignore state_referenced_locally
     // Intentionally capture initial prop values for form state
@@ -52,12 +66,12 @@
             <AsyncButton
                 type="button"
                 loadingLabel="Deleting..."
-                loading={deleteUsers.pending}
+                loading={deleteUser.pending}
                 variant="destructive"
                 onclick={async () => {
                     await handleDelete({
                         ids: [user.id],
-                        deleteFn: deleteUsers,
+                        deleteFn: deleteUser,
                         itemName: "user",
                     });
                     goto("/users");
@@ -71,7 +85,7 @@
     <form
         {...updateUser
             .preflight(updateUserSchema)
-            .enhance(async ({ submit }) => {
+            .enhance(async ({ submit }: any) => {
                 try {
                     const result: any = await submit();
                     if (result?.error) {
@@ -86,26 +100,26 @@
             })}
         class="space-y-4"
     >
-        <input {...updateUser.fields.id.as("hidden", user.id)} />
+        <input {...getField("id").as("hidden", user.id)} />
 
         <!-- Claims JSON hidden input -->
-        <input {...updateUser.fields.claims.as("hidden", claimsJson)} />
+        <input {...getField("claims").as("hidden", claimsJson)} />
 
         <label class="block">
             <span class="text-sm font-medium text-gray-700 mb-2">Name</span>
             <input
-                {...updateUser.fields.name.as("text")}
+                {...getField("name").as("text")}
                 class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"
-                value={updateUser.fields.name.value() ?? user.name}
+                value={getField("name").value() ?? user.name}
             />
         </label>
 
         <label class="block">
             <span class="text-sm font-medium text-gray-700 mb-2">Email</span>
             <input
-                {...updateUser.fields.email.as("email")}
+                {...getField("email").as("email")}
                 class="mt-2 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"
-                value={updateUser.fields.email.value() ?? user.email}
+                value={getField("email").value() ?? user.email}
             />
         </label>
 
@@ -113,7 +127,7 @@
             <h3 class="text-lg font-medium text-gray-900 mb-2">Roles</h3>
             <label class="flex items-center space-x-2">
                 <input
-                    {...updateUser.fields.roles.as("checkbox", "admin")}
+                    {...getField("roles").as("checkbox", "admin")}
                     value="admin"
                     checked={isAdmin}
                     onchange={(e) => (isAdmin = e.currentTarget.checked)}

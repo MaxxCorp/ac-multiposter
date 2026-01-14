@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { deleteUsers } from "./[id]/delete.remote";
+    import { deleteUser } from "./[id]/delete.remote";
+
     import type { User } from "./list.remote";
     import Button from "$lib/components/ui/button/button.svelte";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
@@ -53,7 +54,7 @@
                 onDelete={async () => {
                     await handleDelete({
                         ids: [...selectedIds],
-                        deleteFn: deleteUsers,
+                        deleteFn: deleteUser,
                         itemName: "user",
                     });
                     deselectAll();
@@ -147,7 +148,7 @@
                                 onclick={async () => {
                                     const success = await handleDelete({
                                         ids: [user.id],
-                                        deleteFn: deleteUsers,
+                                        deleteFn: deleteUser,
                                         itemName: "user",
                                     });
                                     if (success) {

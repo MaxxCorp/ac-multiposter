@@ -1,11 +1,9 @@
 import { pgTable, text, timestamp, boolean, index, primaryKey, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
-import { location, resource } from "./resources-schema";
-import { event } from "./events-schema";
+import { relations } from 'drizzle-orm';
+import { user } from "./auth";
+import { location, resource } from "./resources";
+import { event } from "./events";
 
-/**
- * Contacts table based on Google People API Person resource
- */
 export const contact = pgTable("contact", {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id")
@@ -37,9 +35,6 @@ export const contact = pgTable("contact", {
     index("contact_user_id_idx").on(table.userId),
 ]);
 
-/**
- * Contact Email Addresses
- */
 export const contactEmail = pgTable("contact_email", {
     id: uuid("id").primaryKey().defaultRandom(),
     contactId: uuid("contact_id")
@@ -52,9 +47,6 @@ export const contactEmail = pgTable("contact_email", {
     index("contact_email_contact_id_idx").on(table.contactId),
 ]);
 
-/**
- * Contact Phone Numbers
- */
 export const contactPhone = pgTable("contact_phone", {
     id: uuid("id").primaryKey().defaultRandom(),
     contactId: uuid("contact_id")
@@ -67,9 +59,6 @@ export const contactPhone = pgTable("contact_phone", {
     index("contact_phone_contact_id_idx").on(table.contactId),
 ]);
 
-/**
- * Contact Physical Addresses
- */
 export const contactAddress = pgTable("contact_address", {
     id: uuid("id").primaryKey().defaultRandom(),
     contactId: uuid("contact_id")
@@ -87,10 +76,6 @@ export const contactAddress = pgTable("contact_address", {
 }, (table) => [
     index("contact_address_contact_id_idx").on(table.contactId),
 ]);
-
-/**
- * Many-to-Many associations
- */
 
 export const userContact = pgTable("user_contact", {
     userId: text("user_id")
@@ -145,9 +130,6 @@ export const eventContact = pgTable("event_contact", {
     index("event_contact_contact_idx").on(table.contactId),
 ]);
 
-/**
- * Contact Relations (Self-referential many-to-many)
- */
 export const contactRelation = pgTable("contact_relation", {
     id: uuid("id").primaryKey().defaultRandom(),
     contactId: uuid("contact_id")
@@ -163,9 +145,6 @@ export const contactRelation = pgTable("contact_relation", {
     index("contact_relation_target_idx").on(table.targetContactId),
 ]);
 
-/**
- * Global Tags Table
- */
 export const tag = pgTable("tag", {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
@@ -178,9 +157,6 @@ export const tag = pgTable("tag", {
     index("tag_name_user_idx").on(table.userId, table.name),
 ]);
 
-/**
- * Contact-Tag Join Table
- */
 export const contactTag = pgTable("contact_tag", {
     contactId: uuid("contact_id")
         .notNull()
@@ -193,21 +169,6 @@ export const contactTag = pgTable("contact_tag", {
     index("contact_tag_contact_idx").on(table.contactId),
     index("contact_tag_tag_idx").on(table.tagId),
 ]);
-
-export type Contact = typeof contact.$inferSelect;
-export type NewContact = typeof contact.$inferInsert;
-export type ContactEmail = typeof contactEmail.$inferSelect;
-export type NewContactEmail = typeof contactEmail.$inferInsert;
-export type ContactPhone = typeof contactPhone.$inferSelect;
-export type NewContactPhone = typeof contactPhone.$inferInsert;
-export type ContactAddress = typeof contactAddress.$inferSelect;
-export type NewContactAddress = typeof contactAddress.$inferInsert;
-export type ContactRelation = typeof contactRelation.$inferSelect;
-export type NewContactRelation = typeof contactRelation.$inferInsert;
-export type Tag = typeof tag.$inferSelect;
-export type NewTag = typeof tag.$inferInsert;
-
-import { relations } from 'drizzle-orm';
 
 export const contactRelations = relations(contact, ({ many }) => ({
     emails: many(contactEmail),
@@ -287,12 +248,20 @@ export const locationContactRelations = relations(locationContact, ({ one }) => 
         fields: [locationContact.contactId],
         references: [contact.id],
     }),
+    location: one(location, {
+        fields: [locationContact.locationId],
+        references: [location.id]
+    }),
 }));
 
 export const resourceContactRelations = relations(resourceContact, ({ one }) => ({
     contact: one(contact, {
         fields: [resourceContact.contactId],
         references: [contact.id],
+    }),
+    resource: one(resource, {
+        fields: [resourceContact.resourceId],
+        references: [resource.id]
     }),
 }));
 
@@ -306,4 +275,3 @@ export const eventContactRelations = relations(eventContact, ({ one }) => ({
         references: [event.id],
     }),
 }));
-

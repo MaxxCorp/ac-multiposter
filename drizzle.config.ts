@@ -5,7 +5,7 @@ import { defineConfig } from 'drizzle-kit';
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://placeholder';
 
 export default defineConfig({
-	schema: './src/lib/server/db/schema.ts',
+	schema: './src/lib/server/db/schema',
 	dialect: 'postgresql',
 	dbCredentials: { url: databaseUrl },
 	verbose: true,

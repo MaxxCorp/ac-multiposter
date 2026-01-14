@@ -1,29 +1,17 @@
-import { z } from 'zod/mini';
 import { query } from '$app/server';
-import { db } from "$lib/server/db";
-import { resource, resourceRelation } from "$lib/server/db/schema";
-import { eq } from "drizzle-orm";
-import { getQuery } from '$lib/server/db/query-helpers';
+import { db } from '$lib/server/db';
+import { resource } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
+import * as v from 'valibot';
 
-export const readResource = query(z.string(), async (id: string) => {
-	const item = await getQuery({
-		table: resource,
-		featureName: 'resources',
-		id,
-	});
+export const readResource = query(v.string(), async (id: string) => {
+	const user = getAuthenticatedUser();
+	ensureAccess(user, 'resources');
 
-	if (!item) {
-		return null;
-	}
-
-	// Get parent resources
-	const parentRelations = await db
+	const [result] = await db
 		.select()
-		.from(resourceRelation)
-		.where(eq(resourceRelation.childResourceId, id));
-
-	return {
-		...item,
-		parentResourceIds: parentRelations.map(r => r.parentResourceId),
-	};
+		.from(resource)
+		.where(eq(resource.id, id));
+	return result || null;
 });

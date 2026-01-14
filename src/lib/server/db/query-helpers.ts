@@ -34,7 +34,6 @@ export async function listQuery<T extends PgTable>(config: ListQueryConfig<T>): 
 	const query = db
 		.select()
 		.from(table as any);
-	//		.where(eq((table as any).userId, user.id));
 
 	// Apply ordering
 	if (customOrderBy) {
@@ -84,11 +83,6 @@ export async function getQuery<T extends PgTable>(config: GetQueryConfig<T>): Pr
 		.limit(1);
 
 	if (results.length === 0) return null;
-
-	// Check ownership
-	// if ((results[0] as any).userId !== user.id) {
-	// 	throw new Error('Access denied');
-	// }
 
 	// Apply transformation if provided
 	if (transform) {

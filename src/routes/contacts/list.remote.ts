@@ -1,12 +1,12 @@
-import { z } from 'zod/mini';
+import * as v from 'valibot';
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
 import { contact } from '$lib/server/db/schema';
 import { listQuery } from '$lib/server/db/query-helpers';
 
-import { ContactSchema, type Contact } from '$lib/validations/contacts';
+import { contactSchema, type Contact } from '$lib/validations/contacts';
 
-export const listContacts = query(z.void(), async (): Promise<Contact[]> => {
+export const listContacts = query(v.void_(), async (): Promise<Contact[]> => {
     const results = await listQuery({
         table: contact,
         featureName: 'contacts',

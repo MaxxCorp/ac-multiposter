@@ -2,8 +2,8 @@
 	import { page } from "$app/state";
 	import { readCampaign } from "./read.remote";
 	import { updateCampaign } from "./update.remote";
-	import { updateCampaignSchema } from "$lib/validations/campaign.ts";
-	import CampaignForm from "$lib/components/campaigns/campaignForm.svelte";
+	import { updateCampaignSchema } from "$lib/validations/campaigns";
+	import CampaignForm from "$lib/components/campaigns/CampaignForm.svelte";
 	import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 </script>
@@ -13,10 +13,10 @@
 {:then campaign}
 	{#if campaign}
 		<CampaignForm
-			remoteFunc={updateCampaign}
+			remoteFunction={updateCampaign}
 			validationSchema={updateCampaignSchema}
 			isUpdating={true}
-			{campaign}
+			initialData={campaign}
 		/>
 	{:else}
 		<ErrorSection

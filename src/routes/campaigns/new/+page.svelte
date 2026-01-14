@@ -1,10 +1,10 @@
 <script lang="ts">
-	import CampaignForm from "$lib/components/campaigns/campaignForm.svelte";
+	import CampaignForm from "$lib/components/campaigns/CampaignForm.svelte";
 	import { createCampaign } from "./create.remote";
-	import { createCampaignSchema } from "$lib/validations/campaign.ts";
+	import { createCampaignSchema } from "$lib/validations/campaigns";
 </script>
 
 <CampaignForm
-	remoteFunc={createCampaign}
+	remoteFunction={createCampaign}
 	validationSchema={createCampaignSchema}
 />

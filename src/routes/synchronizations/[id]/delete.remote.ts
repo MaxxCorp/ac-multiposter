@@ -1,15 +1,16 @@
 import { command } from '$app/server';
-import { z } from 'zod/mini';
+import * as v from 'valibot';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { db } from '$lib/server/db';
-import { syncConfig } from '$lib/server/db/sync-schema';
+import { syncConfig } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { syncService } from '$lib/server/sync/service';
+import { list as listSynchronizations } from '../list.remote';
 
 /**
  * Delete a sync configuration
  */
-export const remove = command(z.string(), async (id: string) => {
+export const remove = command(v.string(), async (id: string) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'synchronizations');
 
@@ -17,7 +18,7 @@ export const remove = command(z.string(), async (id: string) => {
 	const [existing] = await db
 		.select()
 		.from(syncConfig)
-		.where(and(eq(syncConfig.id, id), eq(syncConfig.userId, user.id)));
+		.where(eq(syncConfig.id, id));
 
 	if (!existing) {
 		throw new Error('Sync configuration not found');
@@ -36,13 +37,15 @@ export const remove = command(z.string(), async (id: string) => {
 	// Delete (cascade will handle related records)
 	await db.delete(syncConfig).where(eq(syncConfig.id, id));
 
+	await listSynchronizations().refresh();
+
 	return { success: true };
 });
 
 /**
  * Bulk delete sync configurations
  */
-export const removeBulk = command(z.array(z.string()), async (ids: string[]) => {
+export const removeBulk = command(v.array(v.string()), async (ids: string[]) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'synchronizations');
 
@@ -54,7 +57,7 @@ export const removeBulk = command(z.array(z.string()), async (ids: string[]) => 
 	const configs = await db
 		.select()
 		.from(syncConfig)
-		.where(and(inArray(syncConfig.id, ids), eq(syncConfig.userId, user.id)));
+		.where(inArray(syncConfig.id, ids));
 
 	// Cancel webhooks for configs that have them
 	for (const config of configs) {
@@ -71,7 +74,10 @@ export const removeBulk = command(z.array(z.string()), async (ids: string[]) => 
 	// Delete all matching configs (ownership checked via where clause)
 	await db
 		.delete(syncConfig)
-		.where(and(inArray(syncConfig.id, ids), eq(syncConfig.userId, user.id)));
+		.where(inArray(syncConfig.id, ids));
+
+	await listSynchronizations().refresh();
 
 	return { success: true };
 });
+

@@ -4,7 +4,7 @@
     import ContactForm from "$lib/components/contacts/ContactForm.svelte";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 
-    import { ContactInputSchema } from "$lib/validations/contacts";
+    import { createContactSchema } from "$lib/validations/contacts";
 
     function handleSuccess(result: any) {
         if (result?.id) {
@@ -22,7 +22,7 @@
             <h1 class="text-2xl font-bold mb-6">Create New Contact</h1>
             <ContactForm
                 remoteFunction={createNewContact}
-                schema={ContactInputSchema}
+                schema={createContactSchema}
                 onSuccess={handleSuccess}
             />
         </div>

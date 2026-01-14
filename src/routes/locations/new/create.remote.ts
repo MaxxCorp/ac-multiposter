@@ -1,47 +1,31 @@
 import { form } from '$app/server';
-import { db } from "$lib/server/db";
-import { location } from "$lib/server/db/schema";
-import { getAuthenticatedUser, ensureAccess } from "$lib/authorization";
-import { createLocationSchema } from "$lib/validations/location";
+import { db } from '$lib/server/db';
+import { location } from '$lib/server/db/schema';
 import { listLocations } from '../list.remote';
+import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
+import { createLocationSchema } from '$lib/validations/locations';
 
 export const createLocation = form(createLocationSchema, async (data) => {
-    try {
-        const user = getAuthenticatedUser();
-        ensureAccess(user, 'locations');
+    const user = getAuthenticatedUser();
+    ensureAccess(user, 'locations');
 
-        const result = await db.insert(location).values({
-            userId: user.id,
-            name: data.name,
-            street: data.street,
-            houseNumber: data.houseNumber,
-            addressSuffix: data.addressSuffix,
-            zip: data.zip,
-            city: data.city,
-            state: data.state,
-            country: data.country,
-            roomId: data.roomId,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            what3words: data.what3words,
-            inclusivitySupport: data.inclusivitySupport
-        }).returning({ id: location.id });
+    const result = await db.insert(location).values({
+        userId: user.id,
+        name: data.name,
+        street: data.street || null,
+        houseNumber: data.houseNumber || null,
+        addressSuffix: data.addressSuffix || null,
+        zip: data.zip || null,
+        city: data.city || null,
+        state: data.state || null,
+        country: data.country || null,
+        roomId: data.roomId || null,
+        latitude: data.latitude ? parseFloat(data.latitude) : null,
+        longitude: data.longitude ? parseFloat(data.longitude) : null,
+        what3words: data.what3words || null,
+        inclusivitySupport: data.inclusivitySupport || null,
+    }).returning();
 
-        const row = result[0];
-        if (!row) {
-            throw new Error('Failed to create location');
-        }
-
-        await listLocations().refresh();
-        return { success: true };
-    } catch (error: any) {
-        console.error('[createLocation] Error:', error);
-        if (error?.status && error?.location) {
-            throw error;
-        }
-        return {
-            success: false,
-            error: error?.message || 'An unexpected error occurred'
-        };
-    }
+    await listLocations().refresh();
+    return result[0];
 });

@@ -7,7 +7,7 @@
     import {
         createResourceSchema,
         type AllocationCalendar,
-    } from "$lib/validations/resource";
+    } from "$lib/validations/resources";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
     import { toast } from "svelte-sonner";
     import { Button } from "$lib/components/ui/button";
@@ -46,7 +46,7 @@
             <form
                 class="space-y-4"
                 {...createResource
-                    .preflight(createResourceSchema)
+                    .preflight(createResourceSchema as any)
                     .enhance(async ({ submit }) => {
                         try {
                             const result: any = await submit();

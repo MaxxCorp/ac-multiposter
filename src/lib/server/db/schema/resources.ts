@@ -1,6 +1,7 @@
 import { pgTable, text, timestamp, doublePrecision, primaryKey, index, jsonb, integer, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
-import { event } from "./events-schema";
+import { relations } from 'drizzle-orm';
+import { user } from "./auth";
+import { event } from "./events";
 
 /**
  * Locations table
@@ -94,8 +95,6 @@ export const eventResource = pgTable("event_resource", {
     index("event_resource_resource_idx").on(table.resourceId),
 ]);
 
-import { relations } from 'drizzle-orm';
-
 export const locationRelations = relations(location, ({ many }) => ({
     resources: many(resource),
 }));
@@ -133,4 +132,3 @@ export const eventResourceRelations = relations(eventResource, ({ one }) => ({
         references: [resource.id],
     }),
 }));
-

@@ -132,7 +132,7 @@
 		try {
 			const offset = append ? currentData.campaigns.length : 0;
 			const newCampaigns = await getEmailCampaigns({
-				syncConfigId,
+				configId: syncConfigId,
 				limit: 10,
 				offset,
 			});

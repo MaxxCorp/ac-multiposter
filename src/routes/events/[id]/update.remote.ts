@@ -1,143 +1,143 @@
-import { form, getRequestEvent } from '$app/server';
+import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { event } from '$lib/server/db/schema';
+import { event, eventResource, eventContact } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { listEvents } from '../list.remote';
 import { readEvent } from './read.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
-import { syncService } from '$lib/server/sync/service';
-import { updateEventSchema } from '$lib/validations/event';
+import { updateEventSchema } from '$lib/validations/events';
+import { error } from '@sveltejs/kit';
 import { generateEventAssets } from '$lib/server/events/assets';
 
-/**
- * Form function for updating an event
- * Uses shared Zod schema with manual date/time validation (zod/mini doesn't support refine)
- */
-export const updateEvent = form(updateEventSchema, async (data) => {
-	const user = getAuthenticatedUser();
-	ensureAccess(user, 'events');
+export const updateExistingEvent = form(updateEventSchema, async (data) => {
+	console.log('--- updateExistingEvent START ---');
+	console.log('Raw Data:', JSON.stringify(data, null, 2));
+	try {
+		console.log('Authenticating user...');
+		const user = getAuthenticatedUser();
+		ensureAccess(user, 'events');
+		console.log('User authenticated:', user.id);
 
-	// Validate date/time ranges
-	if (data.startDate && data.endDate && data.endDate < data.startDate) {
-		throw new Error('End date must be the same as or after the start date');
-	}
-
-	if (data.startDateTime && data.endDateTime) {
-		const startDateTime = new Date(data.startDateTime);
-		const endDateTime = new Date(data.endDateTime);
-		if (endDateTime <= startDateTime) {
-			throw new Error('End date and time must be after the start date and time');
-		}
-	}
-
-	// Build update object with only provided fields
-	const updateData: any = {};
-
-	if (data.summary !== undefined) updateData.summary = data.summary;
-	if (data.description !== undefined) updateData.description = data.description;
-	if (data.location !== undefined) updateData.location = data.location;
-	if (data.startDate !== undefined) updateData.startDate = data.startDate;
-	if (data.startDateTime !== undefined) updateData.startDateTime = data.startDateTime ? new Date(data.startDateTime) : null;
-	if (data.startTimeZone !== undefined) updateData.startTimeZone = data.startTimeZone;
-	if (data.endDate !== undefined) updateData.endDate = data.endDate === "null" ? null : data.endDate;
-	if (data.endDateTime !== undefined) updateData.endDateTime = data.endDateTime === "null" ? null : (data.endDateTime ? new Date(data.endDateTime) : null);
-	if (data.endTimeZone !== undefined) updateData.endTimeZone = data.endTimeZone;
-	if (data.eventType !== undefined) updateData.eventType = data.eventType;
-	if (data.status !== undefined) updateData.status = data.status;
-	if (data.visibility !== undefined) updateData.visibility = data.visibility;
-	if (data.transparency !== undefined) updateData.transparency = data.transparency;
-	if (data.colorId !== undefined) updateData.colorId = data.colorId;
-	if (data.recurrence !== undefined) updateData.recurrence = data.recurrence as any;
-	if (data.attendees !== undefined) updateData.attendees = data.attendees as any;
-	if (data.reminders !== undefined) updateData.reminders = data.reminders;
-	updateData.guestsCanInviteOthers = !!data.guestsCanInviteOthers;
-	updateData.guestsCanModify = !!data.guestsCanModify;
-	updateData.guestsCanSeeOtherGuests = !!data.guestsCanSeeOtherGuests;
-	updateData.isPublic = !!data.isPublic;
-	if (data.categoryBerlinDotDe !== undefined) updateData.categoryBerlinDotDe = data.categoryBerlinDotDe === "" ? null : data.categoryBerlinDotDe;
-	if (data.ticketPrice !== undefined) updateData.ticketPrice = data.ticketPrice === "" ? null : data.ticketPrice;
-
-	// Update the event
-	await db
-		.update(event)
-		.set(updateData)
-		.where(and(eq(event.id, data.id), eq(event.userId, user.id)));
-
-	// Update event-resource associations
-	{
-		const { eventResource } = await import('$lib/server/db/schema');
-		const { inArray } = await import('drizzle-orm');
-
-		const currentResources = await db.select().from(eventResource).where(eq(eventResource.eventId, data.id));
-		const currentResourceIds = currentResources.map(r => r.resourceId);
-		const targetResourceIds = data.resourceIds || [];
-
-		// Delete removed resources
-		const toDelete = currentResourceIds.filter(id => !targetResourceIds.includes(id));
-		if (toDelete.length > 0) {
-			await db.delete(eventResource).where(and(
-				eq(eventResource.eventId, data.id),
-				inArray(eventResource.resourceId, toDelete)
-			));
+		// Handle serialized reminders if provided
+		let reminders = data.reminders;
+		if (data.remindersJson) {
+			console.log('Parsing remindersJson...');
+			try {
+				reminders = JSON.parse(data.remindersJson);
+				console.log('Parsed reminders:', JSON.stringify(reminders));
+			} catch (e) {
+				console.error('Failed to parse remindersJson', e);
+			}
 		}
 
-		// Add new resources
-		const toAdd = targetResourceIds.filter(id => !currentResourceIds.includes(id));
-		if (toAdd.length > 0) {
-			await db.insert(eventResource).values(
-				toAdd.map(resourceId => ({
+		// Prepare update object
+		const updateData: any = {
+			updatedAt: new Date(),
+		};
+
+		if (data.summary !== undefined) updateData.summary = data.summary;
+		if (data.description !== undefined) updateData.description = data.description;
+		if (data.location !== undefined) updateData.location = data.location;
+
+		if (data.start !== undefined) {
+			if (!data.start) {
+				console.error('Start date explicitly cleared (empty string) prohibited?');
+				// Logic might allow nulling start? Schema minLength checks usually block this if required.
+			} else {
+				const start = new Date(data.start);
+				console.log('Parsed Start Date:', start);
+				if (!isNaN(start.getTime())) {
+					updateData.startDateTime = start;
+				}
+			}
+		}
+
+		if (data.end !== undefined) {
+			if (!data.end) {
+				updateData.endDateTime = null;
+			} else {
+				const end = new Date(data.end);
+				console.log('Parsed End Date:', end);
+				if (!isNaN(end.getTime())) {
+					updateData.endDateTime = end;
+				} else {
+					console.warn(`Invalid end date provided: ${data.end}`);
+				}
+			}
+		}
+
+		if (data.recurrence !== undefined) updateData.recurrence = data.recurrence || null;
+		if (data.attendees !== undefined) updateData.attendees = data.attendees || null;
+		if (reminders !== undefined) updateData.reminders = reminders || null;
+
+		if (data.isPublic !== undefined) updateData.isPublic = data.isPublic === 'true';
+		if (data.guestsCanInviteOthers !== undefined) updateData.guestsCanInviteOthers = data.guestsCanInviteOthers === 'true';
+		if (data.guestsCanModify !== undefined) updateData.guestsCanModify = data.guestsCanModify === 'true';
+		if (data.guestsCanSeeOtherGuests !== undefined) updateData.guestsCanSeeOtherGuests = data.guestsCanSeeOtherGuests === 'true';
+
+		console.log('Update payload:', JSON.stringify(updateData, null, 2));
+
+		const [updatedEvent] = await db
+			.update(event)
+			.set(updateData)
+			.where(and(eq(event.id, data.id), eq(event.userId, user.id)))
+			.returning();
+
+		console.log('Update result:', updatedEvent);
+
+		if (!updatedEvent) {
+			console.error('Update failed, event not found or access denied');
+			error(404, 'Event not found');
+		}
+
+		// Update resources associations
+		if (data.resourceIds !== undefined) { // Check if field was submitted
+			console.log('Updating resources to:', data.resourceIds);
+			// Delete existing
+			await db.delete(eventResource).where(eq(eventResource.eventId, data.id));
+
+			// Insert new
+			if (Array.isArray(data.resourceIds) && data.resourceIds.length > 0) {
+				const resourceAssociations = (data.resourceIds as string[]).map((resourceId: string) => ({
 					eventId: data.id,
 					resourceId,
-				}))
-			);
-		}
-	}
-
-	// Update event-contact associations
-	{
-		const { eventContact } = await import('$lib/server/db/schema');
-		const { inArray } = await import('drizzle-orm');
-
-		const currentContacts = await db.select().from(eventContact).where(eq(eventContact.eventId, data.id));
-		const currentContactIds = currentContacts.map(c => c.contactId);
-		const targetContactIds = data.contactIds ? JSON.parse(data.contactIds as string) : [];
-
-		// Delete removed contacts
-		const toDelete = currentContactIds.filter(id => !targetContactIds.includes(id));
-		if (toDelete.length > 0) {
-			await db.delete(eventContact).where(and(
-				eq(eventContact.eventId, data.id),
-				inArray(eventContact.contactId, toDelete)
-			));
+				}));
+				await db.insert(eventResource).values(resourceAssociations);
+			}
 		}
 
-		// Add new contacts (preserves existing contacts and their statuses!)
-		const toAdd = targetContactIds.filter((id: string) => !currentContactIds.includes(id));
-		if (toAdd.length > 0) {
-			await db.insert(eventContact).values(
-				toAdd.map((contactId: string) => ({
+		// Update contacts associations
+		if (data.contactIds !== undefined) {
+			const contactIds = typeof data.contactIds === 'string' ? JSON.parse(data.contactIds) : data.contactIds;
+			console.log('Updating contacts to:', contactIds);
+			// Delete existing
+			await db.delete(eventContact).where(eq(eventContact.eventId, data.id));
+
+			// Insert new
+			if (contactIds && Array.isArray(contactIds) && contactIds.length > 0) {
+				const contactAssociations = contactIds.map((contactId: string) => ({
 					eventId: data.id,
 					contactId,
-				}))
-			);
+				}));
+				await db.insert(eventContact).values(contactAssociations);
+			}
 		}
+
+		console.log('Regenerating assets via update.remote...');
+		await generateEventAssets(data.id);
+
+		console.log('Event updated successfully, refreshing list...');
+		await listEvents().refresh();
+		console.log('--- updateExistingEvent DONE ---');
+		return { success: true };
+	} catch (err: any) {
+		console.error('--- updateExistingEvent ERROR ---', err);
+		if (err?.status && err?.location) {
+			error(500, err.message);
+		}
+		return {
+			success: false,
+			error: err?.message || 'An unexpected error occurred'
+		};
 	}
-
-
-	// Trigger sync to external providers (non-blocking)
-	syncService.syncSpecificEvents(user.id, [data.id]).catch((error) => {
-		console.error('[updateEvent] Failed to sync event to providers:', error);
-	});
-
-	// Re-generate assets (QR Code, iCal)
-	const origin = getRequestEvent()?.url.origin;
-	generateEventAssets(data.id, origin).catch((error) => {
-		console.error('[updateEvent] Failed to generate event assets:', error);
-	});
-
-	// Refresh both queries
-	await readEvent(data.id).refresh();
-	await listEvents().refresh();
-
-	return { success: true };
 });

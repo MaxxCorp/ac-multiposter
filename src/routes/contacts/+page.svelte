@@ -29,8 +29,11 @@
         selectedIds = new Set(selectedIds);
     }
     function selectAll(items: Contact[]) {
-        selectedIds = new Set(items.map((item) => item.id));
+        selectedIds = new Set(
+            items.map((item) => item.id).filter((id): id is string => !!id),
+        );
     }
+
     function deselectAll() {
         selectedIds = new Set();
     }
@@ -93,8 +96,9 @@
                             >
                                 <input
                                     type="checkbox"
-                                    checked={isSelected(contact.id)}
-                                    onchange={() => toggleSelection(contact.id)}
+                                    checked={isSelected(contact.id!)}
+                                    onchange={() =>
+                                        toggleSelection(contact.id!)}
                                     class="mt-1 w-4 h-4 text-blue-600 rounded"
                                 />
                                 <div class="flex-1 min-w-0">
@@ -208,9 +212,10 @@
                                         loadingLabel="Deleting..."
                                         onclick={async () => {
                                             const success = await handleDelete({
-                                                ids: [contact.id],
+                                                ids: [contact.id!],
                                                 deleteFn: async (id) =>
                                                     deleteExistingContact(id),
+
                                                 itemName: "contact",
                                             });
                                             if (success) {

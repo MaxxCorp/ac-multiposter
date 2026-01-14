@@ -1,20 +1,21 @@
 import { query } from '$app/server';
-import { z } from 'zod/mini';
+import * as v from 'valibot';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { db } from '$lib/server/db';
-import { syncConfig, syncOperation } from '$lib/server/db/sync-schema';
+import { syncConfig, syncOperation } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { getQuery } from '$lib/server/db/query-helpers';
 
 /**
- * Get a single sync configuration by ID
+ * Query: Get a sync configuration and its recent logs
  */
-export const view = query(z.string(), async (id: string) => {
-	const config = await getQuery({
-		table: syncConfig,
-		featureName: 'synchronizations',
-		id,
-	});
+export const view = query(v.string(), async (id: string) => {
+	const user = getAuthenticatedUser();
+	ensureAccess(user, 'synchronizations');
+
+	const [config] = await db
+		.select()
+		.from(syncConfig)
+		.where(eq(syncConfig.id, id));
 
 	if (!config) {
 		throw new Error('Sync configuration not found');
@@ -24,29 +25,16 @@ export const view = query(z.string(), async (id: string) => {
 });
 
 /**
- * Get recent sync operations for a config
+ * Query: Get recent sync logs for a configuration
  */
-export const getOperations = query(z.string(), async (configId: string) => {
+export const getOperations = query(v.string(), async (configId: string) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'synchronizations');
 
-	// Verify ownership
-	const [config] = await db
-		.select()
-		.from(syncConfig)
-		.where(and(eq(syncConfig.id, configId), eq(syncConfig.userId, user.id)));
-
-	if (!config) {
-		throw new Error('Sync configuration not found');
-	}
-
-	// Get recent operations
-	const operations = await db
+	return await db
 		.select()
 		.from(syncOperation)
 		.where(eq(syncOperation.syncConfigId, configId))
 		.orderBy(desc(syncOperation.startedAt))
-		.limit(20);
-
-	return operations;
+		.limit(50);
 });

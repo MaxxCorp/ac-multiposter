@@ -1,12 +1,13 @@
 import { command, query } from '$app/server';
-import { z } from 'zod/mini';
+import * as v from 'valibot';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { syncService } from '$lib/server/sync/service';
+import { view as viewSyncConfig } from './view.remote';
 
 /**
- * Check webhook status for a sync configuration
+ * Check webhook status
  */
-export const checkStatus = query(z.string(), async (configId: string) => {
+export const checkStatus = query(v.string(), async (configId: string) => {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'synchronizations');
 
@@ -14,23 +15,34 @@ export const checkStatus = query(z.string(), async (configId: string) => {
 });
 
 /**
- * Register webhook for a sync configuration
+ * Register a webhook
  */
-export const register = command(z.string(), async (configId: string) => {
+export const register = command(v.string(), async (configId: string) => {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'synchronizations');
 
     await syncService.setupWebhook(configId);
+
+    // Refresh views
+    await viewSyncConfig(configId).refresh();
+
+    // Return new status
     return await syncService.checkWebhookStatus(configId);
 });
 
 /**
- * Unregister webhook for a sync configuration
+ * Unregister a webhook
  */
-export const unregister = command(z.string(), async (configId: string) => {
+export const unregister = command(v.string(), async (configId: string) => {
     const user = getAuthenticatedUser();
     ensureAccess(user, 'synchronizations');
 
     await syncService.removeWebhook(configId);
+
+    // Refresh views
+    await viewSyncConfig(configId).refresh();
+
+    // Return new status
     return await syncService.checkWebhookStatus(configId);
 });
+

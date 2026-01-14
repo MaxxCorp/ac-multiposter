@@ -1,28 +1,29 @@
-import { z } from 'zod/mini';
 import { command } from '$app/server';
+import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { eq, inArray } from 'drizzle-orm';
 import { campaign } from '$lib/server/db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
-import { listCampaigns } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
-import { deleteCampaignIdsSchema } from '$lib/validations/campaign';
+import { listCampaigns } from '../list.remote';
+import { deleteCampaignSchema } from '$lib/validations/campaigns';
 
 /**
  * Command: Delete one or more campaigns
  */
 
-export const deleteCampaigns = command(deleteCampaignIdsSchema, async (campaignIds: string[]) => {
+export const deleteCampaigns = command(deleteCampaignSchema, async (campaignIds: string[]) => {
 	const user = getAuthenticatedUser();
 	ensureAccess(user, 'campaigns');
-	
-	if (campaignIds.length === 0) {
-		throw new Error('No campaigns to delete');
+
+	try {
+		await db
+			.delete(campaign)
+			.where(inArray(campaign.id, campaignIds));
+	} catch (thrownError: any) {
+		console.error('Error deleting campaigns:', thrownError);
+		error(500, 'Error deleting campaigns');
 	}
-	
-	await db
-		.delete(campaign)
-		.where(and(eq(campaign.userId, user.id), inArray(campaign.id, campaignIds)));
-	
+
 	// Refresh the list
 	await listCampaigns().refresh();
 

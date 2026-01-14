@@ -33,7 +33,6 @@ import { BewegungsatlasBerlinProvider } from './providers/bewegungsatlas-berlin'
 import { EmailProvider } from './providers/email';
 import crypto from 'crypto';
 import { env } from '$env/dynamic/private';
-import { globalEvents } from '../events';
 
 /**
  * Central sync service orchestrator
@@ -261,7 +260,7 @@ export class SyncService {
 				.select({ event: eventTable })
 				.from(eventTable)
 				.leftJoin(syncMappingTable, eq(eventTable.id, syncMappingTable.eventId))
-				.where(and(eq(eventTable.userId, config.userId), isNull(syncMappingTable.eventId)));
+				.where(isNull(syncMappingTable.eventId));
 
 			for (const { event } of unmappedEvents) {
 				try {
@@ -291,7 +290,7 @@ export class SyncService {
 				.select({ event: eventTable, mapping: syncMappingTable })
 				.from(eventTable)
 				.innerJoin(syncMappingTable, eq(eventTable.id, syncMappingTable.eventId))
-				.where(and(eq(eventTable.userId, config.userId), eq(syncMappingTable.syncConfigId, config.id)));
+				.where(eq(syncMappingTable.syncConfigId, config.id));
 
 			for (const { event, mapping } of mappedEvents) {
 				try {
@@ -349,12 +348,6 @@ export class SyncService {
 				// Mapping should be deleted by cascade if foreign key exists, but let's be safe
 				await db.delete(syncMappingTable).where(eq(syncMappingTable.id, mapping.id));
 
-				// Emit event-deleted event for real-time updates
-				globalEvents.emit('event-deleted', {
-					userId: config.userId,
-					eventId: mapping.eventId,
-					source: 'sync'
-				});
 			}
 			return;
 		}
@@ -421,12 +414,6 @@ export class SyncService {
 				}
 			}
 
-			// Emit event-updated event for real-time updates
-			globalEvents.emit('event-updated', {
-				userId: config.userId,
-				eventId: mapping.eventId,
-				source: 'sync'
-			});
 		} else {
 			// Before creating a new event, check if we already have a local event with similar properties
 			// that was just created (within last 30 seconds). This prevents duplicates when:
@@ -435,10 +422,7 @@ export class SyncService {
 				.select()
 				.from(eventTable)
 				.where(
-					and(
-						eq(eventTable.userId, config.userId),
-						eq(eventTable.summary, externalEvent.summary)
-					)
+					eq(eventTable.summary, externalEvent.summary)
 				);
 
 			// Check if any recent event matches this external event
@@ -530,12 +514,6 @@ export class SyncService {
 				}
 			}
 
-			// Emit event-created event for real-time updates
-			globalEvents.emit('event-created', {
-				userId: config.userId,
-				eventId: newEvent.id,
-				source: 'sync'
-			});
 		}
 	}
 
