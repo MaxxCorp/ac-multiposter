@@ -6,6 +6,7 @@
 		updateSynchronization as update,
 		type UpdateSynchronizationInput as UpdateSyncInput,
 	} from "./update.remote";
+	import { updateSynchronizationSchema } from "$lib/validations/synchronizations";
 	import { removeBulk } from "./delete.remote";
 	import { sync } from "./sync.remote";
 	import DashboardCard from "$lib/components/ui/DashboardCard.svelte";
@@ -31,9 +32,7 @@
 
 	// Version tracker for re-fetching data after actions
 	let version = $state(0);
-	let isUpdating = $state(false);
 	let isSyncing = $state(false);
-	let updateError = $state<string | null>(null);
 	let syncError = $state<string | null>(null);
 
 	// Derived promises that re-fetch when version changes
@@ -46,30 +45,6 @@
 		version;
 		return getOperations(configId);
 	});
-
-	async function toggleEnabled(
-		currentConfig: Awaited<ReturnType<typeof view>>,
-	) {
-		if (!currentConfig) return;
-		const input = {
-			enabled: !currentConfig.enabled,
-		};
-		try {
-			isUpdating = true;
-			updateError = null;
-			await update({ id: configId, ...input });
-
-			version++; // Trigger re-fetch
-			toast.success(
-				currentConfig.enabled ? "Sync disabled" : "Sync enabled",
-			);
-		} catch (e: any) {
-			updateError = e.message;
-			toast.error("Failed to update sync: " + e.message);
-		} finally {
-			isUpdating = false;
-		}
-	}
 
 	async function triggerSync() {
 		try {
@@ -179,21 +154,44 @@
 								/>
 								Sync Now
 							</AsyncButton>
-							<AsyncButton
-								variant={config.enabled
-									? "secondary"
-									: "default"}
-								loading={isUpdating}
-								loadingLabel={config.enabled
-									? "Disabling..."
-									: "Enabling..."}
-								onclick={() => toggleEnabled(config)}
-								class={config.enabled
-									? "bg-gray-600 text-white hover:bg-gray-700"
-									: "bg-green-600 text-white hover:bg-green-700"}
+							<form
+								{...update
+									.preflight(updateSynchronizationSchema)
+									.enhance(async ({ submit }) => {
+										const result: any = await submit();
+										if (result?.error) {
+											toast.error(
+												result.error.message ||
+													"Failed to update status",
+											);
+											return;
+										}
+										version++; // Trigger re-fetch
+										toast.success("Status updated");
+									})}
+								class="inline-block"
 							>
-								{config.enabled ? "Disable" : "Enable"}
-							</AsyncButton>
+								<input
+									type="hidden"
+									name="enabled"
+									value={!config.enabled}
+								/>
+								<AsyncButton
+									variant={config.enabled
+										? "secondary"
+										: "default"}
+									loading={update.pending}
+									loadingLabel={config.enabled
+										? "Disabling..."
+										: "Enabling..."}
+									type="submit"
+									class={config.enabled
+										? "bg-gray-600 text-white hover:bg-gray-700"
+										: "bg-green-600 text-white hover:bg-green-700"}
+								>
+									{config.enabled ? "Disable" : "Enable"}
+								</AsyncButton>
+							</form>
 							<AsyncButton
 								variant="destructive"
 								loading={false}
@@ -362,16 +360,6 @@
 								</div>
 							</div>
 						</div>
-					{/if}
-
-					{#if updateError}
-						<DashboardCard>
-							<div class="flex items-center gap-2 text-red-600">
-								<CircleAlert class="h-5 w-5" />
-
-								<p>Update failed: {updateError}</p>
-							</div>
-						</DashboardCard>
 					{/if}
 
 					<!-- Recent Operations -->

@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { create } from "./create.remote";
-	import type { CreateSynchronizationInput as CreateSyncInput } from "$lib/validations/synchronizations";
-	import { list } from "../list.remote";
 	import { goto } from "$app/navigation";
+	import { createSynchronizationSchema } from "$lib/validations/synchronizations";
 	import {
 		Calendar,
 		ArrowLeft,
@@ -53,51 +52,6 @@
 			direction = "push";
 		}
 	});
-	let isSubmitting = $state(false);
-	let error = $state<string | null>(null);
-
-	async function handleSubmit() {
-		if (!selectedProvider) return;
-
-		const input: CreateSyncInput = {
-			providerType: selectedProvider,
-			providerId: providerId || `${selectedProvider}-${Date.now()}`,
-			direction,
-			settings: {
-				calendarId: calendarId || "primary",
-				syncIntervalMinutes,
-				...(selectedProvider === "berlin-de-main-calendar" && {
-					company,
-					fieldMappings,
-				}),
-				...(selectedProvider === "wp-the-events-calendar" && {
-					baseUrl: wpBaseUrl,
-					username: wpUsername,
-					applicationPassword: wpAppPassword,
-				}),
-			},
-		};
-
-		try {
-			isSubmitting = true;
-			error = null;
-
-			// Navigate immediately for better UX
-			const navigationPromise = goto("/synchronizations");
-			toast.success("Creating synchronization...");
-
-			// Execute the create operation in the background
-			await create(input).updates(list());
-			await navigationPromise;
-			toast.success("Calendar synchronization created successfully!");
-		} catch (e: any) {
-			error = e.message;
-			toast.error(e.message || "Failed to create synchronization");
-			// Don't rethrow - user already navigated away
-		} finally {
-			isSubmitting = false;
-		}
-	}
 
 	const providers = [
 		{
@@ -203,12 +157,70 @@
 	</div>
 
 	<form
-		onsubmit={(e) => {
-			e.preventDefault();
-			handleSubmit();
-		}}
 		class="space-y-4"
+		{...create
+			.preflight(createSynchronizationSchema)
+			.enhance(async ({ submit }) => {
+				const result: any = await submit();
+				if (result?.error) {
+					toast.error(
+						result.error.message ||
+							"Failed to create synchronization",
+					);
+					return;
+				}
+				toast.success("Calendar synchronization created successfully!");
+				await goto("/synchronizations");
+			})}
 	>
+		<!-- Hidden Inputs required for form submission -->
+		<input type="hidden" name="providerType" value={selectedProvider} />
+		<input
+			type="hidden"
+			name="providerId"
+			value={providerId || `${selectedProvider}-${Date.now()}`}
+		/>
+		<input type="hidden" name="direction" value={direction} />
+
+		<!-- Settings mapped to flat names or nested if supported.
+		     Since settings is 'any', we use standard dot notation for FormData construction.
+		     Most parsers handle this. If not, create.remote.ts might need 'settings' as a JSON string
+		     or manual parsing?
+		     Let's assume dot notation works for now or use manual JSON string if needed.
+		     Users/resource/location remotes didn't use nested 'any' fields.
+		     SvelteKit default form action parser flattens or nests?
+		     Usually custom.
+		     SAFE BET: Use JSON string for 'settings' and parse it in remote?
+		     But remote expects object.
+		     Let's try creating hidden inputs with names like 'settings.calendarId'.
+		-->
+		<input
+			type="hidden"
+			name="settings.calendarId"
+			value={calendarId || "primary"}
+		/>
+		<input
+			type="hidden"
+			name="settings.syncIntervalMinutes"
+			value={syncIntervalMinutes}
+		/>
+
+		{#if selectedProvider === "berlin-de-main-calendar"}
+			<input type="hidden" name="settings.company" value={company} />
+			<!-- fieldMappings is object, json stringify it? -->
+			<!-- settings.fieldMappings -->
+		{/if}
+
+		{#if selectedProvider === "wp-the-events-calendar"}
+			<input type="hidden" name="settings.baseUrl" value={wpBaseUrl} />
+			<input type="hidden" name="settings.username" value={wpUsername} />
+			<input
+				type="hidden"
+				name="settings.applicationPassword"
+				value={wpAppPassword}
+			/>
+		{/if}
+
 		<!-- Provider Selection -->
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
 			<h2 class="text-xl font-semibold mb-4">Select Calendar Provider</h2>
@@ -482,20 +494,11 @@
 				<AsyncButton
 					type="submit"
 					loadingLabel="Creating..."
-					loading={isSubmitting}
+					loading={create.pending}
 				>
 					Create Sync
 				</AsyncButton>
 			</div>
-
-			{#if error}
-				<div
-					class="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700"
-				>
-					<strong>Error:</strong>
-					{error}
-				</div>
-			{/if}
 		{/if}
 	</form>
 </div>

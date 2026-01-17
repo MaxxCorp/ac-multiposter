@@ -8,23 +8,43 @@ import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { updateUserSchema } from '$lib/validations/users';
 
 export const updateUser = form(updateUserSchema, async (data) => {
-    const currentUser = getAuthenticatedUser();
-    ensureAccess(currentUser, 'users');
+    console.log('--- updateUser START ---');
+    console.log('Data received:', JSON.stringify(data, null, 2));
 
-    const result = await db.update(user)
-        .set({
+    try {
+        const currentUser = getAuthenticatedUser();
+        ensureAccess(currentUser, 'users');
+        console.log('User authenticated:', currentUser.id);
+
+        const updateData: any = {
             name: data.name,
             email: data.email,
             roles: data.roles as any,
             claims: data.claims as any,
-        })
-        .where(eq(user.id, data.id))
-        .returning();
+        };
 
+        console.log('Update payload:', updateData);
 
-    const updated = result[0];
-    await readUser(data.id).refresh();
-    await listUsers().refresh();
+        const result = await db.update(user)
+            .set(updateData)
+            .where(eq(user.id, data.id))
+            .returning();
 
-    return updated;
+        if (result.length === 0) {
+            console.error('No rows updated.');
+            return { success: false, error: { message: 'User not found or update failed' } };
+        }
+
+        const updated = result[0];
+
+        // Refresh lists/reads
+        await readUser(data.id).refresh();
+        await listUsers().refresh();
+
+        console.log('--- updateUser SUCCESS ---');
+        return { success: true, user: updated };
+    } catch (err: any) {
+        console.error('--- updateUser ERROR ---', err);
+        return { success: false, error: { message: err.message || 'Update failed' } };
+    }
 });

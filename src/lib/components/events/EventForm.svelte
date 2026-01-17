@@ -347,7 +347,6 @@
                     Title <span class="text-red-500">*</span>
                 </label>
                 <input
-                    id="summary"
                     {...getField("summary").as("text")}
                     required
                     value={getField("summary").value() ??
@@ -373,7 +372,6 @@
                     >Description</label
                 >
                 <textarea
-                    id="description"
                     {...getField("description").as("text")}
                     rows="4"
                     value={getField("description").value() ??
@@ -455,7 +453,6 @@
                 </div>
                 {#if useFreeTextLocation}
                     <input
-                        id="location"
                         {...getField("location").as("text")}
                         value={freeTextLocation}
                         oninput={(e) =>
@@ -523,7 +520,6 @@
                         >Start Date <span class="text-red-500">*</span></label
                     >
                     <input
-                        id="startDateInput"
                         type="date"
                         required
                         bind:value={startDateInput}
@@ -539,7 +535,6 @@
                             ></label
                         >
                         <input
-                            id="startTimeInput"
                             type="time"
                             required
                             bind:value={startTimeInput}
@@ -573,7 +568,6 @@
                             >End Date</label
                         >
                         <input
-                            id="endDateInput"
                             type="date"
                             bind:value={endDateInput}
                             placeholder={startDateInput}
@@ -588,7 +582,6 @@
                                 >End Time</label
                             >
                             <input
-                                id="endTimeInput"
                                 type="time"
                                 bind:value={endTimeInput}
                                 placeholder={getDefaultEndTime()}

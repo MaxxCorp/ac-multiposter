@@ -6,7 +6,9 @@
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
-    import ResourceEditForm from "./ResourceEditForm.svelte";
+    import ResourceForm from "$lib/components/resources/ResourceForm.svelte";
+    import { updateResource } from "./update.remote";
+    import { updateResourceSchema } from "$lib/validations/resources";
 
     const resourceId = page.params.id || "";
 
@@ -24,7 +26,17 @@
         {#if resource}
             <div class="max-w-2xl mx-auto">
                 <Breadcrumb feature="resources" current={resource.name} />
-                <ResourceEditForm {resource} {locations} {allResources} />
+                <div class="bg-white shadow rounded-lg p-6 space-y-4">
+                    <h1 class="text-3xl font-bold mb-6">Edit Resource</h1>
+                    <ResourceForm
+                        remoteFunction={updateResource}
+                        validationSchema={updateResourceSchema}
+                        isUpdating={true}
+                        initialData={resource}
+                        {locations}
+                        {allResources}
+                    />
+                </div>
             </div>
         {:else}
             <ErrorSection

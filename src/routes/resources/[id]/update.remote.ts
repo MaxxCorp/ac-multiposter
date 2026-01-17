@@ -9,28 +9,46 @@ import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { updateResourceSchema } from '$lib/validations/resources';
 
 export const updateResource = form(updateResourceSchema, async (data) => {
-    const user = getAuthenticatedUser();
-    ensureAccess(user, 'resources');
+    console.log('--- updateResource START ---');
+    console.log('Data received:', JSON.stringify(data, null, 2));
 
-    const maxOccupancy = data.maxOccupancy ? Number(data.maxOccupancy) : null;
+    try {
+        const user = getAuthenticatedUser();
+        ensureAccess(user, 'resources');
+        console.log('User authenticated:', user.id);
 
-    const result = await db.update(resource)
-        .set({
+        const maxOccupancy = data.maxOccupancy ? Number(data.maxOccupancy) : null;
+
+        const updateData: any = {
             name: data.name,
             description: data.description || null,
             type: data.type,
             maxOccupancy: isNaN(maxOccupancy as any) ? null : maxOccupancy,
             locationId: data.locationId || null,
             updatedAt: new Date(),
-        })
+        };
 
-        .where(eq(resource.id, data.id))
-        .returning();
+        console.log('Update payload:', updateData);
 
-    const updated = result[0];
-    await readResource(data.id).refresh();
-    await listResources().refresh();
-    await listResourcesWithHierarchy().refresh();
+        const result = await db.update(resource)
+            .set(updateData)
+            .where(eq(resource.id, data.id))
+            .returning();
 
-    return updated;
+        if (result.length === 0) {
+            console.error('No rows updated. ID might be wrong or missing.');
+            return { success: false, error: { message: 'Resource not found or update failed' } };
+        }
+
+        const updated = result[0];
+        await readResource(data.id).refresh();
+        await listResources().refresh();
+        await listResourcesWithHierarchy().refresh();
+
+        console.log('--- updateResource SUCCESS ---');
+        return { success: true, resource: updated };
+    } catch (err: any) {
+        console.error('--- updateResource ERROR ---', err);
+        return { success: false, error: { message: err.message || 'Update failed' } };
+    }
 });

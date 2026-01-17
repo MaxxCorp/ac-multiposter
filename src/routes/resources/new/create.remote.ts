@@ -7,22 +7,42 @@ import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { createResourceSchema } from '$lib/validations/resources';
 
 export const createResource = form(createResourceSchema, async (data) => {
-    const user = getAuthenticatedUser();
-    ensureAccess(user, 'resources');
+    console.log('--- createResource START ---');
+    console.log('Data received:', JSON.stringify(data, null, 2));
 
-    const maxOccupancy = data.maxOccupancy ? Number(data.maxOccupancy) : null;
+    try {
+        const user = getAuthenticatedUser();
+        ensureAccess(user, 'resources');
+        console.log('User authenticated:', user.id);
 
-    const result = await db.insert(resource).values({
-        userId: user.id,
-        name: data.name,
-        description: data.description || null,
-        type: data.type,
-        maxOccupancy: isNaN(maxOccupancy as any) ? null : maxOccupancy,
-        locationId: data.locationId || null,
-    }).returning();
+        const maxOccupancy = data.maxOccupancy ? Number(data.maxOccupancy) : null;
 
+        const insertData: any = {
+            userId: user.id,
+            name: data.name,
+            description: data.description || null,
+            type: data.type,
+            maxOccupancy: isNaN(maxOccupancy as any) ? null : maxOccupancy,
+            locationId: data.locationId || null,
+        };
 
-    await listResources().refresh();
-    await listResourcesWithHierarchy().refresh();
-    return result[0];
+        console.log('Insert payload:', insertData);
+
+        const result = await db.insert(resource).values(insertData).returning();
+
+        if (result.length === 0) {
+            throw new Error('Failed to create resource');
+        }
+
+        const newResource = result[0];
+        await listResources().refresh();
+        await listResourcesWithHierarchy().refresh();
+
+        console.log('--- createResource SUCCESS ---');
+        return { success: true, resource: newResource };
+
+    } catch (err: any) {
+        console.error('--- createResource ERROR ---', err);
+        return { success: false, error: { message: err.message || 'Creation failed' } };
+    }
 });
