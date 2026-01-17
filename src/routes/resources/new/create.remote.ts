@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { resource } from '$lib/server/db/schema';
+import { resource, resourceRelation } from '$lib/server/db/schema';
 import { listResources } from '../list.remote';
 import { listResourcesWithHierarchy } from '../list-with-hierarchy.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
@@ -35,6 +35,18 @@ export const createResource = form(createResourceSchema, async (data) => {
         }
 
         const newResource = result[0];
+
+        // Insert parent relations if any
+        if (data.parentResourceIds && data.parentResourceIds.length > 0) {
+            console.log('Inserting parent relations:', data.parentResourceIds);
+            await db.insert(resourceRelation).values(
+                data.parentResourceIds.map((parentId) => ({
+                    parentResourceId: parentId,
+                    childResourceId: newResource.id,
+                }))
+            );
+        }
+
         await listResources().refresh();
         await listResourcesWithHierarchy().refresh();
 

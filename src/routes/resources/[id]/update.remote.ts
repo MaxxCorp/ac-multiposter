@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { resource } from '$lib/server/db/schema';
+import { resource, resourceRelation } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { listResources } from '../list.remote';
 import { listResourcesWithHierarchy } from '../list-with-hierarchy.remote';
@@ -41,6 +41,23 @@ export const updateResource = form(updateResourceSchema, async (data) => {
         }
 
         const updated = result[0];
+
+        // Sync parent relations
+        // 1. Delete all existing parent relations for this child
+        await db.delete(resourceRelation)
+            .where(eq(resourceRelation.childResourceId, data.id));
+
+        // 2. Insert new ones if any
+        if (data.parentResourceIds && data.parentResourceIds.length > 0) {
+            console.log('Updating parent relations:', data.parentResourceIds);
+            await db.insert(resourceRelation).values(
+                data.parentResourceIds.map((parentId) => ({
+                    parentResourceId: parentId,
+                    childResourceId: data.id,
+                }))
+            );
+        }
+
         await readResource(data.id).refresh();
         await listResources().refresh();
         await listResourcesWithHierarchy().refresh();

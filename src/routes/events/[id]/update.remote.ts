@@ -90,15 +90,18 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 			error(404, 'Event not found');
 		}
 
+
 		// Update resources associations
 		if (data.resourceIds !== undefined) { // Check if field was submitted
-			console.log('Updating resources to:', data.resourceIds);
+			const resourceIds = typeof data.resourceIds === 'string' ? JSON.parse(data.resourceIds) : data.resourceIds;
+			console.log('Updating resources to:', resourceIds);
+
 			// Delete existing
 			await db.delete(eventResource).where(eq(eventResource.eventId, data.id));
 
 			// Insert new
-			if (Array.isArray(data.resourceIds) && data.resourceIds.length > 0) {
-				const resourceAssociations = (data.resourceIds as string[]).map((resourceId: string) => ({
+			if (Array.isArray(resourceIds) && resourceIds.length > 0) {
+				const resourceAssociations = (resourceIds as string[]).map((resourceId: string) => ({
 					eventId: data.id,
 					resourceId,
 				}));
