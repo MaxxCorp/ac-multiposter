@@ -387,6 +387,14 @@ export class SyncService {
 				.set({ etag: externalEvent.etag ?? null, lastSyncedAt: new Date() })
 				.where(eq(syncMappingTable.id, mapping.id));
 
+			// Publish change to Event Bus
+			try {
+				const { publishEventChange } = await import('$lib/server/events/bus');
+				await publishEventChange(mapping.eventId, 'UPDATE');
+			} catch (e) {
+				console.error('[SyncService] Failed to publish UPDATE event change', e);
+			}
+
 			// Update event contacts status
 			if (externalEvent.attendees) {
 				for (const attendee of externalEvent.attendees) {
@@ -485,6 +493,14 @@ export class SyncService {
 				etag: externalEvent.etag ?? null,
 				lastSyncedAt: new Date()
 			});
+
+			// Publish change to Event Bus
+			try {
+				const { publishEventChange } = await import('$lib/server/events/bus');
+				await publishEventChange(newEvent.id, 'CREATE');
+			} catch (e) {
+				console.error('[SyncService] Failed to publish CREATE event change', e);
+			}
 
 			// Update event contacts associations and their status
 			if (externalEvent.attendees) {

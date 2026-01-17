@@ -107,8 +107,17 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 		console.log('Generating assets via create.remote...');
 		await generateEventAssets(newEvent.id);
 
+
 		console.log('Event created successfully, refreshing list...');
 		await listEvents().refresh();
+
+		try {
+			const { publishEventChange } = await import('$lib/server/events/bus');
+			await publishEventChange(newEvent.id, 'CREATE');
+		} catch (e) {
+			console.error('Failed to publish event change', e);
+		}
+
 		console.log('--- createNewEvent DONE ---');
 		return { success: true };
 	} catch (err: any) {

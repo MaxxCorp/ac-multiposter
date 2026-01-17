@@ -20,5 +20,15 @@ export const deleteEvents = command(
 			.where(inArray(event.id, ids));
 
 		await listEvents().refresh();
+
+		try {
+			const { publishEventChange } = await import('$lib/server/events/bus');
+			// Publish delete for each ID
+			// We do this concurrently for speed
+			await Promise.all(ids.map(id => publishEventChange(id, 'DELETE')));
+		} catch (e) {
+			console.error('Failed to publish event deletion', e);
+		}
+
 		return { success: true };
 	});

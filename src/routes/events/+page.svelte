@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from "svelte";
+	import { invalidateAll } from "$app/navigation";
+	import { toast } from "svelte-sonner";
 	import { listEvents } from "./list.remote";
 	import type { Event } from "./list.remote";
 	import { deleteEvents } from "./delete.remote";
@@ -15,6 +18,52 @@
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
 	let resolvedItems = $state<Event[]>([]);
 	let selectedIds = $state<Set<string>>(new Set());
+
+	onMount(() => {
+		const evtSource = new EventSource("/api/sse");
+
+		evtSource.onmessage = async (event) => {
+			try {
+				const message = JSON.parse(event.data);
+				if (message.type === "PING") return;
+
+				if (
+					message.type &&
+					["CREATE", "UPDATE", "DELETE"].includes(message.type)
+				) {
+					const eventData = message.data;
+					const summary = eventData?.summary
+						? `'${eventData.summary}'`
+						: "Event";
+
+					let toastMessage = "";
+					switch (message.type) {
+						case "CREATE":
+							toastMessage = `${summary} created by another user`;
+							break;
+						case "UPDATE":
+							toastMessage = `${summary} updated`;
+							break;
+						case "DELETE":
+							toastMessage = `Event deleted`;
+							break;
+					}
+
+					toast.info(toastMessage);
+					await invalidateAll();
+					itemsPromise = listEvents(); // Trigger local promise re-fetch logic
+				}
+			} catch (e) {
+				console.error("[SSE] Failed to parse message", e);
+			}
+		};
+
+		return () => {
+			if (evtSource) {
+				evtSource.close();
+			}
+		};
+	});
 
 	function isSelected(id: string) {
 		return selectedIds.has(id);
