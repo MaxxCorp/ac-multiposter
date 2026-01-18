@@ -30,7 +30,7 @@
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/adapter-cloudflare": "^7.2.5",
 		"@sveltejs/adapter-vercel": "^6.3.0",
-		"@sveltejs/kit": "^2.49.5",
+		"@sveltejs/kit": "^2.50.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
@@ -62,7 +62,7 @@
 	"dependencies": {
 		"@googleapis/calendar": "^14.2.0",
 		"@vercel/blob": "^2.0.0",
-		"better-auth": "^1.4.14",
+		"better-auth": "^1.4.15",
 		"drizzle-valibot": "^0.4.2",
 		"google-auth-library": "^10.5.0",
 		"ical.js": "^2.2.1",
