@@ -33,12 +33,14 @@
 
     // State derived from initialData
     let isAllDay = $state(
-        initialData
+        initialData?.startDateTime || initialData?.startDate
             ? !initialData.startDateTime && !!initialData.startDate
             : false,
     );
     let hasEndTime = $state(
-        initialData ? !!(initialData.endDateTime || initialData.endDate) : true,
+        initialData?.endDateTime || initialData?.endDate
+            ? !!(initialData.endDateTime || initialData.endDate)
+            : true,
     );
     let useDefaultReminders = $state(
         initialData?.reminders?.useDefault ?? true,
@@ -110,7 +112,7 @@
     ];
 
     let useFreeTextLocation = $state(
-        !!initialData?.location && !selectedLocationId,
+        !!initialData?.location && !initialData?.locationId,
     );
 
     // Date/Time handling

@@ -81,4 +81,18 @@ export const someRemoteAction = form(schema, async (input) => {
 4.  **Route Pages**:
     -   `new/+page.svelte`: Import `create` remote and pass to Form.
     -   `[id]/+page.svelte`: Import `update` remote, fetch data via `read` remote (in load or effect), and pass to Form.
+    -   `[id]/+page.svelte`: Import `update` remote, fetch data via `read` remote (in load or effect), and pass to Form.
     -   `[id]/view/+page.svelte`: Fetch data via `read` remote and display read-only UI.
+5.  **Register Feature**: Add the feature to the system configuration (see Section 6).
+
+## 6. Feature Registration (UI & Auth)
+
+To ensure the feature is accessible and secured:
+
+1.  **Authorization Type**:
+    -   Add the feature key (e.g., `'announcements'`) to the `Feature` usage type in `src/lib/authorization.ts`.
+
+2.  **Home Page Tile & Navigation**:
+    -   Add an entry to `FEATURES` in `src/lib/features.ts`.
+    -   Configure the tile's title, description, icon, and color theme.
+    -   If a new icon is needed, add it to `src/lib/icons.ts`.

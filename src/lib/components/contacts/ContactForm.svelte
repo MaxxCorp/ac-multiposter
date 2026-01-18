@@ -5,7 +5,6 @@
         Mail,
         Phone,
         MapPin,
-        Tag as TagIcon,
         Link as LinkIcon,
         User,
         Search,
@@ -13,6 +12,7 @@
     import { goto } from "$app/navigation";
     import { listContacts } from "../../../routes/contacts/list.remote";
     import { toast } from "svelte-sonner";
+    import TagInput from "../ui/TagInput.svelte";
 
     import Button from "../ui/button/button.svelte";
     import AsyncButton from "../ui/AsyncButton.svelte";
@@ -316,19 +316,9 @@
         </div>
 
         <div>
-            <label
-                for="tags"
-                class="block text-sm font-medium text-gray-700 flex items-center gap-2"
-            >
-                <TagIcon size={16} class="text-indigo-500" />
-                Tags (comma separated)
-            </label>
-            <input
-                type="text"
-                id="tags"
+            <TagInput
                 bind:value={tagsInput}
                 placeholder="e.g. Customer, Lead, Priority"
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
         </div>
     </div>

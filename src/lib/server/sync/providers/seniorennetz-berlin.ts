@@ -16,6 +16,8 @@ export class SeniorennetzBerlinProvider implements SyncProvider {
 	readonly name = 'Seniorennetz.Berlin';
 	readonly supportsWebhooks = false; // Web form submission doesn't support webhooks
 	readonly supportedDirections: SyncDirection[] = ['push'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event'];
+
 
 	private config?: SyncConfig;
 

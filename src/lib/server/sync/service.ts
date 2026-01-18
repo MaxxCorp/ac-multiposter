@@ -340,7 +340,7 @@ export class SyncService {
 			);
 
 		if (externalEvent.status === 'cancelled') {
-			if (mapping) {
+			if (mapping && mapping.eventId) {
 				// Delete the local event
 				// Note: This might trigger a delete hook if we had one, but we don't.
 				// However, we should be careful not to trigger a push-back loop if we add one later.
@@ -353,7 +353,9 @@ export class SyncService {
 			return;
 		}
 
+
 		if (mapping) {
+			if (!mapping.eventId) return;
 			// Update existing event
 
 			// Get current event to check timestamps

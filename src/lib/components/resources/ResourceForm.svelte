@@ -45,7 +45,7 @@
     // Initialize allocationCalendars from initialData if present
     $effect(() => {
         if (initialData?.allocationCalendars) {
-            // If we ever need to re-sync when initialData changes deeply
+            allocationCalendars = initialData.allocationCalendars;
         }
     });
 

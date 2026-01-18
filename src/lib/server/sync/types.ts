@@ -68,7 +68,7 @@ export interface SyncOperation {
 	syncConfigId: string;
 	operation: 'pull' | 'push' | 'delete';
 	status: 'pending' | 'completed' | 'failed';
-	entityType: 'event';
+	entityType: 'event' | 'announcement';
 	entityId?: string;
 	externalId?: string;
 	error?: string;
@@ -82,7 +82,8 @@ export interface SyncOperation {
  */
 export interface SyncMapping {
 	id: string;
-	eventId: string; // Internal event ID
+	eventId?: string; // Internal event ID (nullable)
+	announcementId?: string; // Internal announcement ID (nullable)
 	syncConfigId: string;
 	externalId: string; // Provider's event ID
 	providerId: string;
@@ -127,6 +128,7 @@ export interface SyncProvider {
 	readonly name: string;
 	readonly supportsWebhooks: boolean;
 	readonly supportedDirections: SyncDirection[];
+	readonly supportedEntityTypes: ('event' | 'announcement')[];
 
 	/**
 	 * Initialize the provider with credentials

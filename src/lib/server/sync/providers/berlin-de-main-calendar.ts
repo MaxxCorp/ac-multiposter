@@ -19,6 +19,8 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 	readonly name = 'Berlin.de (Main Calendar)';
 	readonly supportsWebhooks = false;
 	readonly supportedDirections: SyncDirection[] = ['push'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event'];
+
 
 	private config?: SyncConfig;
 	private formUrl = 'https://www.berlin.de/tickets/6226271-2789889-datenerfassung.html';

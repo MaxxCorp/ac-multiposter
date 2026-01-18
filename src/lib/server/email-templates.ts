@@ -13,6 +13,7 @@ export interface EmailTemplateData {
     location?: string;
     recurrence?: string[];
   };
+  isAnnouncement?: boolean;
   contactInfo: {
     name: string;
     email: string;
@@ -35,8 +36,8 @@ export async function renderEmailTemplates(data: EmailTemplateData): Promise<{ h
   text = text
     .replace('{event.summary}', data.event.summary)
     .replace('{event.description ? `Beschreibung: ${event.description}\\n\\n` : \'\'}', data.event.description ? `Beschreibung: ${data.event.description}\n\n` : '')
-    .replace('{startDate}', startDate)
-    .replace('{endDate !== \'Nicht angegeben\' ? `Ende: ${endDate}\\n` : \'\'}', endDate !== 'Nicht angegeben' ? `Ende: ${endDate}\n` : '')
+    .replace('{startDate}', data.isAnnouncement ? '' : `Beginn: ${startDate}\n`)
+    .replace('{endDate !== \'Nicht angegeben\' ? `Ende: ${endDate}\\n` : \'\'}', !data.isAnnouncement && endDate !== 'Nicht angegeben' ? `Ende: ${endDate}\n` : '')
     .replace('{event.location ? `Ort: ${event.location}\\n` : \'\'}', data.event.location ? `Ort: ${data.event.location}\n` : '')
     .replace('{event.recurrence && event.recurrence.length > 0 ? `Wiederholung: ${event.recurrence.join(\', \')}\\n` : \'\'}', data.event.recurrence && data.event.recurrence.length > 0 ? `Wiederholung: ${data.event.recurrence.join(', ')}\n` : '')
     .replace('{contactInfo.name}', data.contactInfo.name)
@@ -121,6 +122,7 @@ function renderSvelteComponent(Component: any, props: any): string {
         </div>
         ` : ''}
 
+        ${!props.isAnnouncement ? `
         <div class="detail-row">
             <span class="detail-label">Beginn:</span> ${startDate}
         </div>
@@ -130,6 +132,7 @@ function renderSvelteComponent(Component: any, props: any): string {
             <span class="detail-label">Ende:</span> ${endDate}
         </div>
         ` : ''}
+        ` : ''}
 
         ${event.location ? `
         <div class="detail-row">
@@ -137,7 +140,7 @@ function renderSvelteComponent(Component: any, props: any): string {
         </div>
         ` : ''}
 
-        ${event.recurrence && event.recurrence.length > 0 ? `
+        ${!props.isAnnouncement && event.recurrence && event.recurrence.length > 0 ? `
         <div class="detail-row">
             <span class="detail-label">Wiederholung:</span> ${event.recurrence.join(', ')}
         </div>
@@ -166,7 +169,7 @@ function renderSvelteComponent(Component: any, props: any): string {
 
     <div class="footer">
         <p>Diese E-Mail wurde automatisch von AC-Multiposter generiert.</p>
-        <p>Anhänge: iCal-Datei (.ics) für Kalender-Import und vCard (.vcf) für Kontaktdaten.</p>
+        <p>Anhänge: ${props.isAnnouncement ? '' : 'iCal-Datei (.ics) für Kalender-Import und '}vCard (.vcf) für Kontaktdaten.</p>
     </div>
 </body>
 </html>`;

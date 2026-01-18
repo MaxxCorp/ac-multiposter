@@ -19,6 +19,8 @@ export class MeetupProvider implements SyncProvider {
 	readonly name = 'Meetup';
 	readonly supportsWebhooks = false; // Meetup doesn't support webhooks for push-only sync
 	readonly supportedDirections: SyncDirection[] = ['push'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event'];
+
 
 	private config?: SyncConfig;
 	private accessToken?: string;

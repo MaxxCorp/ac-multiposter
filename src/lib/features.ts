@@ -46,6 +46,20 @@ export const FEATURES: readonly FeatureMeta[] = [
     order: 2
   },
   {
+    key: 'announcements',
+    title: 'Announcements',
+    description: 'Manage and publish announcements, news, and updates.',
+    href: '/announcements',
+    buttonText: 'Manage Announcements',
+    claim: 'announcements',
+    icon: 'megaphone',
+    gradientFrom: 'from-amber-50',
+    gradientTo: 'to-yellow-50',
+    borderClass: 'border-amber-100',
+    buttonClass: 'bg-amber-600 hover:bg-amber-700',
+    order: 3
+  },
+  {
     key: 'campaigns',
     title: 'Campaigns',
     description: 'Create and manage message campaigns to post across your connected calendars.',
@@ -57,7 +71,7 @@ export const FEATURES: readonly FeatureMeta[] = [
     gradientTo: 'to-emerald-50',
     borderClass: 'border-emerald-100',
     buttonClass: 'bg-emerald-600 hover:bg-emerald-700',
-    order: 3
+    order: 4
   },
   {
     key: 'locations',
@@ -71,7 +85,7 @@ export const FEATURES: readonly FeatureMeta[] = [
     gradientTo: 'to-amber-50',
     borderClass: 'border-orange-100',
     buttonClass: 'bg-orange-600 hover:bg-orange-700',
-    order: 4
+    order: 5
   },
   {
     key: 'resources',
@@ -85,7 +99,7 @@ export const FEATURES: readonly FeatureMeta[] = [
     gradientTo: 'to-cyan-50',
     borderClass: 'border-teal-100',
     buttonClass: 'bg-teal-600 hover:bg-teal-700',
-    order: 5
+    order: 6
   },
   {
     key: 'users',
@@ -99,7 +113,7 @@ export const FEATURES: readonly FeatureMeta[] = [
     gradientTo: 'to-red-50',
     borderClass: 'border-rose-100',
     buttonClass: 'bg-rose-600 hover:bg-rose-700',
-    order: 6
+    order: 7
   },
   {
     key: 'contacts',
@@ -113,7 +127,7 @@ export const FEATURES: readonly FeatureMeta[] = [
     gradientTo: 'to-blue-50',
     borderClass: 'border-indigo-100',
     buttonClass: 'bg-indigo-600 hover:bg-indigo-700',
-    order: 7
+    order: 8
   },
   {
     key: 'kiosks',
@@ -127,7 +141,7 @@ export const FEATURES: readonly FeatureMeta[] = [
     gradientTo: 'to-slate-50',
     borderClass: 'border-gray-100',
     buttonClass: 'bg-gray-600 hover:bg-gray-700',
-    order: 8
+    order: 9
   }
 ] as const;
 

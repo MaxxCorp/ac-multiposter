@@ -25,14 +25,14 @@
     let loaded = $state(false);
 
     // Initial state setup for 'Days' convenience fields
-    let initialDays = $state({
+    let initialDays = {
         lookAhead: initialData?.lookAhead
             ? Math.round(initialData.lookAhead / 86400)
             : 28,
         lookPast: initialData?.lookPast
             ? Math.round(initialData.lookPast / 86400)
             : 0,
-    });
+    };
 
     onMount(async () => {
         try {

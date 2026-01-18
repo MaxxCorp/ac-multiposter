@@ -32,5 +32,9 @@ export const ICONS = {
   monitor: {
     path: 'M2 3h20v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3m10 18v-4m-4 4h8',
     strokeWidth: 2
+  } satisfies IconDef,
+  megaphone: {
+    path: 'M3 11l8-5v12l-8-5v-2zm18 0a5 5 0 00-5-5v10a5 5 0 005-5zM15 6.09v11.82a9 9 0 0 0 0-11.82z',
+    strokeWidth: 2
   } satisfies IconDef
 } as const;

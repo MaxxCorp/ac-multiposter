@@ -21,6 +21,8 @@ export class GoogleCalendarProvider implements SyncProvider {
 	readonly name = 'Google Calendar';
 	readonly supportsWebhooks = true;
 	readonly supportedDirections: SyncDirection[] = ['pull', 'push', 'bidirectional'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event'];
+
 
 	private config?: SyncConfig;
 	private calendar?: calendar_v3.Calendar;

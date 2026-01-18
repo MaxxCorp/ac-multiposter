@@ -59,7 +59,8 @@ export const syncOperation = pgTable("sync_operation", {
  */
 export const syncMapping = pgTable("sync_mapping", {
     id: uuid("id").primaryKey().defaultRandom(),
-    eventId: uuid("event_id").notNull(), // References event.id (which is now uuid)
+    eventId: uuid("event_id"), // References event.id (which is now uuid)
+    announcementId: uuid('announcement_id'),
     syncConfigId: uuid("sync_config_id")
         .notNull()
         .references(() => syncConfig.id, { onDelete: "cascade" }),
@@ -70,6 +71,8 @@ export const syncMapping = pgTable("sync_mapping", {
     metadata: jsonb("metadata"), // Provider-specific metadata
 }, (table) => [
     index("sync_mapping_event_id_idx").on(table.eventId),
+    index('sync_mapping_announcement_id_idx').on(table.announcementId),
+    index('sync_mapping_sync_config_id_idx').on(table.syncConfigId),
     index("sync_mapping_lookup_index").on(
         table.syncConfigId,
         table.externalId,

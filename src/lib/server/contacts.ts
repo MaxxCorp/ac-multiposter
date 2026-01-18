@@ -1,7 +1,7 @@
 import { db } from './db';
 import {
     contact, contactEmail, contactPhone, contactAddress,
-    userContact, locationContact, resourceContact, eventContact,
+    userContact, locationContact, resourceContact, eventContact, announcementContact,
     contactRelation, tag, contactTag
 } from './db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
@@ -497,11 +497,11 @@ export async function deleteContact(id: string) {
 /**
  * Associate a contact with an entity (user, location, resource, event)
  */
-export async function associateContact(type: 'user' | 'location' | 'resource' | 'event', entityId: string, contactId: string) {
+export async function associateContact(type: 'user' | 'location' | 'resource' | 'event' | 'announcement', entityId: string, contactId: string) {
     const user = getAuthenticatedUser();
 
     // Allow users with 'contacts' access OR 'events' access if associating with an event
-    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
+    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events')) && !(type === 'announcement' && hasAccess(user, 'announcements'))) {
         throw new Error('Forbidden');
     }
 
@@ -509,14 +509,16 @@ export async function associateContact(type: 'user' | 'location' | 'resource' | 
         user: userContact,
         location: locationContact,
         resource: resourceContact,
-        event: eventContact
+        event: eventContact,
+        announcement: announcementContact
     }[type];
 
     const entityField = {
         user: 'userId',
         location: 'locationId',
         resource: 'resourceId',
-        event: 'eventId'
+        event: 'eventId',
+        announcement: 'announcementId'
     }[type];
 
     await (db.insert(table) as any).values({
@@ -558,11 +560,11 @@ export async function getContact(id: string) {
 /**
  * Dissociate a contact from an entity
  */
-export async function dissociateContact(type: 'user' | 'location' | 'resource' | 'event', entityId: string, contactId: string) {
+export async function dissociateContact(type: 'user' | 'location' | 'resource' | 'event' | 'announcement', entityId: string, contactId: string) {
     const user = getAuthenticatedUser();
 
     // Allow users with 'contacts' access OR 'events' access if dissociating from an event
-    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
+    if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events')) && !(type === 'announcement' && hasAccess(user, 'announcements'))) {
         throw new Error('Forbidden');
     }
 
@@ -570,14 +572,16 @@ export async function dissociateContact(type: 'user' | 'location' | 'resource' |
         user: userContact,
         location: locationContact,
         resource: resourceContact,
-        event: eventContact
+        event: eventContact,
+        announcement: announcementContact
     }[type];
 
     const entityField = {
         user: 'userId',
         location: 'locationId',
         resource: 'resourceId',
-        event: 'eventId'
+        event: 'eventId',
+        announcement: 'announcementId'
     }[type];
 
     await db.delete(table).where(and(
@@ -589,12 +593,12 @@ export async function dissociateContact(type: 'user' | 'location' | 'resource' |
 /**
  * Get all contacts associated with a specific entity
  */
-export async function getEntityContacts(type: 'user' | 'location' | 'resource' | 'event', entityId: string, skipAccessControl: boolean = false) {
+export async function getEntityContacts(type: 'user' | 'location' | 'resource' | 'event' | 'announcement', entityId: string, skipAccessControl: boolean = false) {
     if (!skipAccessControl) {
         const user = getAuthenticatedUser();
 
         // Allow users with 'contacts' access OR 'events' access if fetching event contacts
-        if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events'))) {
+        if (!hasAccess(user, 'contacts') && !(type === 'event' && hasAccess(user, 'events')) && !(type === 'announcement' && hasAccess(user, 'announcements'))) {
             throw new Error('Forbidden');
         }
     }
@@ -603,14 +607,16 @@ export async function getEntityContacts(type: 'user' | 'location' | 'resource' |
         user: 'userContact',
         location: 'locationContact',
         resource: 'resourceContact',
-        event: 'eventContact'
+        event: 'eventContact',
+        announcement: 'announcementContact'
     }[type];
 
     const entityField = {
         user: 'userId',
         location: 'locationId',
         resource: 'resourceId',
-        event: 'eventId'
+        event: 'eventId',
+        announcement: 'announcementId'
     }[type];
 
     // Wait, let's check contacts-schema.ts for userContact

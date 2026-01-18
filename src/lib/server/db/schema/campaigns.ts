@@ -27,8 +27,9 @@ export const emailCampaign = pgTable("email_campaign", {
     syncConfigId: uuid("sync_config_id")
         .notNull()
         .references(() => syncConfig.id, { onDelete: "cascade" }),
-    eventId: uuid("event_id").notNull(), // The event that was emailed (now uuid)
-    eventSummary: text("event_summary").notNull(), // Cached event summary
+    eventId: uuid("event_id"), // The event that was emailed (nullable)
+    announcementId: uuid("announcement_id"), // The announcement that was emailed (nullable)
+    eventSummary: text("event_summary").notNull(), // Cached summary (event or announcement)
     brevoCampaignId: text("brevo_campaign_id"), // Brevo campaign ID
     sentAt: timestamp("sent_at").defaultNow().notNull(),
     recipientCount: integer("recipient_count").notNull(),
@@ -36,6 +37,7 @@ export const emailCampaign = pgTable("email_campaign", {
 }, (table) => [
     index("email_campaign_sync_config_id_idx").on(table.syncConfigId),
     index("email_campaign_event_id_idx").on(table.eventId),
+    index("email_campaign_announcement_id_idx").on(table.announcementId),
     index("email_campaign_sent_at_idx").on(table.sentAt),
 ]);
 

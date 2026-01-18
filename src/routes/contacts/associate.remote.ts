@@ -4,14 +4,14 @@ import { type Contact, associationSchema, updateAssociationSchema, getAssociatio
 
 export const addAssociation = command(associationSchema, async (data) => {
     const { type, entityId, contactId } = data;
-    await associateContact(type as "event" | "user" | "location" | "resource", entityId, contactId);
+    await associateContact(type as "event" | "user" | "location" | "resource" | "announcement", entityId, contactId);
     await fetchEntityContacts({ type, entityId }).refresh();
     return { success: true };
 });
 
 export const removeAssociation = command(associationSchema, async (data) => {
     const { type, entityId, contactId } = data;
-    await dissociateContact(type as "event" | "user" | "location" | "resource", entityId, contactId);
+    await dissociateContact(type as "event" | "user" | "location" | "resource" | "announcement", entityId, contactId);
     await fetchEntityContacts({ type, entityId }).refresh();
     return { success: true };
 });
@@ -26,7 +26,7 @@ export const updateAssociationStatus = command(updateAssociationSchema, async (d
 
 export const fetchEntityContacts = query(getAssociationsSchema, async (data): Promise<Contact[]> => {
     const { type, entityId } = data;
-    const results = await getEntityContacts(type as "event" | "user" | "location" | "resource", entityId);
+    const results = await getEntityContacts(type as "event" | "user" | "location" | "resource" | "announcement", entityId);
     return results.map((r: any) => ({
         ...r,
         participationStatus: r.participationStatus,

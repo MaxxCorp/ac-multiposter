@@ -3,6 +3,7 @@ import { relations } from 'drizzle-orm';
 import { user } from "./auth";
 import { location, resource } from "./resources";
 import { event } from "./events";
+import { announcementContact, announcementTag } from "./announcements";
 
 export const contact = pgTable("contact", {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -177,7 +178,8 @@ export const contactRelations = relations(contact, ({ many }) => ({
     userAssociations: many(userContact),
     locationAssociations: many(locationContact),
     resourceAssociations: many(resourceContact),
-    eventAssociations: many(eventContact),
+    events: many(eventContact),
+    announcements: many(announcementContact),
     relations: many(contactRelation, { relationName: 'fromRelations' }),
     relatedTo: many(contactRelation, { relationName: 'toRelations' }),
     tags: many(contactTag),
@@ -198,6 +200,7 @@ export const contactRelationRelations = relations(contactRelation, ({ one }) => 
 
 export const tagRelations = relations(tag, ({ many }) => ({
     contactAssociations: many(contactTag),
+    announcementAssociations: many(announcementTag),
 }));
 
 export const contactTagRelations = relations(contactTag, ({ one }) => ({

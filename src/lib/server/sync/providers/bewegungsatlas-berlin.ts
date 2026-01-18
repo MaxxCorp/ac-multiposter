@@ -19,6 +19,8 @@ export class BewegungsatlasBerlinProvider implements SyncProvider {
 	readonly name = 'Bewegungsatlas.Berlin';
 	readonly supportsWebhooks = false;
 	readonly supportedDirections: SyncDirection[] = ['push'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event'];
+
 
 	private config?: SyncConfig;
 	private baseUrl = 'https://www.bewegungsatlas.berlin';

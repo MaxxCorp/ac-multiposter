@@ -27,6 +27,8 @@ export class EmailProvider implements SyncProvider {
 	readonly name = 'E-Mail (Brevo)';
 	readonly supportsWebhooks = true;
 	readonly supportedDirections: SyncDirection[] = ['push'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event', 'announcement'];
+
 
 	private config?: SyncConfig;
 	private brevoApiKey?: string;
@@ -125,10 +127,13 @@ export class EmailProvider implements SyncProvider {
 			// Send the campaign immediately
 			await this.makeBrevoRequest('POST', `/emailCampaigns/${brevoCampaignId}/sendNow`);
 
+			const isAnnouncement = event.metadata?.entityType === 'announcement';
+
 			// Store campaign in database
 			await db.insert(emailCampaign).values({
 				syncConfigId: this.config.id,
-				eventId: event.metadata?.eventId || event.externalId,
+				eventId: isAnnouncement ? undefined : (event.metadata?.eventId || event.externalId),
+				announcementId: isAnnouncement ? (event.metadata?.announcementId || event.externalId) : undefined,
 				eventSummary: event.summary,
 				brevoCampaignId: brevoCampaignId.toString(),
 				sentAt: new Date(),
@@ -270,8 +275,12 @@ export class EmailProvider implements SyncProvider {
 
 		// Add event contacts
 		const eventId = event.metadata?.eventId;
-		if (eventId) {
-			const contacts = await getEntityContacts('event', eventId);
+		const announcementId = event.metadata?.announcementId;
+		const entityId = eventId || announcementId;
+		const entityType = eventId ? 'event' : 'announcement';
+
+		if (entityId) {
+			const contacts = await getEntityContacts(entityType, entityId);
 			for (const contact of contacts) {
 				const email = (contact as any).emails?.find((e: any) => e.primary)?.value ||
 					(contact as any).emails?.[0]?.value;
@@ -314,11 +323,19 @@ export class EmailProvider implements SyncProvider {
 			contactInfo
 		};
 
+		if (event.metadata?.entityType === 'announcement') {
+			templateData.isAnnouncement = true;
+		}
+
 		return await renderEmailTemplates(templateData);
 	}
 
 	private async generateAttachments(event: ExternalEvent, userRecord: typeof user.$inferSelect): Promise<any[]> {
 		const attachments: any[] = [];
+		const isAnnouncement = event.metadata?.entityType === 'announcement';
+
+		if (isAnnouncement) return attachments; // Announcements don't have iCal/QR assets (yet)
+
 		const eventId = event.metadata?.eventId;
 
 		if (!eventId) {

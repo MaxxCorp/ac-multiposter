@@ -1,3 +1,4 @@
+export * from './announcements';
 export * from "./auth";
 export * from "./contacts";
 export * from "./events";

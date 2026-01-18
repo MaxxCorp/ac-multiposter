@@ -107,7 +107,7 @@ export const updateContactSchema = v.object({
 });
 
 export const associationSchema = v.object({
-    type: v.picklist(['event', 'user', 'location', 'resource']),
+    type: v.picklist(['event', 'user', 'location', 'resource', 'announcement']),
     entityId: v.string(),
     contactId: v.pipe(v.string(), v.uuid()),
 });
@@ -120,6 +120,6 @@ export const updateAssociationSchema = v.object({
 });
 
 export const getAssociationsSchema = v.object({
-    type: v.picklist(['event', 'user', 'location', 'resource']),
+    type: v.picklist(['event', 'user', 'location', 'resource', 'announcement']),
     entityId: v.string(),
 });

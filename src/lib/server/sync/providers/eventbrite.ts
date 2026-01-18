@@ -19,6 +19,8 @@ export class EventbriteProvider implements SyncProvider {
 	readonly name = 'Eventbrite';
 	readonly supportsWebhooks = false; // Eventbrite doesn't support webhooks for push-only sync
 	readonly supportedDirections: SyncDirection[] = ['push'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event'];
+
 
 	private config?: SyncConfig;
 	private accessToken?: string;

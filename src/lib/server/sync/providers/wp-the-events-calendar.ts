@@ -15,6 +15,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 	readonly name = 'WP The Events Calendar';
 	readonly supportsWebhooks = false;
 	readonly supportedDirections: SyncDirection[] = ['push'];
+	readonly supportedEntityTypes: ('event' | 'announcement')[] = ['event'];
+
 
 	private config?: SyncConfig;
 	private baseUrl = '';
