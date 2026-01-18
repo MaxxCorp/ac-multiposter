@@ -114,6 +114,20 @@ export const FEATURES: readonly FeatureMeta[] = [
     borderClass: 'border-indigo-100',
     buttonClass: 'bg-indigo-600 hover:bg-indigo-700',
     order: 7
+  },
+  {
+    key: 'kiosks',
+    title: 'Kiosks',
+    description: 'Configure public displays to cycle through events for specific locations.',
+    href: '/kiosks',
+    buttonText: 'Manage Kiosks',
+    claim: 'kiosks',
+    icon: 'monitor',
+    gradientFrom: 'from-gray-50',
+    gradientTo: 'to-slate-50',
+    borderClass: 'border-gray-100',
+    buttonClass: 'bg-gray-600 hover:bg-gray-700',
+    order: 8
   }
 ] as const;
 

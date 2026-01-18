@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, boolean, jsonb, integer, index, uuid } from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
 import { user } from "./auth";
-import { eventResource } from './resources';
+import { eventResource, location } from './resources';
 import { eventContact } from './contacts';
 
 /**
@@ -26,6 +26,7 @@ export const event = pgTable("event", {
     summary: text("summary").notNull(), // Title of the event
     description: text("description"),
     location: text("location"),
+    locationId: uuid("location_id").references(() => location.id, { onDelete: "set null" }),
     colorId: text("color_id"),
 
     // Custom event metadata

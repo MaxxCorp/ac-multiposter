@@ -1,0 +1,48 @@
+Loading svelte-check in workspace: /home/themaxx/src/ac-multiposter
+Getting Svelte diagnostics...
+
+/home/themaxx/src/ac-multiposter/src/routes/kiosks/+page.svelte:23:21
+Error: Type '"kiosks"' is not assignable to type 'Feature | undefined'. (ts)
+    <div class="max-w-5xl mx-auto">
+        <Breadcrumb feature="kiosks" />
+
+/home/themaxx/src/ac-multiposter/src/routes/kiosks/+page.svelte:121:57
+Error: Type 'RemoteCommand<string, Promise<{ success: boolean; }>>' is not assignable to type '(ids: string[]) => Promise<any>'.
+  Types of parameters 'arg' and 'ids' are incompatible.
+    Type 'string[]' is not assignable to type 'string'. (ts)
+                                                        ids: [kiosk.id],
+                                                        deleteFn: deleteKiosk,
+                                                        itemName: "kiosk",
+
+/home/themaxx/src/ac-multiposter/src/routes/kiosks/[id]/+page.svelte:11:42
+Error: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'. (ts)
+    let kioskId = $derived($page.params.id);
+    let kioskPromise = $derived(getKiosk(kioskId));
+    let loading = $state(false);
+
+/home/themaxx/src/ac-multiposter/src/routes/kiosks/[id]/+page.svelte:19:33
+Error: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'. (ts)
+        try {
+            await updateKiosk({ id: kioskId, data });
+            goto("/kiosks");
+
+/home/themaxx/src/ac-multiposter/src/routes/kiosks/[id]/+page.svelte:32:21
+Error: Type '"kiosks"' is not assignable to type 'Feature | undefined'. (ts)
+    <div class="max-w-3xl mx-auto">
+        <Breadcrumb feature="kiosks" page="Edit Kiosk" />
+
+/home/themaxx/src/ac-multiposter/src/routes/kiosks/[id]/display/+page.svelte:220:39
+Error: Property 'location' does not exist on type '{ id: string; name: string; createdAt: Date; updatedAt: Date; userId: string; description: string | null; locationId: string; loopDuration: number; lookAhead: number; lookPast: number; }'. Did you mean 'locationId'? (ts)
+            <p class="text-sm">
+                Location: {data.kiosk.location?.name || "Unknown"}
+            </p>
+
+/home/themaxx/src/ac-multiposter/src/routes/kiosks/new/+page.svelte:27:21
+Error: Type '"kiosks"' is not assignable to type 'Feature | undefined'. (ts)
+    <div class="max-w-3xl mx-auto">
+        <Breadcrumb feature="kiosks" page="New Kiosk" />
+
+====================================
+svelte-check found 7 errors and 33 warnings in 7 files

@@ -38,6 +38,9 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 		if (data.summary !== undefined) updateData.summary = data.summary;
 		if (data.description !== undefined) updateData.description = data.description;
 		if (data.location !== undefined) updateData.location = data.location;
+		if (data.locationId !== undefined) updateData.locationId = data.locationId || null;
+		if (data.categoryBerlinDotDe !== undefined) updateData.categoryBerlinDotDe = data.categoryBerlinDotDe;
+		if (data.ticketPrice !== undefined) updateData.ticketPrice = data.ticketPrice;
 
 		if (data.start !== undefined) {
 			if (!data.start) {

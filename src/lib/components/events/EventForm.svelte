@@ -80,9 +80,34 @@
     let selectedLocationId = $state("");
     $effect(() => {
         if (initialData?.location) {
-            findInitialLocationId().then((id) => (selectedLocationId = id));
+            findInitialLocationId().then((id) => {
+                if (id) {
+                    selectedLocationId = id;
+                    useFreeTextLocation = false;
+                }
+            });
         }
     });
+
+    const BERLIN_DE_CATEGORIES = [
+        "Ausstellungen",
+        "Bälle & Galas",
+        "Bildung & Vorträge",
+        "Festivals",
+        "Jazz & Blues",
+        "Kabarett & Comedy",
+        "Kinderveranstaltungen",
+        "Klassische Konzerte",
+        "Literatur",
+        "Musical",
+        "Oper & Tanz",
+        "Pop, Rock & HipHop",
+        "Schlager & Volksmusik",
+        "Show",
+        "Sport",
+        "Theater",
+        "Vermischtes",
+    ];
 
     let useFreeTextLocation = $state(
         !!initialData?.location && !selectedLocationId,
@@ -432,6 +457,45 @@
                 />
             </div>
 
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label
+                        for="categoryBerlinDotDe"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                        Berlin.de Category
+                    </label>
+                    <select
+                        {...getField("categoryBerlinDotDe").as("text")}
+                        value={getField("categoryBerlinDotDe").value() ??
+                            initialData?.categoryBerlinDotDe ??
+                            ""}
+                        class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
+                    >
+                        <option value="">-- Select Category --</option>
+                        {#each BERLIN_DE_CATEGORIES as cat}
+                            <option value={cat}>{cat}</option>
+                        {/each}
+                    </select>
+                </div>
+                <div>
+                    <label
+                        for="ticketPrice"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                        Ticket Price
+                    </label>
+                    <input
+                        {...getField("ticketPrice").as("text")}
+                        value={getField("ticketPrice").value() ??
+                            initialData?.ticketPrice ??
+                            ""}
+                        class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
+                        placeholder="e.g. 15.00 EUR"
+                    />
+                </div>
+            </div>
+
             <div>
                 <span class="block text-sm font-medium text-gray-700 mb-2"
                     >Location</span
@@ -491,6 +555,11 @@
                         />
                     {/await}
                 {/if}
+                <input
+                    type="hidden"
+                    name="locationId"
+                    value={useFreeTextLocation ? "" : selectedLocationId}
+                />
             </div>
         </div>
 

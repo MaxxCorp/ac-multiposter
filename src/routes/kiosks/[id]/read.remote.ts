@@ -1,0 +1,20 @@
+import { query } from '$app/server';
+import { db } from '$lib/server/db';
+import { kiosk } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
+import * as v from 'valibot';
+
+export const getKiosk = query(v.string(), async (id: string) => {
+    const user = getAuthenticatedUser();
+    ensureAccess(user, 'events');
+
+    const result = await db.query.kiosk.findFirst({
+        where: and(eq(kiosk.id, id), eq(kiosk.userId, user.id)),
+        with: {
+            location: true
+        }
+    });
+
+    return result || null;
+});

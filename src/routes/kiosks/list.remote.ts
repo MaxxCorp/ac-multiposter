@@ -1,0 +1,20 @@
+import { query } from '$app/server';
+import { db } from '$lib/server/db';
+import { eq, desc } from 'drizzle-orm';
+import { kiosk, type Kiosk } from '$lib/server/db/schema';
+import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
+
+export type { Kiosk };
+
+/**
+ * List all Kiosks
+ */
+export const listKiosks = query(async () => {
+    const user = getAuthenticatedUser();
+    ensureAccess(user, 'events'); // Using 'events' feature access
+
+    return await db.select()
+        .from(kiosk)
+        .where(eq(kiosk.userId, user.id))
+        .orderBy(desc(kiosk.createdAt));
+});

@@ -29,6 +29,7 @@ export const eventBaseSchema = v.object({
 	summary: v.pipe(v.string(), v.minLength(1, 'Event title is required')),
 	description: v.optional(v.string()),
 	location: v.optional(v.string()),
+	locationId: v.optional(v.string()),
 	// RemoteFormInput only allows string | number | boolean | File | ...
 	// So we use string and parse to Date manually where needed.
 	start: v.optional(v.string()),
@@ -43,6 +44,8 @@ export const eventBaseSchema = v.object({
 	guestsCanSeeOtherGuests: v.optional(v.union([v.boolean(), v.string()])),
 	resourceIds: v.optional(v.union([v.array(v.string()), v.string()])),
 	contactIds: v.optional(v.string()),
+	categoryBerlinDotDe: v.optional(v.string()),
+	ticketPrice: v.optional(v.string()),
 });
 
 /**

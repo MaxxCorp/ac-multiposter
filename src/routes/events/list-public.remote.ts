@@ -1,12 +1,8 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { eq, and, or, gte, desc, isNull, inArray, sql } from 'drizzle-orm';
-import { eventContact, contact, contactEmail, contactPhone, contactAddress, eventResource, resource, location } from '$lib/server/db/schema';
-import { event } from '$lib/server/db/schema';
-
-/**
- * Extended Event interface for Public/Kiosk display with richer contact details
- */
+import { eq, and, or, gte, desc, isNull, inArray, ilike } from 'drizzle-orm';
+import { event, eventContact, contact, contactEmail, contactPhone, contactAddress, eventResource, resource, location, kiosk } from '$lib/server/db/schema';
+import * as v from 'valibot';
 import type { Event } from './list.remote';
 
 export type PublicEvent = Omit<Event, 'resolvedContact'> & {
@@ -31,13 +27,9 @@ export type PublicEvent = Omit<Event, 'resolvedContact'> & {
     inclusivityInformation?: string[];
 };
 
-/**
- * List all public upcoming and current events.
- * This function bypasses user authentication checks and strictly filters for public events.
- */
 export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
     const now = new Date();
-    const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = now.toISOString().split('T')[0];
 
     const results = await db
         .select()
@@ -46,9 +38,7 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
             and(
                 eq(event.isPublic, true),
                 or(
-                    // If endDateTime exists, it must be in the future
                     gte(event.endDateTime, now),
-                    // If endDateTime is null, check endDate (all-day events)
                     and(
                         isNull(event.endDateTime),
                         gte(event.endDate, today)
@@ -60,9 +50,71 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
 
     if (results.length === 0) return [];
 
-    const eventIds = results.map(e => e.id);
+    // We can reuse the hydration logic function if I extract it, but I'll duplicate inline to keep it simple as before.
+    return hydrateEvents(results);
+});
 
-    // 1. Fetch Capacity & Inclusivity (Event -> Resource -> Location)
+export const listKioskEvents = query(v.string(), async (kioskId: string): Promise<PublicEvent[]> => {
+    const kioskData = await db.query.kiosk.findFirst({
+        where: eq(kiosk.id, kioskId),
+        with: {
+            location: true
+        }
+    });
+
+    if (!kioskData) return [];
+
+    const now = new Date();
+    const lookPastDate = new Date(now.getTime() - (kioskData.lookPast * 1000));
+    const lookPastDateStr = lookPastDate.toISOString().split('T')[0];
+
+    const results = await db
+        .selectDistinct({ id: event.id })
+        .from(event)
+        .where(
+            and(
+                eq(event.isPublic, true),
+                or(
+                    // 1. Explicit Location Match
+                    eq(event.locationId, kioskData.locationId),
+                    // 2. Resource Match (Subquery)
+                    inArray(
+                        event.id,
+                        db.select({ eventId: eventResource.eventId })
+                            .from(eventResource)
+                            .innerJoin(resource, eq(eventResource.resourceId, resource.id))
+                            .where(eq(resource.locationId, kioskData.locationId))
+                    ),
+                    // 3. Fallback: Location Name text match
+                    ilike(event.location, `${kioskData.location.name}%`)
+                ),
+                or(
+                    gte(event.endDateTime, lookPastDate),
+                    and(
+                        isNull(event.endDateTime),
+                        gte(event.endDate, lookPastDateStr)
+                    )
+                )
+            )
+        );
+
+    if (results.length === 0) return [];
+
+    const eventIds = results.map(e => e.id);
+    const fullEvents = await db
+        .select()
+        .from(event)
+        .where(inArray(event.id, eventIds))
+        .orderBy(desc(event.startDateTime), desc(event.startDate));
+
+    return hydrateEvents(fullEvents);
+});
+
+// Helper for data hydration to stay DRY
+async function hydrateEvents(events: any[]): Promise<PublicEvent[]> {
+    const eventIds = events.map(e => e.id);
+    if (eventIds.length === 0) return [];
+
     const resourceData = await db
         .select({
             eventId: eventResource.eventId,
@@ -75,7 +127,6 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
         .leftJoin(location, eq(resource.locationId, location.id))
         .where(inArray(eventResource.eventId, eventIds));
 
-    // 2. Fetch Contacts & Participants
     const contactsData = await db
         .select({
             eventId: eventContact.eventId,
@@ -92,28 +143,19 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
 
     const contactIds = contactsData.map(c => c.contactId);
 
-    // 3. Fetch Contact Address/Email/Phone (for 'work' filtering)
     let emails: any[] = [];
     let phones: any[] = [];
     let addresses: any[] = [];
 
     if (contactIds.length > 0) {
         emails = await db.select({ contactId: contactEmail.contactId, value: contactEmail.value, type: contactEmail.type, primary: contactEmail.primary })
-            .from(contactEmail)
-            .where(inArray(contactEmail.contactId, contactIds));
-
+            .from(contactEmail).where(inArray(contactEmail.contactId, contactIds));
         phones = await db.select({ contactId: contactPhone.contactId, value: contactPhone.value, type: contactPhone.type, primary: contactPhone.primary })
-            .from(contactPhone)
-            .where(inArray(contactPhone.contactId, contactIds));
-
-        addresses = await db.select()
-            .from(contactAddress)
-            .where(inArray(contactAddress.contactId, contactIds));
+            .from(contactPhone).where(inArray(contactPhone.contactId, contactIds));
+        addresses = await db.select().from(contactAddress).where(inArray(contactAddress.contactId, contactIds));
     }
 
-    // Transform and map
-    return results.map(row => {
-        // --- Transform Dates ---
+    return events.map(row => {
         const transformedRow = {
             ...row,
             createdAt: row.createdAt.toISOString(),
@@ -124,27 +166,23 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
             contactIds: [],
             participationStatuses: {},
             resolvedContact: null,
-            ticketPrice: row.ticketPrice ?? null, // Ensure explicit null
-            categoryBerlinDotDe: row.categoryBerlinDotDe ?? null, // Ensure explicit null
+            ticketPrice: row.ticketPrice ?? null,
+            categoryBerlinDotDe: row.categoryBerlinDotDe ?? null,
             qrCodeDataUrl: undefined,
             confirmedParticipants: 0,
             maxOccupancy: null,
             inclusivityInformation: undefined
         };
 
-        // --- Participation & Contact Person ---
         const evtContacts = contactsData.filter(c => c.eventId === row.id);
         const acceptedCount = evtContacts.filter(c => c.participationStatus === 'accepted').length;
 
         let resolvedContact = null;
         if (evtContacts.length > 0) {
             const primary = evtContacts[0];
-
-            // Strictly filter for WORK details
             const workEmails = emails.filter(e => e.contactId === primary.contactId && e.type === 'work');
             const workPhones = phones.filter(p => p.contactId === primary.contactId && p.type === 'work');
             const workAddresses = addresses.filter(a => a.contactId === primary.contactId && a.type === 'work');
-
             const primaryAddress = workAddresses.find(a => a.primary) || workAddresses[0];
 
             resolvedContact = {
@@ -162,7 +200,6 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
             };
         }
 
-        // --- Capacity & Inclusivity ---
         const evtResources = resourceData.filter(r => r.eventId === row.id);
         const totalCapacity = evtResources.reduce((sum, r) => sum + (r.maxOccupancy || 0), 0);
         const inclusivity = evtResources
@@ -172,10 +209,10 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
         return {
             ...transformedRow,
             resolvedContact,
-            contactIds: evtContacts.map(c => c.contactId), // Just IDs
+            contactIds: evtContacts.map(c => c.contactId),
             confirmedParticipants: acceptedCount,
             maxOccupancy: totalCapacity > 0 ? totalCapacity : null,
             inclusivityInformation: inclusivity.length > 0 ? [...new Set(inclusivity)] : undefined
         };
     });
-});
+}

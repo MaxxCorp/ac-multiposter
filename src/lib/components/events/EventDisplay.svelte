@@ -73,7 +73,7 @@
                     <div
                         class="flex items-start gap-3 p-4 bg-gray-50 rounded-xl"
                     >
-                        <MapPin class="w-6 h-6 text-blue-600 mt-1" />
+                        <MapPin class="w-7 h-7 text-blue-600 mt-0.5" />
                         <div>
                             <h3 class="font-semibold text-gray-900">
                                 Location
@@ -90,7 +90,7 @@
                         <Users class="w-6 h-6 text-blue-600 mt-1" />
                         <div>
                             <h3 class="font-semibold text-gray-900">Contact</h3>
-                            <p class="text-gray-900 font-medium">
+                            <p class="text-gray-900 font-medium text-sm">
                                 {event.resolvedContact.name}
                             </p>
 
@@ -197,7 +197,7 @@
                                 class="flex items-center gap-3 text-indigo-800"
                             >
                                 <Euro class="w-5 h-5 opacity-75" />
-                                <span class="font-medium"
+                                <span class="text-sm font-medium"
                                     >{event.ticketPrice}</span
                                 >
                             </div>
@@ -243,7 +243,7 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     {#each event.inclusivityInformation as info}
                                         <span
-                                            class="bg-white/50 text-indigo-900 px-2 py-0.5 rounded text-xs border border-indigo-100/50"
+                                            class="bg-white/50 text-indigo-900 px-2 py-0.5 rounded text-sm border border-indigo-100/50"
                                         >
                                             {info}
                                         </span>

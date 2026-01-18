@@ -4,11 +4,13 @@
     import { cubicOut } from "svelte/easing";
     import { kioskState } from "$lib/stores/kiosk.svelte";
     import EventDisplay from "$lib/components/events/EventDisplay.svelte";
-    import type { PublicEvent } from "../events/list-public.remote"; // Use the correct public event type
+    import type { PublicEvent } from "../../../events/list-public.remote";
 
     let { data } = $props();
 
     let events = $state<PublicEvent[]>([]);
+
+    // Derived from Kiosk Data - Accessed directly in functions to ensure reactivity
 
     $effect(() => {
         if (data.events) {
@@ -22,8 +24,6 @@
     let timer: ReturnType<typeof setInterval>;
     let inactivityTimer: ReturnType<typeof setTimeout>;
 
-    // Configuration
-    const LOOP_INTERVAL = 5000;
     const INACTIVITY_TIMEOUT = 5000;
 
     // --- Inactivity & Header Logic ---
@@ -47,9 +47,12 @@
     // --- Loop Logic ---
     function startLoop() {
         clearInterval(timer);
-        timer = setInterval(() => {
-            nextSlide(true); // Auto-advance
-        }, LOOP_INTERVAL);
+        timer = setInterval(
+            () => {
+                nextSlide(true); // Auto-advance
+            },
+            (data.kiosk.loopDuration || 5) * 1000,
+        );
     }
 
     function resetLoop() {
@@ -73,21 +76,14 @@
 
     // --- Offline & Caching Logic ---
     async function initCache() {
-        const STORAGE_KEY = "kiosk_events";
         try {
             // 1. Load from storage first if data.events is empty (offline load)
-            const stored = localStorage.getItem(STORAGE_KEY);
+            const storageKey = `kiosk_events_${data.kiosk.id}`;
+            const stored = localStorage.getItem(storageKey);
             let cachedEvents: PublicEvent[] = stored ? JSON.parse(stored) : [];
-
-            // Identify if we are strictly offline (server load failed/empty)
-            // Note: remote function might return empty array if really no events, but here we assume network failure usually throws or returns null if not handled.
-            // Our load function returns { events: [] } on success.
-            // If data.events is populated, we trust it broadly.
 
             if (data.events && data.events.length > 0) {
                 // Online or cached by ServiceWorker/SSR. Merge/Update storage.
-                // We want to preserve qrCodeDataUrl from cache if the server didn't send it (server sends path).
-
                 const mergedEvents = await Promise.all(
                     data.events.map(async (srvEvent) => {
                         const cached = cachedEvents.find(
@@ -124,7 +120,8 @@
                 );
 
                 events = mergedEvents;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedEvents));
+                const storageKey = `kiosk_events_${data.kiosk.id}`;
+                localStorage.setItem(storageKey, JSON.stringify(mergedEvents));
                 isOffline = false;
             } else if (cachedEvents.length > 0) {
                 // Offline fallback
@@ -140,7 +137,8 @@
 
                 events = validEvents;
                 // Update storage to remove old ones
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(validEvents));
+                const storageKey = `kiosk_events_${data.kiosk.id}`;
+                localStorage.setItem(storageKey, JSON.stringify(validEvents));
                 isOffline = true;
             }
         } catch (e) {
@@ -195,7 +193,7 @@
 </script>
 
 <svelte:head>
-    <title>Kiosk Mode</title>
+    <title>{data.kiosk.name}</title>
 </svelte:head>
 
 <svelte:window
@@ -212,17 +210,24 @@
     aria-label="Event Kiosk"
 >
     {#if events.length === 0}
-        <div class="text-white text-xl opacity-50">
-            {#if isOffline}
-                No cached events available offline.
-            {:else}
-                No upcoming public events.
-            {/if}
+        <div
+            class="text-white text-xl opacity-50 flex flex-col items-center gap-4"
+        >
+            <p>
+                {#if isOffline}
+                    No cached events available offline.
+                {:else}
+                    No upcoming events matching this kiosk's settings.
+                {/if}
+            </p>
+            <p class="text-sm">
+                Location: {data.kiosk.location?.name || "Unknown"}
+            </p>
         </div>
     {:else}
         {#key currentIndex}
             <div
-                class="absolute inset-0 w-full h-full flex items-center justify-center p-4 sm:p-8 md:p-12"
+                class="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 md:p-12 overflow-y-auto"
                 in:fly={{
                     x: direction * 500,
                     duration: 600,
@@ -236,13 +241,13 @@
                     easing: cubicOut,
                 }}
             >
-                <div class="w-full h-full max-w-7xl relative">
+                <div
+                    class="w-full max-w-7xl relative flex flex-col items-center"
+                >
                     <EventDisplay event={events[currentIndex]} />
 
                     <!-- Progress/Status Indicator -->
-                    <div
-                        class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2"
-                    >
+                    <div class="mt-6 flex gap-2">
                         {#each events as _, i}
                             <div
                                 class="w-2 h-2 rounded-full transition-colors duration-300 {i ===
