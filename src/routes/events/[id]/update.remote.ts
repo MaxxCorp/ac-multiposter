@@ -8,6 +8,7 @@ import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { updateEventSchema } from '$lib/validations/events';
 import { error } from '@sveltejs/kit';
 import { generateEventAssets } from '$lib/server/events/assets';
+import { publishEventChange } from '$lib/server/redis';
 
 export const updateExistingEvent = form(updateEventSchema, async (data) => {
 	console.log('--- updateExistingEvent START ---');
@@ -133,6 +134,11 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 		await generateEventAssets(data.id);
 
 		console.log('Event updated successfully, refreshing list...');
+
+		if (updatedEvent) {
+			await publishEventChange('update', [updatedEvent.id]);
+		}
+
 		await listEvents().refresh();
 		console.log('--- updateExistingEvent DONE ---');
 		return { success: true };

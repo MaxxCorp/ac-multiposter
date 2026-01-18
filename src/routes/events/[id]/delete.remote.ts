@@ -5,6 +5,7 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import * as v from 'valibot';
+import { publishEventChange } from '$lib/server/redis';
 
 /**
  * Command: Delete events by ID
@@ -18,6 +19,9 @@ export const deleteEvents = command(
 		await db
 			.delete(event)
 			.where(inArray(event.id, ids));
+
+		// We assume all were deleted for notification purposes, or we could fetch existing before delete
+		await publishEventChange('delete', ids);
 
 		await listEvents().refresh();
 		return { success: true };

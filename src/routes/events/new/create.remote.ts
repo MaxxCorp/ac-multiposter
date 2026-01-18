@@ -6,6 +6,7 @@ import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { createEventSchema } from '$lib/validations/events';
 import { generateEventAssets } from '$lib/server/events/assets';
+import { publishEventChange } from '$lib/server/redis';
 
 export const createNewEvent = form(createEventSchema, async (data) => {
 	console.log('--- createNewEvent START ---');
@@ -111,6 +112,11 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 		await generateEventAssets(newEvent.id);
 
 		console.log('Event created successfully, refreshing list...');
+
+		if (newEvent) {
+			await publishEventChange('create', [newEvent.id]);
+		}
+
 		await listEvents().refresh();
 		console.log('--- createNewEvent DONE ---');
 		return { success: true };

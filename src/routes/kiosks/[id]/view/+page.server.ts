@@ -4,7 +4,8 @@ import { kiosk } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 
-export const load = async ({ params }) => {
+export const load = async ({ params, depends }) => {
+    depends('app:events');
     const kioskData = await db.query.kiosk.findFirst({
         where: eq(kiosk.id, params.id),
         with: {

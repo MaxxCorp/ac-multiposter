@@ -33,6 +33,7 @@ import { BewegungsatlasBerlinProvider } from './providers/bewegungsatlas-berlin'
 import { EmailProvider } from './providers/email';
 import crypto from 'crypto';
 import { env } from '$env/dynamic/private';
+import { publishEventChange } from '../redis';
 
 /**
  * Central sync service orchestrator
@@ -387,6 +388,8 @@ export class SyncService {
 				.set({ etag: externalEvent.etag ?? null, lastSyncedAt: new Date() })
 				.where(eq(syncMappingTable.id, mapping.id));
 
+			await publishEventChange('update', [mapping.eventId]);
+
 			// Update event contacts status
 			if (externalEvent.attendees) {
 				for (const attendee of externalEvent.attendees) {
@@ -485,6 +488,8 @@ export class SyncService {
 				etag: externalEvent.etag ?? null,
 				lastSyncedAt: new Date()
 			});
+
+			await publishEventChange('create', [newEvent.id]);
 
 			// Update event contacts associations and their status
 			if (externalEvent.attendees) {

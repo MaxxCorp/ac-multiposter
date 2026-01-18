@@ -7,6 +7,8 @@
 	import { browser } from "$app/environment";
 	import { kioskState } from "$lib/stores/kiosk.svelte";
 	import { slide } from "svelte/transition";
+	import { invalidate } from "$app/navigation";
+	import { toast } from "svelte-sonner";
 
 	let { children } = $props();
 
@@ -14,13 +16,30 @@
 		if (browser && "serviceWorker" in navigator) {
 			navigator.serviceWorker.getRegistrations().then((registrations) => {
 				for (const registration of registrations) {
-					console.log(
-						"Unregistering stale service worker:",
-						registration,
-					);
 					registration.unregister();
 				}
 			});
+		}
+
+		if (browser) {
+			// Use native EventSource for SSE
+			const eventSource = new EventSource("/api/events/stream");
+
+			eventSource.onmessage = (event) => {
+				console.log("Event update received:", event.data);
+				invalidate("app:events");
+				toast.info("Events updated", {
+					description: "Refreshing data...",
+				});
+			};
+
+			eventSource.onerror = (error) => {
+				console.error("SSE connection error:", error);
+			};
+
+			return () => {
+				eventSource.close();
+			};
 		}
 	});
 </script>

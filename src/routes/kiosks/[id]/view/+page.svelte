@@ -15,6 +15,9 @@
     $effect(() => {
         if (data.events) {
             events = data.events;
+            // Ensure offline cache is updated when new data comes in
+            const storageKey = `kiosk_events_${data.kiosk.id}`;
+            localStorage.setItem(storageKey, JSON.stringify(data.events));
         }
     });
     let currentIndex = $state(0);
