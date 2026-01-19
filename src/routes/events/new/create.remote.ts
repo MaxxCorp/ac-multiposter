@@ -109,7 +109,12 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 		}
 
 		console.log('Generating assets via create.remote...');
-		await generateEventAssets(newEvent.id);
+		let origin: string | undefined;
+		try {
+			const { getRequestEvent } = await import('$app/server');
+			origin = getRequestEvent()?.url.origin;
+		} catch (e) { /* ignore */ }
+		await generateEventAssets(newEvent.id, origin);
 
 		console.log('Event created successfully, refreshing list...');
 

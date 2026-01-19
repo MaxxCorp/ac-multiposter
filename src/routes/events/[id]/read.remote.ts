@@ -3,25 +3,39 @@ import { db } from '$lib/server/db';
 import { event, eventResource, eventContact, contact, contactEmail, contactPhone } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { Event } from '../list.remote';
-import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
+import { getOptionalUser, hasAccess } from '$lib/authorization';
+import { error } from '@sveltejs/kit';
 import * as v from 'valibot';
 
 /**
  * Query: Read an event by ID
- * Note: Only allowing access to events owned by the user, or public events
+ * 
+ * Access rules:
+ * - If event is public: anyone can view
+ * - If event is private: only authenticated users with 'events' access can view
  */
 export const readEvent = query(v.string(), async (eventId: string): Promise<Event | null> => {
-	const user = getAuthenticatedUser();
-	ensureAccess(user, 'events');
-
+	// First, fetch the event to check if it's public
 	const [result] = await db
 		.select()
 		.from(event)
-		.where(and(
-			eq(event.id, eventId),
-		));
+		.where(eq(event.id, eventId));
 
 	if (!result) return null;
+
+	// Check access based on public flag
+	const user = getOptionalUser();
+	const isAuthorized = user && hasAccess(user, 'events');
+
+	if (!result.isPublic) {
+		// Private event: require authentication and authorization
+		if (!user) {
+			error(403, 'Authentication required to view this event');
+		}
+		if (!isAuthorized) {
+			error(403, 'You do not have permission to view this event');
+		}
+	}
 
 	// Fetch related resources and contacts
 	const resources = await db

@@ -15,6 +15,15 @@ export function getAuthenticatedUser(): UserWithRolesAndClaims {
 	return event.locals.user as UserWithRolesAndClaims;
 }
 
+/**
+ * Get the user from the request event locals if authenticated.
+ * Returns null if not authenticated (does not throw).
+ */
+export function getOptionalUser(): UserWithRolesAndClaims | null {
+	const event = getRequestEvent();
+	return event.locals.user as UserWithRolesAndClaims | null;
+}
+
 export function parseRoles(user: UserWithRolesAndClaims): string[] {
 	const raw = user?.roles;
 	if (!raw) return [];

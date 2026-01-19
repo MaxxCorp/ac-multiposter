@@ -131,7 +131,12 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 		}
 
 		console.log('Regenerating assets via update.remote...');
-		await generateEventAssets(data.id);
+		let origin: string | undefined;
+		try {
+			const { getRequestEvent } = await import('$app/server');
+			origin = getRequestEvent()?.url.origin;
+		} catch (e) { /* ignore */ }
+		await generateEventAssets(data.id, origin);
 
 		console.log('Event updated successfully, refreshing list...');
 
