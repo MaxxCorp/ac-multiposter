@@ -41,6 +41,8 @@
             ? formatDateTime(event.startDateTime)
             : formatDate(event.startDate),
     );
+
+    let imageLoadError = $state(false);
 </script>
 
 <div
@@ -169,8 +171,17 @@
                                 class="w-32 h-32 object-contain"
                             />
                         {:else if event.qrCodePath}
-                            <!-- Using a placeholder/path logic if needed, but typically usage implies a visual -->
-                            <QrCode class="w-32 h-32 text-gray-800" />
+                            <!-- Fallback to server path if offline cache (dataUrl) is missing/failed -->
+                            {#if !imageLoadError}
+                                <img
+                                    src={event.qrCodePath}
+                                    alt="QR Code"
+                                    class="w-32 h-32 object-contain"
+                                    onerror={() => (imageLoadError = true)}
+                                />
+                            {:else}
+                                <QrCode class="w-32 h-32 text-gray-800" />
+                            {/if}
                         {/if}
                     </div>
                     <p class="text-sm text-gray-500 font-medium">

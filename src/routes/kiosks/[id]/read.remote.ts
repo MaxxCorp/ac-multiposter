@@ -7,7 +7,7 @@ import * as v from 'valibot';
 
 export const getKiosk = query(v.string(), async (id: string) => {
     const user = getAuthenticatedUser();
-    ensureAccess(user, 'events');
+    ensureAccess(user, 'kiosks');
 
     const result = await db.query.kiosk.findFirst({
         where: and(eq(kiosk.id, id), eq(kiosk.userId, user.id)),

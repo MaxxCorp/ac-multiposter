@@ -10,7 +10,7 @@ export const deleteKiosk = command(
     v.pipe(v.array(v.string()), v.minLength(1)),
     async (ids: string[]) => {
         const user = getAuthenticatedUser();
-        ensureAccess(user, 'events');
+        ensureAccess(user, 'kiosks');
 
         await db.delete(kiosk)
             .where(

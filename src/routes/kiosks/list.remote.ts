@@ -11,7 +11,7 @@ export type { Kiosk };
  */
 export const listKiosks = query(async () => {
     const user = getAuthenticatedUser();
-    ensureAccess(user, 'events'); // Using 'events' feature access
+    ensureAccess(user, 'kiosks'); // Using 'kiosks' feature access
 
     return await db.select()
         .from(kiosk)

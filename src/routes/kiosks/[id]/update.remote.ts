@@ -11,7 +11,7 @@ import { error } from '@sveltejs/kit';
 export const updateKiosk = form(updateKioskSchema, async (data) => {
     try {
         const user = getAuthenticatedUser();
-        ensureAccess(user, 'events');
+        ensureAccess(user, 'kiosks');
 
         const { id, lookAheadDays, lookPastDays, ...updates } = data;
 
