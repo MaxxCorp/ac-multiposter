@@ -55,7 +55,9 @@
         familyName: d(initialData.contact?.familyName, ""),
         birthday: d(
             initialData.contact?.birthday
-                ? initialData.contact.birthday.split("T")[0]
+                ? (initialData.contact.birthday instanceof Date
+                      ? initialData.contact.birthday.toISOString().split("T")[0]
+                      : String(initialData.contact.birthday).split("T")[0])
                 : "",
             "",
         ),

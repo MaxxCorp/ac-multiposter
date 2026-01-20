@@ -22,23 +22,13 @@
 		}
 
 		if (browser) {
-			// Use native EventSource for SSE
-			const eventSource = new EventSource("/api/events/stream");
-
-			eventSource.onmessage = (event) => {
-				console.log("Event update received:", event.data);
+			// Polling fallback to avoid serverless timeouts with long-held SSE connections
+			const interval = setInterval(() => {
 				invalidate("app:events");
-				toast.info("Events updated", {
-					description: "Refreshing data...",
-				});
-			};
-
-			eventSource.onerror = (error) => {
-				console.error("SSE connection error:", error);
-			};
+			}, 60000); // Refresh every 60 seconds
 
 			return () => {
-				eventSource.close();
+				clearInterval(interval);
 			};
 		}
 	});

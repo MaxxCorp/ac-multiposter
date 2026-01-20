@@ -14,7 +14,8 @@ const createClient = () => {
 // Global clients (singleton-like pattern for serverless/HMR context)
 // One for publishing, one for subscribing (blocking)
 export const redisPublisher = createClient();
-export const redisSubscriber = createClient();
+export const redisPublisher = createClient();
+// Subscriber removed as SSE implementation was replaced by polling to avoid serverless timeouts
 
 export const CHANNELS = {
     EVENT_CHANGES: 'event-changes',
