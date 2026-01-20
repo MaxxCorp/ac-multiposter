@@ -3,7 +3,7 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
-	"packageManager": "pnpm@10.26.2",
+	"packageManager": "pnpm@10.28.1",
 	"engines": {
 		"node": ">=20.0.0"
 	},
@@ -62,6 +62,7 @@
 	"dependencies": {
 		"@googleapis/calendar": "^14.2.0",
 		"@vercel/blob": "^2.0.0",
+		"ably": "^2.17.0",
 		"better-auth": "^1.4.15",
 		"drizzle-valibot": "^0.4.2",
 		"google-auth-library": "^10.5.0",

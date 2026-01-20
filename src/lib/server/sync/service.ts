@@ -33,7 +33,7 @@ import { BewegungsatlasBerlinProvider } from './providers/bewegungsatlas-berlin'
 import { EmailProvider } from './providers/email';
 import crypto from 'crypto';
 import { env } from '$env/dynamic/private';
-import { publishEventChange } from '../redis';
+import { publishEventChange } from '../realtime';
 
 /**
  * Central sync service orchestrator

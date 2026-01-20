@@ -9,6 +9,7 @@
 	import { slide } from "svelte/transition";
 	import { invalidate } from "$app/navigation";
 	import { toast } from "svelte-sonner";
+	import * as Ably from "ably";
 
 	let { children } = $props();
 
@@ -22,13 +23,38 @@
 		}
 
 		if (browser) {
-			// Polling fallback to avoid serverless timeouts with long-held SSE connections
-			const interval = setInterval(() => {
-				invalidate("app:events");
-			}, 60000); // Refresh every 60 seconds
+			// Ably Realtime connection
+			let realtime: Ably.Realtime;
+			try {
+				realtime = new Ably.Realtime({ authUrl: "/api/ably/auth" });
+
+				const eventsChannel = realtime.channels.get("event-changes");
+				eventsChannel.subscribe("change", (message) => {
+					console.log("Event update received:", message.data);
+					invalidate("app:events");
+					toast.info("Events updated", {
+						description: "Refreshing data...",
+					});
+				});
+
+				const announcementsChannel = realtime.channels.get(
+					"announcement-changes",
+				);
+				announcementsChannel.subscribe("change", (message) => {
+					console.log("Announcement update received:", message.data);
+					invalidate("app:announcements");
+					toast.info("Announcements updated", {
+						description: "Refreshing data...",
+					});
+				});
+			} catch (e) {
+				console.error("Failed to connect to Ably:", e);
+			}
 
 			return () => {
-				clearInterval(interval);
+				if (realtime) {
+					realtime.close();
+				}
 			};
 		}
 	});

@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import { announcement, announcementTag, announcementContact, tag } from '$lib/server/db/schema';
 import { createAnnouncementSchema } from '$lib/validations/announcements';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
-import { publishAnnouncementChange } from '$lib/server/redis';
+import { publishAnnouncementChange } from '$lib/server/realtime';
 import { listAnnouncements } from '../list.remote';
 import { v4 as uuidv4 } from 'uuid';
 

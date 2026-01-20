@@ -6,7 +6,7 @@ import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { createEventSchema } from '$lib/validations/events';
 import { generateEventAssets } from '$lib/server/events/assets';
-import { publishEventChange } from '$lib/server/redis';
+import { publishEventChange } from '$lib/server/realtime';
 
 export const createNewEvent = form(createEventSchema, async (data) => {
 	console.log('--- createNewEvent START ---');

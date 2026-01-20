@@ -5,7 +5,7 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import * as v from 'valibot';
-import { publishEventChange } from '$lib/server/redis';
+import { publishEventChange } from '$lib/server/realtime';
 
 /**
  * Command: Delete events by ID

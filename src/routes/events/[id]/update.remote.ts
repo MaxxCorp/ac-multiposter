@@ -8,7 +8,7 @@ import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { updateEventSchema } from '$lib/validations/events';
 import { error } from '@sveltejs/kit';
 import { generateEventAssets } from '$lib/server/events/assets';
-import { publishEventChange } from '$lib/server/redis';
+import { publishEventChange } from '$lib/server/realtime';
 
 export const updateExistingEvent = form(updateEventSchema, async (data) => {
 	console.log('--- updateExistingEvent START ---');
