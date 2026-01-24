@@ -1,14 +1,14 @@
 <script lang="ts">
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
-    import KioskForm from "../KioskForm.svelte";
+    import KioskForm from "$lib/components/kiosks/KioskForm.svelte";
     import { getKiosk } from "./read.remote";
     import { updateKiosk } from "./update.remote";
     import { updateKioskSchema } from "$lib/validations/kiosks";
-    import { page } from "$app/stores";
+    import { page } from "$app/state";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 
-    let kioskId = $derived($page.params.id!);
+    let kioskId = $derived(page.params.id!);
     let kioskPromise = $derived(getKiosk(kioskId));
 </script>
 

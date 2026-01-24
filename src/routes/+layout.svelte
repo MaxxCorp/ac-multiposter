@@ -7,9 +7,6 @@
 	import { browser } from "$app/environment";
 	import { kioskState } from "$lib/stores/kiosk.svelte";
 	import { slide } from "svelte/transition";
-	import { invalidate } from "$app/navigation";
-	import { toast } from "svelte-sonner";
-	import * as Ably from "ably";
 
 	let { children } = $props();
 
@@ -20,42 +17,6 @@
 					registration.unregister();
 				}
 			});
-		}
-
-		if (browser) {
-			// Ably Realtime connection
-			let realtime: Ably.Realtime;
-			try {
-				realtime = new Ably.Realtime({ authUrl: "/api/ably/auth" });
-
-				const eventsChannel = realtime.channels.get("event-changes");
-				eventsChannel.subscribe("change", (message) => {
-					console.log("Event update received:", message.data);
-					invalidate("app:events");
-					toast.info("Events updated", {
-						description: "Refreshing data...",
-					});
-				});
-
-				const announcementsChannel = realtime.channels.get(
-					"announcement-changes",
-				);
-				announcementsChannel.subscribe("change", (message) => {
-					console.log("Announcement update received:", message.data);
-					invalidate("app:announcements");
-					toast.info("Announcements updated", {
-						description: "Refreshing data...",
-					});
-				});
-			} catch (e) {
-				console.error("Failed to connect to Ably:", e);
-			}
-
-			return () => {
-				if (realtime) {
-					realtime.close();
-				}
-			};
 		}
 	});
 </script>

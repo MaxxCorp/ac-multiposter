@@ -3,8 +3,12 @@
     import { fly } from "svelte/transition";
     import { cubicOut } from "svelte/easing";
     import { kioskState } from "$lib/stores/kiosk.svelte";
-    import EventDisplay from "$lib/components/events/EventDisplay.svelte";
+    import EventView from "$lib/components/events/EventView.svelte";
     import type { PublicEvent } from "../../../events/list-public.remote";
+    import { browser } from "$app/environment";
+    import * as Ably from "ably";
+    import { toast } from "svelte-sonner";
+    import { invalidate } from "$app/navigation";
 
     let { data } = $props();
 
@@ -152,6 +156,7 @@
     // --- Gesture Logic ---
     let startX = 0;
     let endX = 0;
+    let realtime: Ably.Realtime | undefined;
 
     function handlePointerDown(e: PointerEvent) {
         startX = e.screenX;
@@ -185,9 +190,28 @@
         if (events.length > 0) {
             startLoop();
         }
+
+        if (browser) {
+            try {
+                realtime = new Ably.Realtime({ authUrl: "/api/ably/auth" });
+                const eventsChannel = realtime.channels.get("event-changes");
+                eventsChannel.subscribe("change", (message) => {
+                    console.log("Kiosk Event update received:", message.data);
+                    invalidate("app:events");
+                    toast.info("Events updated", {
+                        description: "Refreshing kiosk...",
+                    });
+                });
+            } catch (e) {
+                console.error("Failed to connect to Ably:", e);
+            }
+        }
     });
 
     onDestroy(() => {
+        if (realtime) {
+            realtime.close();
+        }
         kioskState.isKiosk = false;
         kioskState.isHeaderVisible = true; // Restore for other pages
         clearInterval(timer);
@@ -247,7 +271,7 @@
                 <div
                     class="w-full max-w-7xl relative flex flex-col items-center"
                 >
-                    <EventDisplay event={events[currentIndex]} />
+                    <EventView event={events[currentIndex]} />
 
                     <!-- Progress/Status Indicator -->
                     <div class="mt-6 flex gap-2">

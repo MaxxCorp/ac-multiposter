@@ -1,6 +1,6 @@
 <script lang="ts">
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
-    import KioskForm from "../KioskForm.svelte";
+    import KioskForm from "$lib/components/kiosks/KioskForm.svelte";
     import { createKiosk } from "./create.remote";
     import { createKioskSchema } from "$lib/validations/kiosks";
 </script>

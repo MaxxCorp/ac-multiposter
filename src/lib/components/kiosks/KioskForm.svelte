@@ -1,13 +1,13 @@
 <script lang="ts">
-    import { listLocations } from "../locations/list.remote";
-    import type { Location } from "../locations/list.remote";
+    import { listLocations } from "../../../routes/locations/list.remote";
+    import type { Location } from "../../../routes/locations/list.remote";
     import Button from "$lib/components/ui/button/button.svelte";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
     import { onMount } from "svelte";
     import { toast } from "svelte-sonner";
     import { goto } from "$app/navigation";
-    import type { createKiosk } from "./new/create.remote";
-    import type { updateKiosk } from "./[id]/update.remote";
+    import type { createKiosk } from "../../../routes/kiosks/new/create.remote";
+    import type { updateKiosk } from "../../../routes/kiosks/[id]/update.remote";
 
     let {
         remoteFunction,

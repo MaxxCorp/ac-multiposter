@@ -12,9 +12,39 @@
 	import EmptyState from "$lib/components/ui/EmptyState.svelte";
 	import { Calendar, MapPin, Earth } from "@lucide/svelte";
 
+	import { onMount } from "svelte";
+	import { browser } from "$app/environment";
+	import * as Ably from "ably";
+	import { toast } from "svelte-sonner";
+
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
 	let resolvedItems = $state<Event[]>([]);
 	let selectedIds = $state<Set<string>>(new Set());
+
+	onMount(() => {
+		if (browser) {
+			let realtime: Ably.Realtime;
+			try {
+				realtime = new Ably.Realtime({ authUrl: "/api/ably/auth" });
+				const eventsChannel = realtime.channels.get("event-changes");
+				eventsChannel.subscribe("change", (message) => {
+					console.log("Event update received:", message.data);
+					itemsPromise = listEvents();
+					toast.info("Events updated", {
+						description: "Refreshing list...",
+					});
+				});
+			} catch (e) {
+				console.error("Failed to connect to Ably:", e);
+			}
+
+			return () => {
+				if (realtime) {
+					realtime.close();
+				}
+			};
+		}
+	});
 
 	function isSelected(id: string) {
 		return selectedIds.has(id);
