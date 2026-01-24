@@ -257,7 +257,7 @@
                                                         href="tel:{event
                                                             .resolvedContact
                                                             .phone}"
-                                                        class="flex items-center gap-2 text-blue-600 hover:underline truncate"
+                                                        class="flex items-center gap-2 text-blue-600 hover:underline"
                                                     >
                                                         <Phone size={14} />
                                                         {event.resolvedContact
@@ -269,7 +269,7 @@
                                                         href="mailto:{event
                                                             .resolvedContact
                                                             .email}"
-                                                        class="flex items-center gap-2 text-blue-600 hover:underline truncate"
+                                                        class="flex items-center gap-2 text-blue-600 hover:underline"
                                                     >
                                                         <Mail size={14} />
                                                         {event.resolvedContact
