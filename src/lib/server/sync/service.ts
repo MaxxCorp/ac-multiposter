@@ -432,96 +432,87 @@ export class SyncService {
 
 			// Check if any recent event matches this external event
 			for (const recentEvent of recentEvents) {
-				const timeSinceCreation = Date.now() - recentEvent.createdAt.getTime();
+				// Compare times more robustly
+				let startTimesMatch = false;
 
-				// If we find a very recently created event with same summary and similar time
-				if (timeSinceCreation < 60000) { // Increased window to 60s
-					// Compare times more robustly
-					let startTimesMatch = false;
-
-					if (recentEvent.startDate && externalEvent.startDate) {
-						startTimesMatch = recentEvent.startDate === externalEvent.startDate;
-					} else if (recentEvent.startDateTime && externalEvent.startDateTime) {
-						// Compare timestamps to handle timezone differences
-						const t1 = recentEvent.startDateTime.getTime();
-						const t2 = externalEvent.startDateTime.getTime();
-						// Allow 1 second difference
-						startTimesMatch = Math.abs(t1 - t2) < 1000;
-					} else if (recentEvent.startDateTime && externalEvent.startDate) {
-						// Cross-type match: Local is timed, External is all-day
-						// Check if the timed event falls on the all-day date
-						const localDate = recentEvent.startDateTime.toISOString().split('T')[0];
-						startTimesMatch = localDate === externalEvent.startDate;
-					} else if (recentEvent.startDate && externalEvent.startDateTime) {
-						// Cross-type match: Local is all-day, External is timed
-						const externalDate = externalEvent.startDateTime.toISOString().split('T')[0];
-						startTimesMatch = recentEvent.startDate === externalDate;
-					}
-
-
-
-					if (startTimesMatch) {
-
-
-						// Create mapping to link this local event to the external one
-						await db.insert(syncMappingTable).values({
-							syncConfigId: config.id,
-							eventId: recentEvent.id,
-							externalId: externalEvent.externalId,
-							providerId: config.providerId,
-							etag: externalEvent.etag ?? null,
-							lastSyncedAt: new Date()
-						});
-
-						return; // Don't create duplicate
-					}
+				if (recentEvent.startDate && externalEvent.startDate) {
+					startTimesMatch = recentEvent.startDate === externalEvent.startDate;
+				} else if (recentEvent.startDateTime && externalEvent.startDateTime) {
+					// Compare timestamps to handle timezone differences
+					const t1 = recentEvent.startDateTime.getTime();
+					const t2 = externalEvent.startDateTime.getTime();
+					// Allow 1 second difference
+					startTimesMatch = Math.abs(t1 - t2) < 1000;
+				} else if (recentEvent.startDateTime && externalEvent.startDate) {
+					// Cross-type match: Local is timed, External is all-day
+					// Check if the timed event falls on the all-day date
+					const localDate = recentEvent.startDateTime.toISOString().split('T')[0];
+					startTimesMatch = localDate === externalEvent.startDate;
+				} else if (recentEvent.startDate && externalEvent.startDateTime) {
+					// Cross-type match: Local is all-day, External is timed
+					const externalDate = externalEvent.startDateTime.toISOString().split('T')[0];
+					startTimesMatch = recentEvent.startDate === externalDate;
 				}
-			}
 
-			// Create new event - no matching local event found
-			const internalEvent = await this.mapExternalToInternalWithContacts(externalEvent, config.userId);
-			const [newEvent] = await db.insert(eventTable).values(internalEvent).returning({ id: eventTable.id });
-
-			await db.insert(syncMappingTable).values({
-				syncConfigId: config.id,
-				eventId: newEvent.id,
-				externalId: externalEvent.externalId,
-				providerId: config.providerId,
-				etag: externalEvent.etag ?? null,
-				lastSyncedAt: new Date()
-			});
-
-			await publishEventChange('create', [newEvent.id]);
-
-			// Update event contacts associations and their status
-			if (externalEvent.attendees) {
-				for (const attendee of externalEvent.attendees) {
-					// Find or create person contact for this attendee
-					const [contactRecord] = await db.query.contact.findMany({
-						where: (c, { eq, exists }) => exists(
-							db.select().from(contactEmailTable)
-								.where(and(
-									eq(contactEmailTable.contactId, c.id),
-									eq(contactEmailTable.value, attendee.email)
-								))
-						),
-						limit: 1
+				if (startTimesMatch) {
+					// Create mapping to link this local event to the external one
+					await db.insert(syncMappingTable).values({
+						syncConfigId: config.id,
+						eventId: recentEvent.id,
+						externalId: externalEvent.externalId,
+						providerId: config.providerId,
+						etag: externalEvent.etag ?? null,
+						lastSyncedAt: new Date()
 					});
 
-					if (contactRecord) {
-						await db.insert(eventContactTable).values({
-							eventId: newEvent.id,
-							contactId: contactRecord.id,
-							participationStatus: attendee.responseStatus || 'needsAction'
-						}).onConflictDoUpdate({
-							target: [eventContactTable.eventId, eventContactTable.contactId],
-							set: { participationStatus: attendee.responseStatus || 'needsAction' }
-						});
-					}
+					return; // Don't create duplicate
 				}
 			}
-
 		}
+
+		// Create new event - no matching local event found
+		const internalEvent = await this.mapExternalToInternalWithContacts(externalEvent, config.userId);
+		const [newEvent] = await db.insert(eventTable).values(internalEvent).returning({ id: eventTable.id });
+
+		await db.insert(syncMappingTable).values({
+			syncConfigId: config.id,
+			eventId: newEvent.id,
+			externalId: externalEvent.externalId,
+			providerId: config.providerId,
+			etag: externalEvent.etag ?? null,
+			lastSyncedAt: new Date()
+		});
+
+		await publishEventChange('create', [newEvent.id]);
+
+		// Update event contacts associations and their status
+		if (externalEvent.attendees) {
+			for (const attendee of externalEvent.attendees) {
+				// Find or create person contact for this attendee
+				const [contactRecord] = await db.query.contact.findMany({
+					where: (c, { eq, exists }) => exists(
+						db.select().from(contactEmailTable)
+							.where(and(
+								eq(contactEmailTable.contactId, c.id),
+								eq(contactEmailTable.value, attendee.email)
+							))
+					),
+					limit: 1
+				});
+
+				if (contactRecord) {
+					await db.insert(eventContactTable).values({
+						eventId: newEvent.id,
+						contactId: contactRecord.id,
+						participationStatus: attendee.responseStatus || 'needsAction'
+					}).onConflictDoUpdate({
+						target: [eventContactTable.eventId, eventContactTable.contactId],
+						set: { participationStatus: attendee.responseStatus || 'needsAction' }
+					});
+				}
+			}
+		}
+
 	}
 
 	/**
