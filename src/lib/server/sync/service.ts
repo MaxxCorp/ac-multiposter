@@ -911,13 +911,9 @@ export class SyncService {
 
 				// Check if this event was recently synced from provider (within last 30 seconds)
 				// This prevents echo loops where: provider → pull → local update → push back
-				if (mapping.lastSyncedAt) {
-					const timeSinceSync = Date.now() - mapping.lastSyncedAt.getTime();
-					if (timeSinceSync < 30000) {
-						console.log(`[SyncService] Skipping push for ${eventId} - recently synced from provider (${timeSinceSync}ms ago)`);
-						return;
-					}
-				}
+				// REMOVED: This check blocks legitimate user updates immediately after a sync/creation.
+				// Since SyncService updates DB directly without triggering 'triggerPushSync', 
+				// the echo loop risk is minimal for user-initiated actions.
 
 				const externalEvent = await this.mapInternalToExternal(eventRow, config.providerType);
 				const { etag } = await provider.updateEvent(mapping.externalId, externalEvent);
