@@ -105,16 +105,32 @@ export class GoogleCalendarProvider implements SyncProvider {
 		// Set up token refresh callback to update stored credentials
 		this.auth.on('tokens', async (tokens: Credentials) => {
 			if (tokens.access_token && this.config) {
-				// Update the stored credentials with the new access token
-				const updatedCredentials = {
-					...credentials,
-					accessToken: tokens.access_token,
-					expiresAt: tokens.expiry_date
-				};
+				try {
+					const providerIdMap: Record<string, string> = {
+						'google-calendar': 'google',
+						'microsoft-calendar': 'microsoft'
+					};
+					const oauthProviderId = providerIdMap[this.config.providerType];
 
-				// TODO: Update the sync config in the database with new credentials
-				// This would require importing db here, which might cause circular dependencies
-				// For now, the token will be refreshed on each sync operation
+					await db
+						.update(account)
+						.set({
+							accessToken: tokens.access_token,
+							accessTokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+							refreshToken: tokens.refresh_token || undefined, // Update if rotated
+							updatedAt: new Date()
+						})
+						.where(
+							and(
+								eq(account.userId, this.config.userId),
+								eq(account.providerId, oauthProviderId)
+							)
+						);
+
+					console.log(`[GoogleCalendarProvider] Refreshed and saved tokens for user ${this.config.userId}`);
+				} catch (error) {
+					console.error(`[GoogleCalendarProvider] Failed to save refreshed tokens:`, error);
+				}
 			}
 		});
 

@@ -431,6 +431,11 @@ export class SyncService {
 				);
 
 			// Check if any recent event matches this external event
+			console.log(`[SyncService] No match found for external ${externalEvent.externalId}. Checking ${recentEvents.length} recent events for fuzzy match:`, {
+				externalTitle: externalEvent.summary,
+				externalStart: externalEvent.startDateTime || externalEvent.startDate
+			});
+
 			for (const recentEvent of recentEvents) {
 				// Compare times more robustly
 				let startTimesMatch = false;
@@ -455,6 +460,7 @@ export class SyncService {
 				}
 
 				if (startTimesMatch) {
+					console.log(`[SyncService] Fuzzy match found! healing mapping for event ${recentEvent.id}`);
 					// Create mapping to link this local event to the external one
 					await db.insert(syncMappingTable).values({
 						syncConfigId: config.id,
