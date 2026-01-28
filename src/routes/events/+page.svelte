@@ -14,29 +14,35 @@
 
 	import { onMount } from "svelte";
 	import { browser } from "$app/environment";
-	import * as Ably from "ably";
+	// import * as Ably from "ably"; // Removing static import
 	import { toast } from "svelte-sonner";
 
 	let itemsPromise = $state<Promise<Event[]>>(listEvents());
 	let resolvedItems = $state<Event[]>([]);
 	let selectedIds = $state<Set<string>>(new Set());
 
+	let realtime: any; // Declare realtime at a higher scope
+
 	onMount(() => {
 		if (browser) {
-			let realtime: Ably.Realtime;
-			try {
-				realtime = new Ably.Realtime({ authUrl: "/api/ably/auth" });
-				const eventsChannel = realtime.channels.get("event-changes");
-				eventsChannel.subscribe("change", (message) => {
-					console.log("Event update received:", message.data);
-					itemsPromise = listEvents();
-					toast.info("Events updated", {
-						description: "Refreshing list...",
+			// @ts-ignore
+			import("ably")
+				.then((AblyModule) => {
+					const Ably = AblyModule.default;
+					realtime = new Ably.Realtime({ authUrl: "/api/ably/auth" });
+					const eventsChannel =
+						realtime.channels.get("event-changes");
+					eventsChannel.subscribe("change", (message: any) => {
+						console.log("Event update received:", message.data);
+						itemsPromise = listEvents();
+						toast.info("Events updated", {
+							description: "Refreshing list...",
+						});
 					});
+				})
+				.catch((e) => {
+					console.error("Failed to connect to Ably:", e);
 				});
-			} catch (e) {
-				console.error("Failed to connect to Ably:", e);
-			}
 
 			return () => {
 				if (realtime) {

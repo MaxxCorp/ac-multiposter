@@ -50,6 +50,8 @@ export const create = form(createSynchronizationSchema, async (input) => {
 		}
 
 		// Create sync config
+		const settings = typeof input.settings === 'string' ? JSON.parse(input.settings) : (input.settings || {});
+
 		const insertData: any = {
 			userId: user.id,
 			providerId: input.providerId,
@@ -57,7 +59,7 @@ export const create = form(createSynchronizationSchema, async (input) => {
 			direction: input.direction,
 			enabled: true,
 			credentials,
-			settings: input.settings || {},
+			settings,
 			createdAt: new Date(),
 			updatedAt: new Date()
 		};

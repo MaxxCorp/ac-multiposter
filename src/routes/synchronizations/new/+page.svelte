@@ -172,54 +172,47 @@
 				toast.success("Calendar synchronization created successfully!");
 				await goto("/synchronizations");
 			})}
+		onkeydown={(event) => {
+			if (event.key === "Enter") {
+				const target = event.target as HTMLElement;
+				if (
+					target.tagName !== "TEXTAREA" &&
+					target.getAttribute("type") !== "submit"
+				) {
+					event.preventDefault();
+				}
+			}
+		}}
 	>
 		<!-- Hidden Inputs required for form submission -->
 		<input type="hidden" name="providerType" value={selectedProvider} />
+		<!-- providerId is handled by the text input below -->
+
+		<!-- Settings as JSON string to avoid dot-notation parsing issues -->
 		<input
 			type="hidden"
-			name="providerId"
-			value={providerId || `${selectedProvider}-${Date.now()}`}
+			name="settings"
+			value={JSON.stringify({
+				calendarId: calendarId || "primary",
+				syncIntervalMinutes,
+				company:
+					selectedProvider === "berlin-de-main-calendar"
+						? company
+						: undefined,
+				baseUrl:
+					selectedProvider === "wp-the-events-calendar"
+						? wpBaseUrl
+						: undefined,
+				username:
+					selectedProvider === "wp-the-events-calendar"
+						? wpUsername
+						: undefined,
+				applicationPassword:
+					selectedProvider === "wp-the-events-calendar"
+						? wpAppPassword
+						: undefined,
+			})}
 		/>
-		<input type="hidden" name="direction" value={direction} />
-
-		<!-- Settings mapped to flat names or nested if supported.
-		     Since settings is 'any', we use standard dot notation for FormData construction.
-		     Most parsers handle this. If not, create.remote.ts might need 'settings' as a JSON string
-		     or manual parsing?
-		     Let's assume dot notation works for now or use manual JSON string if needed.
-		     Users/resource/location remotes didn't use nested 'any' fields.
-		     SvelteKit default form action parser flattens or nests?
-		     Usually custom.
-		     SAFE BET: Use JSON string for 'settings' and parse it in remote?
-		     But remote expects object.
-		     Let's try creating hidden inputs with names like 'settings.calendarId'.
-		-->
-		<input
-			type="hidden"
-			name="settings.calendarId"
-			value={calendarId || "primary"}
-		/>
-		<input
-			type="hidden"
-			name="settings.syncIntervalMinutes"
-			value={syncIntervalMinutes}
-		/>
-
-		{#if selectedProvider === "berlin-de-main-calendar"}
-			<input type="hidden" name="settings.company" value={company} />
-			<!-- fieldMappings is object, json stringify it? -->
-			<!-- settings.fieldMappings -->
-		{/if}
-
-		{#if selectedProvider === "wp-the-events-calendar"}
-			<input type="hidden" name="settings.baseUrl" value={wpBaseUrl} />
-			<input type="hidden" name="settings.username" value={wpUsername} />
-			<input
-				type="hidden"
-				name="settings.applicationPassword"
-				value={wpAppPassword}
-			/>
-		{/if}
 
 		<!-- Provider Selection -->
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
@@ -286,10 +279,20 @@
 						<input
 							type="text"
 							id="providerId"
+							name="providerId"
 							bind:value={providerId}
 							placeholder="e.g., my-work-calendar"
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {(
+								create as any
+							).error?.providerId
+								? 'border-red-500'
+								: ''}"
 						/>
+						{#if (create as any).error?.providerId}
+							<p class="text-xs text-red-600 mt-1">
+								{(create as any).error.providerId}
+							</p>
+						{/if}
 						<p class="text-xs text-gray-500 mt-1">
 							A unique identifier for this sync configuration
 						</p>

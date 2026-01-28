@@ -6,9 +6,9 @@
     import EventView from "$lib/components/events/EventView.svelte";
     import type { PublicEvent } from "../../../events/list-public.remote";
     import { browser } from "$app/environment";
-    import * as Ably from "ably";
+    // import * as Ably from "ably";
     import { toast } from "svelte-sonner";
-    import { invalidate } from "$app/navigation";
+    import { invalidate, invalidateAll } from "$app/navigation";
 
     let { data } = $props();
 
@@ -156,7 +156,8 @@
     // --- Gesture Logic ---
     let startX = 0;
     let endX = 0;
-    let realtime: Ably.Realtime | undefined;
+    let announcement = $state<any>((data as any).announcement);
+    let realtime: any | undefined;
 
     function handlePointerDown(e: PointerEvent) {
         startX = e.screenX;
@@ -192,19 +193,36 @@
         }
 
         if (browser) {
-            try {
-                realtime = new Ably.Realtime({ authUrl: "/api/ably/auth" });
-                const eventsChannel = realtime.channels.get("event-changes");
-                eventsChannel.subscribe("change", (message) => {
-                    console.log("Kiosk Event update received:", message.data);
-                    invalidate("app:events");
-                    toast.info("Events updated", {
-                        description: "Refreshing kiosk...",
+            // @ts-ignore
+            import("ably")
+                .then((AblyModule) => {
+                    const Ably = AblyModule.default;
+                    realtime = new Ably.Realtime(
+                        "N_sNCA.u0wYQw:Z-pG0k2QoH0_8L4h2X4Z0k2QoH0_8L4h2X4Z0k2QoH0",
+                    );
+
+                    const eventsChannel =
+                        realtime.channels.get("event-changes");
+                    eventsChannel.subscribe("change", (message: any) => {
+                        console.log(
+                            "Kiosk Event update received:",
+                            message.data,
+                        );
+                        invalidateAll();
                     });
-                });
-            } catch (e) {
-                console.error("Failed to connect to Ably:", e);
-            }
+
+                    const announcementChannel = realtime.channels.get(
+                        "announcement-changes",
+                    );
+                    announcementChannel.subscribe("change", (message: any) => {
+                        console.log(
+                            "Kiosk Announcement update received:",
+                            message.data,
+                        );
+                        invalidateAll();
+                    });
+                })
+                .catch((e) => console.error(e));
         }
     });
 
