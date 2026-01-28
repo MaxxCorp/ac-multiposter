@@ -1083,8 +1083,14 @@ export class SyncService {
 	 * Trigger push sync for a user
 	 * Should be called when a user creates/updates an event locally
 	 */
-	async triggerPushSync(userId: string): Promise<void> {
+	async triggerPushSync(userId: string, eventId?: string): Promise<void> {
 		try {
+			if (eventId) {
+				// optimized path: sync only the specific event
+				await this.syncSpecificEvents(userId, [eventId]);
+				return;
+			}
+
 			// Find all enabled sync configs for this user with push direction
 			const configs = await db
 				.select()
