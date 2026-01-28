@@ -6,6 +6,7 @@ import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import * as v from 'valibot';
 import { publishEventChange } from '$lib/server/realtime';
+import { syncService } from '$lib/server/sync/service';
 
 /**
  * Command: Delete events by ID
@@ -15,6 +16,9 @@ export const deleteEvents = command(
 	async (ids: string[]) => {
 		const user = getAuthenticatedUser();
 		ensureAccess(user, 'events');
+
+		// Trigger sync deletion first (before local event is gone)
+		await syncService.deleteEventMappings(user.id, ids);
 
 		await db
 			.delete(event)

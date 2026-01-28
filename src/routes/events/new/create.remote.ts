@@ -7,6 +7,7 @@ import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { createEventSchema } from '$lib/validations/events';
 import { generateEventAssets } from '$lib/server/events/assets';
 import { publishEventChange } from '$lib/server/realtime';
+import { syncService } from '$lib/server/sync/service';
 
 export const createNewEvent = form(createEventSchema, async (data) => {
 	console.log('--- createNewEvent START ---');
@@ -120,6 +121,8 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 
 		if (newEvent) {
 			await publishEventChange('create', [newEvent.id]);
+			// Trigger background sync to external providers
+			syncService.triggerPushSync(user.id);
 		}
 
 		await listEvents().refresh();

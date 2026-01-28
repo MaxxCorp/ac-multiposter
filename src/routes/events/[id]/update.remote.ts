@@ -9,6 +9,7 @@ import { updateEventSchema } from '$lib/validations/events';
 import { error } from '@sveltejs/kit';
 import { generateEventAssets } from '$lib/server/events/assets';
 import { publishEventChange } from '$lib/server/realtime';
+import { syncService } from '$lib/server/sync/service';
 
 export const updateExistingEvent = form(updateEventSchema, async (data) => {
 	console.log('--- updateExistingEvent START ---');
@@ -142,6 +143,8 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 
 		if (updatedEvent) {
 			await publishEventChange('update', [updatedEvent.id]);
+			// Trigger background sync to external providers
+			syncService.triggerPushSync(user.id);
 		}
 
 		await listEvents().refresh();

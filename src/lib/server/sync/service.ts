@@ -1078,6 +1078,37 @@ export class SyncService {
 			// Don't throw - webhook may have already expired or been deleted
 		}
 	}
+
+	/**
+	 * Trigger push sync for a user
+	 * Should be called when a user creates/updates an event locally
+	 */
+	async triggerPushSync(userId: string): Promise<void> {
+		try {
+			// Find all enabled sync configs for this user with push direction
+			const configs = await db
+				.select()
+				.from(syncConfigTable)
+				.where(
+					and(
+						eq(syncConfigTable.userId, userId),
+						eq(syncConfigTable.enabled, true)
+					)
+				);
+
+			for (const configRow of configs) {
+				const config = this.rowToConfig(configRow);
+				if (config.direction === 'push' || config.direction === 'bidirectional') {
+					// Trigger async sync (background)
+					this.syncEvents(config.id).catch((error) => {
+						console.error(`[SyncService] Triggered push sync failed for config ${config.id}:`, error);
+					});
+				}
+			}
+		} catch (error) {
+			console.error(`[SyncService] Failed to trigger push sync for user ${userId}:`, error);
+		}
+	}
 }
 
 // Export singleton instance

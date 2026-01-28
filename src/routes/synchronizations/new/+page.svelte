@@ -140,6 +140,17 @@
 			icon: ArrowLeftRight,
 		},
 	];
+
+	function getField(name: string): any {
+		if (!(create as any).fields) return {};
+		const parts = name.split(".");
+		let current = (create as any).fields;
+		for (const part of parts) {
+			if (!current) return {};
+			current = current[part];
+		}
+		return current || {};
+	}
 </script>
 
 <svelte:head>
@@ -185,33 +196,36 @@
 		}}
 	>
 		<!-- Hidden Inputs required for form submission -->
-		<input type="hidden" name="providerType" value={selectedProvider} />
+		<input
+			{...getField("providerType").as("hidden", selectedProvider ?? "")}
+		/>
 		<!-- providerId is handled by the text input below -->
 
 		<!-- Settings as JSON string to avoid dot-notation parsing issues -->
 		<input
-			type="hidden"
-			name="settings"
-			value={JSON.stringify({
-				calendarId: calendarId || "primary",
-				syncIntervalMinutes,
-				company:
-					selectedProvider === "berlin-de-main-calendar"
-						? company
-						: undefined,
-				baseUrl:
-					selectedProvider === "wp-the-events-calendar"
-						? wpBaseUrl
-						: undefined,
-				username:
-					selectedProvider === "wp-the-events-calendar"
-						? wpUsername
-						: undefined,
-				applicationPassword:
-					selectedProvider === "wp-the-events-calendar"
-						? wpAppPassword
-						: undefined,
-			})}
+			{...getField("settings").as(
+				"hidden",
+				JSON.stringify({
+					calendarId: calendarId || "primary",
+					syncIntervalMinutes,
+					company:
+						selectedProvider === "berlin-de-main-calendar"
+							? company
+							: undefined,
+					baseUrl:
+						selectedProvider === "wp-the-events-calendar"
+							? wpBaseUrl
+							: undefined,
+					username:
+						selectedProvider === "wp-the-events-calendar"
+							? wpUsername
+							: undefined,
+					applicationPassword:
+						selectedProvider === "wp-the-events-calendar"
+							? wpAppPassword
+							: undefined,
+				}),
+			)}
 		/>
 
 		<!-- Provider Selection -->
@@ -277,22 +291,21 @@
 							Sync Name
 						</label>
 						<input
-							type="text"
-							id="providerId"
-							name="providerId"
+							{...getField("providerId").as("text")}
 							bind:value={providerId}
 							placeholder="e.g., my-work-calendar"
-							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {(
-								create as any
-							).error?.providerId
+							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {(getField(
+								'providerId',
+							).issues()?.length ?? 0) > 0
 								? 'border-red-500'
 								: ''}"
+							onblur={() => create.validate()}
 						/>
-						{#if (create as any).error?.providerId}
+						{#each getField("providerId").issues() ?? [] as issue}
 							<p class="text-xs text-red-600 mt-1">
-								{(create as any).error.providerId}
+								{issue.message}
 							</p>
-						{/if}
+						{/each}
 						<p class="text-xs text-gray-500 mt-1">
 							A unique identifier for this sync configuration
 						</p>
@@ -441,10 +454,15 @@
 								: ''}"
 						>
 							<input
-								type="radio"
-								name="direction"
-								value={dir.value}
-								bind:group={direction}
+								{...getField("direction").as(
+									"radio",
+									dir.value,
+								)}
+								checked={direction === dir.value}
+								onchange={() => {
+									direction = dir.value;
+									create.validate();
+								}}
 								disabled={(selectedProvider ===
 									"berlin-de-main-calendar" ||
 									selectedProvider ===

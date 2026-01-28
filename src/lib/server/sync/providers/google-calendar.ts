@@ -303,8 +303,10 @@ export class GoogleCalendarProvider implements SyncProvider {
 		});
 
 		const expiresAt = new Date(parseInt(response.data.expiration || '0'));
+		const id = crypto.randomUUID();
 
 		return {
+			id,
 			syncConfigId: this.config.id,
 			providerId: this.config.providerId,
 			resourceId: response.data.resourceId || resourceId,
