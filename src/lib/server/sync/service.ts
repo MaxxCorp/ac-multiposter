@@ -441,7 +441,9 @@ export class SyncService {
 				.select()
 				.from(eventTable)
 				.where(
-					and(
+					// Use OR to find events that match EITHER by strict summary OR by time window
+					// This handles cases where summary formatting differs (e.g. smart quotes) but it's the same event
+					or(
 						eq(eventTable.summary, externalEvent.summary),
 						startTimeCheck
 					)
