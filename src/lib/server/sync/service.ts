@@ -22,7 +22,7 @@ import {
 } from '../db/schema';
 import { getEntityContacts } from '../contacts';
 import { resolveEventContact } from '../contact-resolution';
-import { eq, and, isNull, lt, inArray, desc } from 'drizzle-orm';
+import { eq, and, isNull, lt, gt, gte, lte, or, inArray, desc } from 'drizzle-orm';
 import { GoogleCalendarProvider } from './providers/google-calendar';
 import { BerlinDeMainCalendarProvider } from './providers/berlin-de-main-calendar';
 import { WpTheEventsCalendarProvider } from './providers/wp-the-events-calendar';
@@ -423,11 +423,28 @@ export class SyncService {
 			// Before creating a new event, check if we already have a local event with similar properties
 			// that was just created (within last 30 seconds). This prevents duplicates when:
 			// 1. User creates event locally → pushes to Google → webhook fires → tries to pull back
+			const timeWindow = 2 * 60 * 1000; // 2 minutes
+			let startTimeCheck = undefined;
+
+			if (externalEvent.startDateTime) {
+				const t = externalEvent.startDateTime.getTime();
+				startTimeCheck = and(
+					gte(eventTable.startDateTime, new Date(t - timeWindow)),
+					lte(eventTable.startDateTime, new Date(t + timeWindow))
+				);
+			} else if (externalEvent.startDate) {
+				// For all-day events, check startDate string
+				startTimeCheck = eq(eventTable.startDate, externalEvent.startDate);
+			}
+
 			const recentEvents = await db
 				.select()
 				.from(eventTable)
 				.where(
-					eq(eventTable.summary, externalEvent.summary)
+					and(
+						eq(eventTable.summary, externalEvent.summary),
+						startTimeCheck
+					)
 				);
 
 			// Check if any recent event matches this external event
