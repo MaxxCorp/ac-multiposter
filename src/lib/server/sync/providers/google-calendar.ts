@@ -419,8 +419,7 @@ export class GoogleCalendarProvider implements SyncProvider {
 				displayName: a.displayName,
 				responseStatus: a.responseStatus
 			})),
-			recurrence: event.recurrence,
-			reminders: event.reminders
+			recurrence: event.recurrence
 		};
 
 		// Handle start time
@@ -444,6 +443,22 @@ export class GoogleCalendarProvider implements SyncProvider {
 			gcalEvent.colorId = event.metadata.colorId;
 			gcalEvent.visibility = event.metadata.visibility;
 			gcalEvent.transparency = event.metadata.transparency;
+		}
+
+		// Ensure proper reminders format
+		// Cannot specify both default reminders and overrides at the same time
+		if (event.reminders) {
+			if (event.reminders.overrides && event.reminders.overrides.length > 0) {
+				gcalEvent.reminders = {
+					useDefault: false,
+					overrides: event.reminders.overrides
+				};
+			} else {
+				gcalEvent.reminders = {
+					useDefault: event.reminders.useDefault,
+					overrides: []
+				};
+			}
 		}
 
 		return gcalEvent;
