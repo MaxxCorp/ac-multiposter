@@ -10,7 +10,7 @@ export const getKiosk = query(v.string(), async (id: string) => {
     ensureAccess(user, 'kiosks');
 
     const result = await db.query.kiosk.findFirst({
-        where: and(eq(kiosk.id, id), eq(kiosk.userId, user.id)),
+        where: eq(kiosk.id, id),
         with: {
             location: true
         }

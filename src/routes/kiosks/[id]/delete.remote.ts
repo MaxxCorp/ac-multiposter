@@ -14,10 +14,7 @@ export const deleteKiosk = command(
 
         await db.delete(kiosk)
             .where(
-                and(
-                    inArray(kiosk.id, ids),
-                    eq(kiosk.userId, user.id)
-                )
+                inArray(kiosk.id, ids)
             );
 
         await listKiosks().refresh();

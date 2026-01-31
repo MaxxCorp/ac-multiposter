@@ -15,6 +15,5 @@ export const listKiosks = query(async () => {
 
     return await db.select()
         .from(kiosk)
-        .where(eq(kiosk.userId, user.id))
         .orderBy(desc(kiosk.createdAt));
 });

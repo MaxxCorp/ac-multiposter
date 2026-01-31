@@ -24,7 +24,7 @@ export const updateKiosk = form(updateKioskSchema, async (data) => {
                 ...dbUpdates,
                 updatedAt: new Date()
             })
-            .where(and(eq(kiosk.id, id), eq(kiosk.userId, user.id)))
+            .where(eq(kiosk.id, id))
             .returning();
 
         if (!updated) {

@@ -85,7 +85,7 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 		const [updatedEvent] = await db
 			.update(event)
 			.set(updateData)
-			.where(and(eq(event.id, data.id), eq(event.userId, user.id)))
+			.where(eq(event.id, data.id))
 			.returning();
 
 		console.log('Update result:', updatedEvent);

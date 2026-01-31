@@ -6,6 +6,7 @@ import { listUsers } from '../list.remote';
 import { readUser } from './read.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { updateUserSchema } from '$lib/validations/users';
+import { error } from '@sveltejs/kit';
 
 export const updateUser = form(updateUserSchema, async (data) => {
     console.log('--- updateUser START ---');
@@ -15,6 +16,12 @@ export const updateUser = form(updateUserSchema, async (data) => {
         const currentUser = getAuthenticatedUser();
         ensureAccess(currentUser, 'users');
         console.log('User authenticated:', currentUser.id);
+
+        // Strict access control: only admin or self can update
+        const roles = currentUser.roles as string[] || [];
+        if (!roles.includes('admin') && currentUser.id !== data.id) {
+            error(403, 'You do not have permission to update this user');
+        }
 
         const updateData: any = {
             name: data.name,
