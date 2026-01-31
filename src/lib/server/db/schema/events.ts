@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb, integer, index, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb, integer, index, uuid, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
 import { user } from "./auth";
 import { eventResource, location } from './resources';
@@ -26,7 +26,7 @@ export const event = pgTable("event", {
     summary: text("summary").notNull(), // Title of the event
     description: text("description"),
     location: text("location"),
-    locationId: uuid("location_id").references(() => location.id, { onDelete: "set null" }),
+    // locationId removed in favor of eventLocation join table
     colorId: text("color_id"),
 
     // Custom event metadata
@@ -207,9 +207,34 @@ export const event = pgTable("event", {
     index("event_user_id_idx").on(table.userId),
 ]);
 
+export const eventLocation = pgTable("event_location", {
+    eventId: uuid("event_id")
+        .notNull()
+        .references(() => event.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id")
+        .notNull()
+        .references(() => location.id, { onDelete: "cascade" }),
+}, (table) => [
+    primaryKey({ columns: [table.eventId, table.locationId] }),
+    index("event_location_event_idx").on(table.eventId),
+    index("event_location_location_idx").on(table.locationId),
+]);
+
 export const eventRelations = relations(event, ({ many }) => ({
     resources: many(eventResource),
-    contacts: many(eventContact)
+    contacts: many(eventContact),
+    locations: many(eventLocation),
+}));
+
+export const eventLocationRelations = relations(eventLocation, ({ one }) => ({
+    event: one(event, {
+        fields: [eventLocation.eventId],
+        references: [event.id],
+    }),
+    location: one(location, {
+        fields: [eventLocation.locationId],
+        references: [location.id],
+    }),
 }));
 
 export type Event = typeof event.$inferSelect;

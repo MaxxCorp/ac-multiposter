@@ -8,6 +8,10 @@
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import ContactManager from "$lib/components/contacts/ContactManager.svelte";
     import TagInput from "$lib/components/ui/TagInput.svelte";
+    import LocationSelector from "$lib/components/locations/LocationSelector.svelte";
+    import { listLocations } from "../../../routes/locations/list.remote";
+    import type { Location } from "../../../routes/locations/list.remote";
+    import { onMount } from "svelte";
 
     import RichTextEditor from "$lib/components/cms/RichTextEditor.svelte";
 
@@ -36,6 +40,17 @@
 
     let selectedContactIds = $state<string[]>(initialData?.contactIds || []);
     let isPublic = $state(initialData?.isPublic ?? false);
+
+    let locations = $state<Location[]>([]);
+    let selectedLocationIds = $state<string[]>(initialData?.locationIds || []);
+
+    onMount(async () => {
+        try {
+            locations = await listLocations();
+        } catch (e) {
+            console.error("Failed to load locations", e);
+        }
+    });
 
     // Derived JSON for submission
     let tagNamesJson = $derived(
@@ -173,6 +188,20 @@
 
             <div>
                 <TagInput bind:value={tagsString} />
+            </div>
+
+            <div>
+                <LocationSelector
+                    {locations}
+                    bind:selectedIds={selectedLocationIds}
+                    label="Locations (Optional)"
+                />
+                <input
+                    {...getField("locationIds").as(
+                        "hidden",
+                        JSON.stringify(selectedLocationIds),
+                    )}
+                />
             </div>
 
             <div class="flex items-center gap-2 mt-4">

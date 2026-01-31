@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { announcement, announcementTag, announcementContact, tag } from '$lib/server/db/schema';
+import { announcement, announcementTag, announcementContact, tag, announcementLocation } from '$lib/server/db/schema';
 import { createAnnouncementSchema } from '$lib/validations/announcements';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { publishAnnouncementChange } from '$lib/server/realtime';
@@ -89,6 +89,17 @@ export const createNewAnnouncement = form(createAnnouncementSchema, async (input
                     contactIds.map(contactId => ({
                         announcementId: announcementId,
                         contactId: contactId
+                    }))
+                );
+            }
+
+            // Insert Locations
+            const locationIds = typeof input.locationIds === 'string' ? JSON.parse(input.locationIds) : input.locationIds;
+            if (locationIds && Array.isArray(locationIds) && locationIds.length > 0) {
+                await tx.insert(announcementLocation).values(
+                    (locationIds as string[]).map(locationId => ({
+                        announcementId: announcementId,
+                        locationId: locationId
                     }))
                 );
             }

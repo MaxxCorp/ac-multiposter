@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { event, eventResource, eventContact, contact, contactEmail, contactPhone } from '$lib/server/db/schema';
+import { event, eventResource, eventContact, contact, contactEmail, contactPhone, eventLocation } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { Event } from '../list.remote';
 import { getOptionalUser, hasAccess } from '$lib/authorization';
@@ -55,6 +55,12 @@ export const readEvent = query(v.string(), async (eventId: string): Promise<Even
 		.innerJoin(contact, eq(eventContact.contactId, contact.id))
 		.where(eq(eventContact.eventId, eventId));
 
+	// Fetch related locations
+	const locations = await db
+		.select({ id: eventLocation.locationId })
+		.from(eventLocation)
+		.where(eq(eventLocation.eventId, eventId));
+
 	// Resolve primary contact details
 	let resolvedContact = null;
 	if (contacts.length > 0) {
@@ -97,6 +103,7 @@ export const readEvent = query(v.string(), async (eventId: string): Promise<Even
 		iCalPath: result.iCalPath,
 		resourceIds: resources.map(r => r.id),
 		contactIds: contacts.map(c => c.id),
+		locationIds: locations.map(l => l.id),
 		resolvedContact,
 	} as Event;
 });

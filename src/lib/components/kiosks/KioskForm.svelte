@@ -3,6 +3,7 @@
     import type { Location } from "../../../routes/locations/list.remote";
     import Button from "$lib/components/ui/button/button.svelte";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
+    import LocationSelector from "$lib/components/locations/LocationSelector.svelte";
     import { onMount } from "svelte";
     import { toast } from "svelte-sonner";
     import { goto } from "$app/navigation";
@@ -23,6 +24,10 @@
 
     let locations = $state<Location[]>([]);
     let loaded = $state(false);
+    let selectedLocationIds = $state<string[]>(
+        initialData?.locationIds ||
+            (initialData?.locationId ? [initialData.locationId] : []),
+    );
 
     // Initial state setup for 'Days' convenience fields
     let initialDays = {
@@ -118,27 +123,21 @@
         </div>
 
         <div class="space-y-2">
-            <label
-                for="location"
-                class="block text-sm font-medium text-gray-700">Location</label
-            >
             {#if !loaded}
                 <div class="animate-pulse h-10 bg-gray-100 rounded"></div>
             {:else}
-                <select
-                    {...getField("locationId").as("text")}
-                    value={getField("locationId").value() ??
-                        initialData?.locationId ??
-                        ""}
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-                    onblur={() => remoteFunction.validate()}
-                >
-                    <option value="" disabled>Select a location...</option>
-                    {#each locations as loc}
-                        <option value={loc.id}>{loc.name}</option>
-                    {/each}
-                </select>
-                {#each getField("locationId").issues() ?? [] as issue}
+                <LocationSelector
+                    {locations}
+                    bind:selectedIds={selectedLocationIds}
+                />
+                <!-- Hidden input for submission -->
+                <input
+                    {...getField("locationIds").as(
+                        "hidden",
+                        JSON.stringify(selectedLocationIds),
+                    )}
+                />
+                {#each getField("locationIds").issues() ?? [] as issue}
                     <p class="mt-1 text-sm text-red-600">{issue.message}</p>
                 {/each}
             {/if}

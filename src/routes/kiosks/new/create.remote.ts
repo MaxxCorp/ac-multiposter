@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { kiosk } from '$lib/server/db/schema';
+import { kiosk, kioskLocation } from '$lib/server/db/schema';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { createKioskSchema } from '$lib/validations/kiosks';
 import { listKiosks } from '../list.remote';
@@ -22,6 +22,17 @@ export const createKiosk = form(createKioskSchema, async (data) => {
 
         if (!newKiosk) {
             error(500, 'Failed to create kiosk');
+        }
+
+        // Insert Locations
+        const locationIds = typeof data.locationIds === 'string' ? JSON.parse(data.locationIds) : data.locationIds;
+        if (locationIds && Array.isArray(locationIds) && locationIds.length > 0) {
+            await db.insert(kioskLocation).values(
+                (locationIds as string[]).map((locationId: string) => ({
+                    kioskId: newKiosk.id,
+                    locationId,
+                }))
+            );
         }
 
         await listKiosks().refresh();

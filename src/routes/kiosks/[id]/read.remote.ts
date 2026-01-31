@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { kiosk } from '$lib/server/db/schema';
+import { kiosk, kioskLocation } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import * as v from 'valibot';
@@ -11,10 +11,17 @@ export const getKiosk = query(v.string(), async (id: string) => {
 
     const result = await db.query.kiosk.findFirst({
         where: eq(kiosk.id, id),
-        with: {
-            location: true
-        }
     });
 
-    return result || null;
+    if (!result) return null;
+
+    const locations = await db
+        .select({ id: kioskLocation.locationId })
+        .from(kioskLocation)
+        .where(eq(kioskLocation.kioskId, id));
+
+    return {
+        ...result,
+        locationIds: locations.map(l => l.id),
+    };
 });

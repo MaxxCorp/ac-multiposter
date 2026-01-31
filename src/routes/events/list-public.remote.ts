@@ -1,7 +1,7 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
 import { eq, and, or, gte, desc, isNull, inArray, ilike } from 'drizzle-orm';
-import { event, eventContact, contact, contactEmail, contactPhone, contactAddress, eventResource, resource, location, kiosk } from '$lib/server/db/schema';
+import { event, eventContact, contact, contactEmail, contactPhone, contactAddress, eventResource, resource, location, kiosk, kioskLocation, eventLocation } from '$lib/server/db/schema';
 import * as v from 'valibot';
 import type { Event } from './list.remote';
 
@@ -55,48 +55,64 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
 });
 
 export const listKioskEvents = query(v.string(), async (kioskId: string): Promise<PublicEvent[]> => {
+    // 1. Fetch Kiosk and its Locations
     const kioskData = await db.query.kiosk.findFirst({
         where: eq(kiosk.id, kioskId),
-        with: {
-            location: true
-        }
     });
 
     if (!kioskData) return [];
+
+    const kioskLocations = await db
+        .select({ id: kioskLocation.locationId })
+        .from(kioskLocation)
+        .where(eq(kioskLocation.kioskId, kioskId));
+
+    const kioskLocationIds = kioskLocations.map(l => l.id);
 
     const now = new Date();
     const lookPastDate = new Date(now.getTime() - (kioskData.lookPast * 1000));
     const lookPastDateStr = lookPastDate.toISOString().split('T')[0];
 
+    // 2. Build Filter Criteria
+    const conditions = [
+        eq(event.isPublic, true),
+        or(
+            gte(event.endDateTime, lookPastDate),
+            and(
+                isNull(event.endDateTime),
+                gte(event.endDate, lookPastDateStr)
+            )
+        )
+    ];
+
+    // 3. Apply Location Filtering if Kiosk has locations
+    if (kioskLocationIds.length > 0) {
+        conditions.push(or(
+            // Event matches one of the kiosk locations via join table
+            inArray(
+                event.id,
+                db.select({ eventId: eventLocation.eventId })
+                    .from(eventLocation)
+                    .where(inArray(eventLocation.locationId, kioskLocationIds))
+            ),
+            // Resource matches one of the kiosk locations
+            inArray(
+                event.id,
+                db.select({ eventId: eventResource.eventId })
+                    .from(eventResource)
+                    .innerJoin(resource, eq(eventResource.resourceId, resource.id))
+                    .where(inArray(resource.locationId, kioskLocationIds))
+            ),
+            // Fallback: Location Name text match (optional, can remove if strictly ID based now)
+            // Keeping it simple: removed legacy text match to enforce strict ID linking, 
+            // or we need to fetch location names to do ilike.
+        ));
+    }
+
     const results = await db
         .selectDistinct({ id: event.id })
         .from(event)
-        .where(
-            and(
-                eq(event.isPublic, true),
-                or(
-                    // 1. Explicit Location Match
-                    eq(event.locationId, kioskData.locationId),
-                    // 2. Resource Match (Subquery)
-                    inArray(
-                        event.id,
-                        db.select({ eventId: eventResource.eventId })
-                            .from(eventResource)
-                            .innerJoin(resource, eq(eventResource.resourceId, resource.id))
-                            .where(eq(resource.locationId, kioskData.locationId))
-                    ),
-                    // 3. Fallback: Location Name text match
-                    ilike(event.location, `${kioskData.location.name}%`)
-                ),
-                or(
-                    gte(event.endDateTime, lookPastDate),
-                    and(
-                        isNull(event.endDateTime),
-                        gte(event.endDate, lookPastDateStr)
-                    )
-                )
-            )
-        );
+        .where(and(...conditions));
 
     if (results.length === 0) return [];
 

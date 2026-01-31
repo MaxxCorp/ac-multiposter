@@ -95,8 +95,15 @@ export const eventResource = pgTable("event_resource", {
     index("event_resource_resource_idx").on(table.resourceId),
 ]);
 
+import { eventLocation } from "./events";
+import { announcementLocation } from "./announcements";
+import { kioskLocation } from "./kiosks";
+
 export const locationRelations = relations(location, ({ many }) => ({
     resources: many(resource),
+    eventLocations: many(eventLocation),
+    announcementLocations: many(announcementLocation),
+    kioskLocations: many(kioskLocation),
 }));
 
 export const resourceRelations = relations(resource, ({ one, many }) => ({

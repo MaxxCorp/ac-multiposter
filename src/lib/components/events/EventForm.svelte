@@ -18,6 +18,8 @@
         type Location,
     } from "../../../routes/locations/list.remote";
     import ContactManager from "$lib/components/contacts/ContactManager.svelte";
+    import LocationSelector from "$lib/components/locations/LocationSelector.svelte";
+    import RichTextEditor from "$lib/components/cms/RichTextEditor.svelte";
 
     let {
         remoteFunction,
@@ -79,12 +81,16 @@
         return match ? match.id : "";
     }
 
-    let selectedLocationId = $state("");
+    let selectedLocationIds = $state<string[]>(initialData?.locationIds || []);
     $effect(() => {
-        if (initialData?.location) {
+        if (initialData?.locationIds && initialData.locationIds.length > 0) {
+            selectedLocationIds = initialData.locationIds;
+            useFreeTextLocation = false;
+        } else if (initialData?.location) {
+            // Fallback logic for legacy single-string location finding if needed
             findInitialLocationId().then((id) => {
                 if (id) {
-                    selectedLocationId = id;
+                    selectedLocationIds = [id];
                     useFreeTextLocation = false;
                 }
             });
@@ -111,10 +117,9 @@
         "Vermischtes",
     ];
 
-    import RichTextEditor from "$lib/components/cms/RichTextEditor.svelte";
-
     let useFreeTextLocation = $state(
-        !!initialData?.location && !initialData?.locationId,
+        !!initialData?.location &&
+            (!initialData?.locationIds || initialData.locationIds.length === 0),
     );
 
     let descriptionValue = $state(
@@ -167,22 +172,22 @@
     let endTimeInput = $state(endParsed.time || "");
 
     // Sync default end time when start time changes if end time is empty
-    $effect(() => {
-        if (startDateInput && startTimeInput && !endTimeInput) {
-            const start = new Date(`${startDateInput}T${startTimeInput}:00`);
-            if (!isNaN(start.getTime())) {
-                const end = new Date(start.getTime() + 60 * 60000);
-                const year = end.getFullYear();
-                const month = String(end.getMonth() + 1).padStart(2, "0");
-                const day = String(end.getDate()).padStart(2, "0");
-                const hours = String(end.getHours()).padStart(2, "0");
-                const minutes = String(end.getMinutes()).padStart(2, "0");
+    function updateEndDateTime() {
+        if (!startDateInput || !startTimeInput) return;
 
-                endDateInput = `${year}-${month}-${day}`;
-                endTimeInput = `${hours}:${minutes}`;
-            }
-        }
-    });
+        const start = new Date(`${startDateInput}T${startTimeInput}:00`);
+        if (isNaN(start.getTime())) return;
+
+        const end = new Date(start.getTime() + 60 * 60000);
+        const year = end.getFullYear();
+        const month = String(end.getMonth() + 1).padStart(2, "0");
+        const day = String(end.getDate()).padStart(2, "0");
+        const hours = String(end.getHours()).padStart(2, "0");
+        const minutes = String(end.getMinutes()).padStart(2, "0");
+
+        endDateInput = `${year}-${month}-${day}`;
+        endTimeInput = `${hours}:${minutes}`;
+    }
 
     // Auto-set end time logic
     function getDefaultEndTime() {
@@ -233,20 +238,26 @@
         } else {
             selectedResourceIds = [...selectedResourceIds, resourceId];
             // Prefill location if empty
-            if (!selectedLocationId && !useFreeTextLocation) {
+            if (selectedLocationIds.length === 0 && !useFreeTextLocation) {
                 const resources = await resourcesPromise;
                 const res = resources.find(
                     (r: ResourceWithHierarchy) => r.id === resourceId,
                 );
-                if (res?.locationId) {
-                    onLocationSelect(res.locationId);
+                if (
+                    res?.locationId &&
+                    !selectedLocationIds.includes(res.locationId)
+                ) {
+                    selectedLocationIds = [
+                        ...selectedLocationIds,
+                        res.locationId,
+                    ];
                 }
             }
         }
     }
 
     async function onLocationSelect(id: string) {
-        selectedLocationId = id;
+        selectedLocationIds = [id];
         const locations = await locationsPromise;
         const l = locations.find((x: Location) => x.id === id);
         if (l) {
@@ -538,34 +549,21 @@
                             Loading locations...
                         </p>
                     {:then locations}
-                        <select
-                            id="locationSelect"
-                            value={selectedLocationId}
-                            onchange={(e) =>
-                                onLocationSelect(e.currentTarget.value)}
-                            class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
-                        >
-                            <option value="">-- Select a location --</option>
-                            {#each locations as location}
-                                <option value={location.id}
-                                    >{location.name}
-                                    {location.roomId
-                                        ? ` (${location.roomId})`
-                                        : ""}</option
-                                >
-                            {/each}
-                        </select>
-                        <input
-                            type="hidden"
-                            name="location"
-                            value={freeTextLocation}
+                        <!-- Using Multi-Location Selector -->
+                        <LocationSelector
+                            {locations}
+                            bind:selectedIds={selectedLocationIds}
                         />
+                        <!-- Populate freeTextLocation based on selection if needed, or leave independent -->
                     {/await}
                 {/if}
                 <input
-                    type="hidden"
-                    name="locationId"
-                    value={useFreeTextLocation ? "" : selectedLocationId}
+                    {...getField("locationIds").as(
+                        "hidden",
+                        JSON.stringify(
+                            useFreeTextLocation ? [] : selectedLocationIds,
+                        ),
+                    )}
                 />
             </div>
         </div>
@@ -599,6 +597,7 @@
                         type="date"
                         required
                         bind:value={startDateInput}
+                        onchange={updateEndDateTime}
                         class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
                     />
                 </div>
@@ -614,6 +613,7 @@
                             type="time"
                             required
                             bind:value={startTimeInput}
+                            onchange={updateEndDateTime}
                             class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
                         />
                     </div>

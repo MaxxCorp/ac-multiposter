@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { announcement, announcementTag, announcementContact, tag } from '$lib/server/db/schema';
+import { announcement, announcementTag, announcementContact, tag, announcementLocation } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { Announcement } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
@@ -43,6 +43,12 @@ export const readAnnouncement = query(v.string(), async (announcementId: string)
         .from(announcementContact)
         .where(eq(announcementContact.announcementId, announcementId));
 
+    // Fetch related locations
+    const locations = await db
+        .select({ id: announcementLocation.locationId })
+        .from(announcementLocation)
+        .where(eq(announcementLocation.announcementId, announcementId));
+
     return {
         ...result,
         createdAt: result.createdAt.toISOString(),
@@ -50,5 +56,6 @@ export const readAnnouncement = query(v.string(), async (announcementId: string)
         tagIds: tags.map(t => t.id),
         tagNames: tags.map(t => t.name).filter(n => n !== null) as string[],
         contactIds: contacts.map(c => c.id),
+        locationIds: locations.map(l => l.id),
     } as Announcement;
 });

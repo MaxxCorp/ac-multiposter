@@ -1,7 +1,7 @@
 import { form } from '$app/server';
 import { error } from "@sveltejs/kit";
 import { db } from '$lib/server/db';
-import { event, eventResource, eventContact } from '$lib/server/db/schema';
+import { event, eventResource, eventContact, eventLocation } from '$lib/server/db/schema';
 import { listEvents } from '../list.remote';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { createEventSchema } from '$lib/validations/events';
@@ -65,7 +65,6 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 			summary: data.summary,
 			description: data.description || null,
 			location: data.location || null,
-			locationId: data.locationId || null,
 			categoryBerlinDotDe: data.categoryBerlinDotDe || null,
 			ticketPrice: data.ticketPrice || null,
 			startDateTime: start,
@@ -85,6 +84,17 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 		if (!newEvent) {
 			console.error('No event returned from insert stub');
 			error(500, 'Failed to create event');
+		}
+
+		// Associate locations if provided
+		const locationIds = typeof data.locationIds === 'string' ? JSON.parse(data.locationIds) : data.locationIds;
+		if (locationIds && Array.isArray(locationIds) && locationIds.length > 0) {
+			console.log('Associating locations:', locationIds);
+			const locationAssociations = (locationIds as string[]).map((locationId: string) => ({
+				eventId: newEvent.id,
+				locationId,
+			}));
+			await db.insert(eventLocation).values(locationAssociations);
 		}
 
 		// Associate resources if provided

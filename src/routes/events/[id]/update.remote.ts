@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { event, eventResource, eventContact } from '$lib/server/db/schema';
+import { event, eventResource, eventContact, eventLocation } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { listEvents } from '../list.remote';
 import { readEvent } from './read.remote';
@@ -40,7 +40,6 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 		if (data.summary !== undefined) updateData.summary = data.summary;
 		if (data.description !== undefined) updateData.description = data.description;
 		if (data.location !== undefined) updateData.location = data.location;
-		if (data.locationId !== undefined) updateData.locationId = data.locationId || null;
 		if (data.categoryBerlinDotDe !== undefined) updateData.categoryBerlinDotDe = data.categoryBerlinDotDe;
 		if (data.ticketPrice !== undefined) updateData.ticketPrice = data.ticketPrice;
 
@@ -95,6 +94,23 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 			error(404, 'Event not found');
 		}
 
+		// Update location associations
+		if (data.locationIds !== undefined) { // Check if field was submitted
+			const locationIds = typeof data.locationIds === 'string' ? JSON.parse(data.locationIds) : data.locationIds;
+			console.log('Updating locations to:', locationIds);
+
+			// Delete existing
+			await db.delete(eventLocation).where(eq(eventLocation.eventId, data.id));
+
+			// Insert new
+			if (locationIds && Array.isArray(locationIds) && locationIds.length > 0) {
+				const locationAssociations = (locationIds as string[]).map((locationId: string) => ({
+					eventId: data.id,
+					locationId,
+				}));
+				await db.insert(eventLocation).values(locationAssociations);
+			}
+		}
 
 		// Update resources associations
 		if (data.resourceIds !== undefined) { // Check if field was submitted

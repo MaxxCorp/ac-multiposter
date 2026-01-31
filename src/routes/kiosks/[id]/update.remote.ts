@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { db } from '$lib/server/db';
-import { kiosk } from '$lib/server/db/schema';
+import { kiosk, kioskLocation } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAuthenticatedUser, ensureAccess } from '$lib/authorization';
 import { updateKioskSchema } from '$lib/validations/kiosks';
@@ -29,6 +29,22 @@ export const updateKiosk = form(updateKioskSchema, async (data) => {
 
         if (!updated) {
             error(404, 'Kiosk not found');
+        }
+
+        // Update Locations if provided
+        if (data.locationIds !== undefined) {
+            const locationIds = typeof data.locationIds === 'string' ? JSON.parse(data.locationIds) : data.locationIds;
+            // Delete existing
+            await db.delete(kioskLocation).where(eq(kioskLocation.kioskId, id));
+            // Insert new
+            if (locationIds && Array.isArray(locationIds) && locationIds.length > 0) {
+                await db.insert(kioskLocation).values(
+                    (locationIds as string[]).map((locationId: string) => ({
+                        kioskId: id,
+                        locationId,
+                    }))
+                );
+            }
         }
 
         await getKiosk(id).refresh();

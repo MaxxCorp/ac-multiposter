@@ -10,7 +10,7 @@ const numberCoerce = v.pipe(
 export const createKioskSchema = v.object({
     name: v.pipe(v.string(), v.minLength(1, 'Name is required')),
     description: v.optional(v.string()),
-    locationId: v.pipe(v.string(), v.minLength(1, 'Location is required')),
+    locationIds: v.optional(v.union([v.array(v.string()), v.string()])), // Optional, if empty means all locations
     loopDuration: v.pipe(
         numberCoerce,
         v.minValue(3, 'Loop duration must be at least 3 seconds')
@@ -28,8 +28,8 @@ export const createKioskSchema = v.object({
 export const updateKioskSchema = v.object({
     id: v.string(),
     name: v.optional(v.pipe(v.string(), v.minLength(1, 'Name is required'))),
-    description: v.optional(v.string()),
-    locationId: v.optional(v.pipe(v.string(), v.minLength(1, 'Location is required'))),
+    description: v.optional(v.string()), // Kept only one
+    locationIds: v.optional(v.union([v.array(v.string()), v.string()])),
     loopDuration: v.optional(v.pipe(numberCoerce, v.minValue(3))),
     lookAheadDays: v.optional(v.pipe(numberCoerce, v.minValue(0))),
     lookPastDays: v.optional(v.pipe(numberCoerce, v.minValue(0)))

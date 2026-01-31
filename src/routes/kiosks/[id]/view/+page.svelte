@@ -266,7 +266,10 @@
                 {/if}
             </p>
             <p class="text-sm">
-                Location: {data.kiosk.location?.name || "Unknown"}
+                Location: {data.kiosk.locations &&
+                data.kiosk.locations.length > 0
+                    ? data.kiosk.locations.join(", ")
+                    : "All Locations"}
             </p>
         </div>
     {:else}
