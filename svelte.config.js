@@ -20,7 +20,7 @@ const config = {
 			remoteFunctions: true
 		},
 		alias: {
-			"@/*": "./lib/*"
+			"@": "./src/lib"
 		}
 	},
 	compilerOptions: {

@@ -1,4 +1,5 @@
 export * from './announcements';
+export * from './cms';
 export * from "./auth";
 export * from "./contacts";
 export * from "./events";
