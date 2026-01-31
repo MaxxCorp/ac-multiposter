@@ -9,6 +9,8 @@
     import ContactManager from "$lib/components/contacts/ContactManager.svelte";
     import TagInput from "$lib/components/ui/TagInput.svelte";
 
+    import RichTextEditor from "$lib/components/cms/RichTextEditor.svelte";
+
     let {
         remoteFunction,
         validationSchema,
@@ -20,6 +22,10 @@
         isUpdating?: boolean;
         initialData?: any;
     } = $props();
+
+    let contentValue = $state(
+        getField("content").value() ?? initialData?.content ?? "",
+    );
 
     // Initialize tags string from tagNames (edit mode) or default to "News" (create mode)
     let tagsString = $state(
@@ -154,16 +160,12 @@
                 >
                     Content <span class="text-red-500">*</span>
                 </label>
-                <textarea
-                    {...getField("content").as("text")}
-                    required
-                    rows="6"
-                    value={getField("content").value() ??
-                        initialData?.content ??
-                        ""}
-                    class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
-                    placeholder="Announcement Content"
-                ></textarea>
+                <div class="prose max-w-none">
+                    <RichTextEditor bind:value={contentValue} />
+                    <input
+                        {...getField("content").as("hidden", contentValue)}
+                    />
+                </div>
                 {#each getField("content").issues() ?? [] as issue}
                     <p class="mt-1 text-sm text-red-600">{issue.message}</p>
                 {/each}

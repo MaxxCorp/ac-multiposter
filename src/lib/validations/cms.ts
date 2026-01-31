@@ -47,3 +47,12 @@ export const readContentSchema = v.object({
     language: v.optional(v.string()),
     branch: v.optional(v.string()),
 });
+
+/**
+ * Validates image upload via base64
+ */
+export const uploadImageSchema = v.object({
+    filename: v.string(),
+    contentType: v.string(),
+    content: v.string(), // Base64 string
+});

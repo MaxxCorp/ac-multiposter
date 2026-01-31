@@ -65,9 +65,9 @@
         <div class="md:col-span-2 space-y-8">
             <!-- Description -->
             <div class="prose prose-lg text-gray-600 max-w-none">
-                <p class="whitespace-pre-wrap">
-                    {event.description || "No description provided."}
-                </p>
+                <div class="whitespace-pre-wrap">
+                    {@html event.description || "No description provided."}
+                </div>
             </div>
 
             <!-- Meta Data Grid -->

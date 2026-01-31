@@ -111,8 +111,14 @@
         "Vermischtes",
     ];
 
+    import RichTextEditor from "$lib/components/cms/RichTextEditor.svelte";
+
     let useFreeTextLocation = $state(
         !!initialData?.location && !initialData?.locationId,
+    );
+
+    let descriptionValue = $state(
+        getField("description").value() ?? initialData?.description ?? "",
     );
 
     // Date/Time handling
@@ -398,16 +404,15 @@
                     class="block text-sm font-medium text-gray-700 mb-1"
                     >Description</label
                 >
-                <textarea
-                    {...getField("description").as("text")}
-                    rows="4"
-                    value={getField("description").value() ??
-                        initialData?.description ??
-                        ""}
-                    class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
-                    placeholder="Event description"
-                    onblur={() => remoteFunction.validate()}
-                ></textarea>
+                <div class="prose max-w-none">
+                    <RichTextEditor bind:value={descriptionValue} />
+                    <input
+                        {...getField("description").as(
+                            "hidden",
+                            descriptionValue,
+                        )}
+                    />
+                </div>
             </div>
 
             <div>

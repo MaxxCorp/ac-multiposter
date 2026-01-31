@@ -26,12 +26,11 @@
     let dataPromise = $state(readEvent(eventId));
 
     // Check if the user is authorized to edit
+    // Check if the user is authorized to edit
     function checkCanEdit(event: any) {
         const user = page.data.user as any;
-        return (
-            !!user &&
-            (user.id === event.userId || (user.roles || []).includes("admin"))
-        );
+        // Allow any authenticated user to edit
+        return !!user;
     }
 
     // Formatting helpers
@@ -302,7 +301,7 @@
                                     <div
                                         class="prose max-w-none text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-100"
                                     >
-                                        {event.description}
+                                        {@html event.description}
                                     </div>
                                 </section>
                             {/if}

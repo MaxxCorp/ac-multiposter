@@ -10,6 +10,7 @@ node_modules
 /build
 /static/contacts
 /static/events
+/static/cms
 
 # OS
 .DS_Store

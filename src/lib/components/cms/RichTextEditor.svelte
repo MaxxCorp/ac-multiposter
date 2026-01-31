@@ -11,6 +11,8 @@
     let isMounted = $state(false);
     let errorMsg = $state("");
 
+    import { uploadMedia } from "../../../routes/cms/media/create.remote";
+
     onMount(async () => {
         isMounted = true;
 
@@ -36,11 +38,68 @@
             Table,
             TableToolbar,
             SourceEditing,
+            Image,
+            ImageUpload,
+            ImageToolbar,
+            ImageCaption,
+            ImageStyle,
+            ImageResize,
+            LinkImage,
+            FileRepository, // Ensure FileRepository is available if needed, though usually core
         } = CKEditorModule;
 
         if (!editorElement) {
             errorMsg = "Editor element not found";
             return;
+        }
+
+        // Custom Upload Adapter Plugin
+        function UploadAdapterPlugin(editor: any) {
+            editor.plugins.get("FileRepository").createUploadAdapter = (
+                loader: any,
+            ) => {
+                return {
+                    upload: async () => {
+                        try {
+                            const file = await loader.file;
+
+                            return new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.readAsDataURL(file);
+                                reader.onload = async () => {
+                                    try {
+                                        const result = await (
+                                            uploadMedia as any
+                                        )({
+                                            filename: file.name,
+                                            contentType: file.type,
+                                            content: reader.result as string,
+                                        });
+
+                                        if (result.success && result.urls) {
+                                            resolve({
+                                                default: result.urls.default,
+                                            });
+                                        } else {
+                                            reject(
+                                                result.error?.message ||
+                                                    result.error ||
+                                                    "Upload failed",
+                                            );
+                                        }
+                                    } catch (err) {
+                                        reject(err);
+                                    }
+                                };
+                                reader.onerror = (err) => reject(err);
+                            });
+                        } catch (error: any) {
+                            console.error("Upload error:", error);
+                            throw error;
+                        }
+                    },
+                };
+            };
         }
 
         try {
@@ -59,7 +118,15 @@
                     Table,
                     TableToolbar,
                     SourceEditing,
+                    Image,
+                    ImageUpload,
+                    ImageToolbar,
+                    ImageCaption,
+                    ImageStyle,
+                    ImageResize,
+                    LinkImage,
                 ],
+                extraPlugins: [UploadAdapterPlugin],
                 toolbar: [
                     "undo",
                     "redo",
@@ -70,6 +137,7 @@
                     "italic",
                     "|",
                     "link",
+                    "uploadImage", // Add uploadImage button
                     "insertTable",
                     "|",
                     "bulletedList",
@@ -77,6 +145,16 @@
                     "|",
                     "sourceEditing",
                 ],
+                image: {
+                    toolbar: [
+                        "imageStyle:inline",
+                        "imageStyle:block",
+                        "imageStyle:side",
+                        "|",
+                        "toggleImageCaption",
+                        "imageTextAlternative",
+                    ],
+                },
                 initialData: value,
             });
             console.log("CKEditor initialized");

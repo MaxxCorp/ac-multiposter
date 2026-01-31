@@ -115,11 +115,7 @@
                                                 </h2>
                                             </div>
                                         </div>
-                                        <p
-                                            class="text-gray-600 mb-2 line-clamp-2"
-                                        >
-                                            {announcement.content}
-                                        </p>
+
                                         <div class="flex flex-col gap-1 mt-1">
                                             <div
                                                 class="flex items-center gap-2"
