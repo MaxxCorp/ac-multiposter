@@ -1,5 +1,7 @@
 import { query } from '$app/server';
 import { announcement } from '$lib/server/db/schema';
+import { db } from '$lib/server/db';
+import { eq, desc } from 'drizzle-orm';
 import { listQuery } from '$lib/server/db/query-helpers';
 import type { Announcement as DbAnnouncement } from '$lib/server/db/schema';
 
@@ -13,6 +15,12 @@ export type Announcement = Omit<DbAnnouncement, 'createdAt' | 'updatedAt'> & {
     tagNames?: string[];
     contactIds?: string[];
     locationIds?: string[];
+    resolvedContact?: {
+        name: string;
+        email: string;
+        phone: string;
+        qrCodeDataUrl?: string;
+    } | null;
 };
 
 /**
@@ -30,4 +38,20 @@ export const listAnnouncements = query(async (): Promise<Announcement[]> => {
     });
 
     return results;
+});
+
+/**
+ * List all public announcements for Kiosk display
+ */
+export const listKioskAnnouncements = query(async (): Promise<Announcement[]> => {
+    const results = await db.query.announcement.findMany({
+        where: eq(announcement.isPublic, true),
+        orderBy: [desc(announcement.updatedAt)],
+    });
+
+    return results.map(row => ({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+    }));
 });

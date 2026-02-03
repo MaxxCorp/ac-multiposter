@@ -1,7 +1,7 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
 import { eq, and, or, gte, desc, isNull, inArray, ilike } from 'drizzle-orm';
-import { event, eventContact, contact, contactEmail, contactPhone, contactAddress, eventResource, resource, location, kiosk, kioskLocation, eventLocation } from '$lib/server/db/schema';
+import { event, eventContact, contact, contactEmail, contactPhone, contactAddress, eventResource, resource, location, kiosk, kioskLocation, eventLocation, contactTag, tag, locationContact } from '$lib/server/db/schema';
 import * as v from 'valibot';
 import type { Event } from './list.remote';
 
@@ -143,6 +143,15 @@ async function hydrateEvents(events: any[]): Promise<PublicEvent[]> {
         .leftJoin(location, eq(resource.locationId, location.id))
         .where(inArray(eventResource.eventId, eventIds));
 
+    // Fetch direct locations (new multi-location support)
+    const directLocationData = await db
+        .select({
+            eventId: eventLocation.eventId,
+            locationId: eventLocation.locationId
+        })
+        .from(eventLocation)
+        .where(inArray(eventLocation.eventId, eventIds));
+
     const contactsData = await db
         .select({
             eventId: eventContact.eventId,
@@ -159,16 +168,74 @@ async function hydrateEvents(events: any[]): Promise<PublicEvent[]> {
 
     const contactIds = contactsData.map(c => c.contactId);
 
+    // Fetch tags for event contacts to identify 'Employee'
+    let contactEmployeeTags = new Set<string>();
+    if (contactIds.length > 0) {
+        const tags = await db.select({ contactId: contactTag.contactId })
+            .from(contactTag)
+            .innerJoin(tag, eq(contactTag.tagId, tag.id))
+            .where(and(
+                inArray(contactTag.contactId, contactIds),
+                eq(tag.name, 'Employee')
+            ));
+        tags.forEach(t => contactEmployeeTags.add(t.contactId));
+    }
+
+    // Collect all location IDs (from resources and direct assignment)
+    const allLocationIds = new Set<string>();
+    resourceData.forEach(r => { if (r.locationId) allLocationIds.add(r.locationId); });
+    directLocationData.forEach(l => allLocationIds.add(l.locationId));
+
+    // Fetch 'Employee' contacts for these locations
+    const locationEmployeeContacts: Record<string, string> = {}; // locationId -> contactId (first found)
+    if (allLocationIds.size > 0) {
+        const locIdsArr = Array.from(allLocationIds);
+        const locContacts = await db
+            .select({
+                locationId: locationContact.locationId,
+                contactId: locationContact.contactId
+            })
+            .from(locationContact)
+            .innerJoin(contactTag, eq(locationContact.contactId, contactTag.contactId))
+            .innerJoin(tag, eq(contactTag.tagId, tag.id))
+            .where(and(
+                inArray(locationContact.locationId, locIdsArr),
+                eq(tag.name, 'Employee')
+            ));
+
+        // Map first employee contact per location
+        for (const lc of locContacts) {
+            if (!locationEmployeeContacts[lc.locationId]) {
+                locationEmployeeContacts[lc.locationId] = lc.contactId;
+            }
+        }
+    }
+
+    // Capture IDs of location contacts to fetch their details if not already fetched
+    const extraContactIds = Object.values(locationEmployeeContacts).filter(id => !contactIds.includes(id));
+    const allContactIdsToFetch = [...contactIds, ...extraContactIds];
+
     let emails: any[] = [];
     let phones: any[] = [];
     let addresses: any[] = [];
+    let extraContactDetails: any[] = [];
 
-    if (contactIds.length > 0) {
+    if (allContactIdsToFetch.length > 0) {
         emails = await db.select({ contactId: contactEmail.contactId, value: contactEmail.value, type: contactEmail.type, primary: contactEmail.primary })
-            .from(contactEmail).where(inArray(contactEmail.contactId, contactIds));
+            .from(contactEmail).where(inArray(contactEmail.contactId, allContactIdsToFetch));
         phones = await db.select({ contactId: contactPhone.contactId, value: contactPhone.value, type: contactPhone.type, primary: contactPhone.primary })
-            .from(contactPhone).where(inArray(contactPhone.contactId, contactIds));
-        addresses = await db.select().from(contactAddress).where(inArray(contactAddress.contactId, contactIds));
+            .from(contactPhone).where(inArray(contactPhone.contactId, allContactIdsToFetch));
+        addresses = await db.select().from(contactAddress).where(inArray(contactAddress.contactId, allContactIdsToFetch));
+
+        if (extraContactIds.length > 0) {
+            extraContactDetails = await db.select({
+                id: contact.id,
+                displayName: contact.displayName,
+                givenName: contact.givenName,
+                familyName: contact.familyName,
+                qrCodePath: contact.qrCodePath,
+            }).from(contact).where(inArray(contact.id, extraContactIds));
+        }
     }
 
     return events.map(row => {
@@ -193,16 +260,50 @@ async function hydrateEvents(events: any[]): Promise<PublicEvent[]> {
         const evtContacts = contactsData.filter(c => c.eventId === row.id);
         const acceptedCount = evtContacts.filter(c => c.participationStatus === 'accepted').length;
 
+        // Resolve Display Contact
+        let chosenContactId: string | null = null;
+        let chosenContactDetails: any = null;
+
+        // 1. Event Contact with 'Employee' tag
+        const employeeContact = evtContacts.find(c => contactEmployeeTags.has(c.contactId));
+        if (employeeContact) {
+            chosenContactId = employeeContact.contactId;
+            chosenContactDetails = employeeContact;
+        }
+
+        // 2. Location Contact with 'Employee' tag
+        if (!chosenContactId) {
+            // Get locations for this event
+            const evtLocIds = [
+                ...resourceData.filter(r => r.eventId === row.id && r.locationId).map(r => r.locationId!),
+                ...directLocationData.filter(l => l.eventId === row.id).map(l => l.locationId)
+            ];
+
+            for (const locId of evtLocIds) {
+                if (locationEmployeeContacts[locId]) {
+                    chosenContactId = locationEmployeeContacts[locId];
+                    // Find details
+                    chosenContactDetails = evtContacts.find(c => c.contactId === chosenContactId)
+                        || extraContactDetails.find(c => c.id === chosenContactId);
+                    if (chosenContactDetails) break;
+                }
+            }
+        }
+
+        // 3. Fallback: First Event Contact
+        if (!chosenContactId && evtContacts.length > 0) {
+            chosenContactId = evtContacts[0].contactId;
+            chosenContactDetails = evtContacts[0];
+        }
+
         let resolvedContact = null;
-        if (evtContacts.length > 0) {
-            const primary = evtContacts[0];
-            const workEmails = emails.filter(e => e.contactId === primary.contactId && e.type === 'work');
-            const workPhones = phones.filter(p => p.contactId === primary.contactId && p.type === 'work');
-            const workAddresses = addresses.filter(a => a.contactId === primary.contactId && a.type === 'work');
-            const primaryAddress = workAddresses.find(a => a.primary) || workAddresses[0];
+        if (chosenContactId && chosenContactDetails) {
+            const primaryAddress = addresses.filter(a => a.contactId === chosenContactId && a.type === 'work').find(a => a.primary) || addresses.filter(a => a.contactId === chosenContactId && a.type === 'work')[0];
+            const workEmails = emails.filter(e => e.contactId === chosenContactId && e.type === 'work');
+            const workPhones = phones.filter(p => p.contactId === chosenContactId && p.type === 'work');
 
             resolvedContact = {
-                name: primary.displayName || `${primary.givenName || ''} ${primary.familyName || ''}`.trim(),
+                name: chosenContactDetails.displayName || `${chosenContactDetails.givenName || ''} ${chosenContactDetails.familyName || ''}`.trim(),
                 emails: workEmails.map(e => ({ value: e.value, type: e.type, primary: e.primary })),
                 phones: workPhones.map(p => ({ value: p.value, type: p.type, primary: p.primary })),
                 address: primaryAddress ? {
@@ -212,7 +313,7 @@ async function hydrateEvents(events: any[]): Promise<PublicEvent[]> {
                     city: primaryAddress.city,
                     country: primaryAddress.country
                 } : null,
-                qrCodeDataUrl: primary.qrCodePath || undefined
+                qrCodeDataUrl: chosenContactDetails.qrCodePath || undefined
             };
         }
 

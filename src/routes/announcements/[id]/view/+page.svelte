@@ -5,8 +5,9 @@
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
-    import { Calendar, Share2, Pencil } from "@lucide/svelte";
+    import { Share2, Pencil } from "@lucide/svelte";
     import Button from "$lib/components/ui/button/button.svelte";
+    import AnnouncementView from "$lib/components/announcements/AnnouncementView.svelte";
     import { onMount } from "svelte";
 
     let id = $derived($page.params.id);
@@ -53,33 +54,7 @@
                         current={announcement.title}
                     />
 
-                    <div class="border-b pb-6">
-                        <div class="flex items-center gap-3 mb-2 flex-wrap">
-                            <h1 class="text-3xl font-bold text-gray-900">
-                                {announcement.title}
-                            </h1>
-                            {#if announcement.isPublic}
-                                <span
-                                    class="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full"
-                                    >Public</span
-                                >
-                            {/if}
-                        </div>
-                        <div
-                            class="text-sm text-gray-500 flex items-center gap-2 mt-2"
-                        >
-                            <Calendar size={14} />
-                            Updated on {new Date(
-                                announcement.updatedAt,
-                            ).toLocaleDateString()}
-                        </div>
-                    </div>
-
-                    <div
-                        class="prose max-w-none text-gray-700 whitespace-pre-wrap"
-                    >
-                        {@html announcement.content}
-                    </div>
+                    <AnnouncementView {announcement} />
 
                     <div class="flex flex-wrap gap-4 pt-8 border-t">
                         {#if canShare}

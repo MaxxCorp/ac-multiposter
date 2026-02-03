@@ -1,4 +1,5 @@
 import { listKioskEvents } from '../../../events/list-public.remote';
+import { listKioskAnnouncements } from '../../../announcements/list.remote';
 import { db } from '$lib/server/db';
 import { kiosk, kioskLocation, location } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -24,9 +25,14 @@ export const load = async ({ params, depends }) => {
     };
 
     const events = await listKioskEvents(params.id);
+    const announcements = await listKioskAnnouncements();
+
+    const items = [...events, ...announcements].sort((a, b) => {
+        return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    });
 
     return {
         kiosk: kioskWithLocations,
-        events
+        items
     };
 };

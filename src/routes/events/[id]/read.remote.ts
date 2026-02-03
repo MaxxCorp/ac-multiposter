@@ -1,7 +1,7 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { event, eventResource, eventContact, contact, contactEmail, contactPhone, eventLocation } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { event, eventResource, eventContact, contact, contactEmail, contactPhone, eventLocation, contactTag, tag, locationContact } from '$lib/server/db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import type { Event } from '../list.remote';
 import { getOptionalUser, hasAccess } from '$lib/authorization';
 import { error } from '@sveltejs/kit';
@@ -63,34 +63,88 @@ export const readEvent = query(v.string(), async (eventId: string): Promise<Even
 
 	// Resolve primary contact details
 	let resolvedContact = null;
-	if (contacts.length > 0) {
-		const primaryContact = contacts[0];
 
-		// Fetch email and phone
+	// Helper to fetch full contact info
+	const fetchContactInfo = async (contactId: string) => {
+		const [c] = await db.select().from(contact).where(eq(contact.id, contactId));
+		if (!c) return null;
+
 		const [email] = await db
 			.select({ value: contactEmail.value })
 			.from(contactEmail)
-			.where(and(
-				eq(contactEmail.contactId, primaryContact.id),
-				eq(contactEmail.primary, true)
-			))
+			.where(and(eq(contactEmail.contactId, contactId), eq(contactEmail.primary, true)))
 			.limit(1);
 
 		const [phone] = await db
 			.select({ value: contactPhone.value })
 			.from(contactPhone)
-			.where(and(
-				eq(contactPhone.contactId, primaryContact.id),
-				eq(contactPhone.primary, true)
-			))
+			.where(and(eq(contactPhone.contactId, contactId), eq(contactPhone.primary, true)))
 			.limit(1);
 
-		resolvedContact = {
-			name: primaryContact.displayName || `${primaryContact.givenName || ''} ${primaryContact.familyName || ''}`.trim(),
+		return {
+			name: c.displayName || `${c.givenName || ''} ${c.familyName || ''}`.trim(),
 			email: email?.value || '',
 			phone: phone?.value || '',
-			qrCodeDataUrl: primaryContact.qrCodePath || undefined
+			qrCodeDataUrl: c.qrCodePath || undefined
 		};
+	};
+
+	// 1. Check for Event Contact with 'Employee' tag
+	let chosenContactId: string | null = null;
+
+	// Fetch contacts with their tags
+	const contactsWithTags = await db
+		.select({
+			contactId: eventContact.contactId,
+			tagName: tag.name
+		})
+		.from(eventContact)
+		.leftJoin(contactTag, eq(eventContact.contactId, contactTag.contactId))
+		.leftJoin(tag, eq(contactTag.tagId, tag.id))
+		.where(eq(eventContact.eventId, eventId));
+
+	// Group tags by contact
+	const contactTagsMap = new Map<string, string[]>();
+	for (const row of contactsWithTags) {
+		if (!contactTagsMap.has(row.contactId)) contactTagsMap.set(row.contactId, []);
+		if (row.tagName) contactTagsMap.get(row.contactId)?.push(row.tagName);
+	}
+
+	// Find first contact with 'Employee' tag
+	const employeeContact = Array.from(contactTagsMap.entries()).find(([_, tags]) => tags.includes('Employee'));
+	if (employeeContact) {
+		chosenContactId = employeeContact[0];
+	}
+
+	// 2. If no Event Employee Contact, check Location Employee Contacts
+	if (!chosenContactId && locations.length > 0) {
+		const locIds = locations.map(l => l.id);
+		const locationContacts = await db
+			.select({
+				contactId: locationContact.contactId,
+				tagName: tag.name
+			})
+			.from(locationContact)
+			.leftJoin(contactTag, eq(locationContact.contactId, contactTag.contactId))
+			.leftJoin(tag, eq(contactTag.tagId, tag.id))
+			.where(inArray(locationContact.locationId, locIds));
+
+		// Find first location contact with 'Employee' tag
+		// Note: The order isn't strictly defined by the prompt for multiple locations, 
+		// effectively "first found" in query order.
+		const locContact = locationContacts.find(row => row.tagName === 'Employee');
+		if (locContact) {
+			chosenContactId = locContact.contactId;
+		}
+	}
+
+	// 3. Fallback: First event contact (if any)
+	if (!chosenContactId && contacts.length > 0) {
+		chosenContactId = contacts[0].id;
+	}
+
+	if (chosenContactId) {
+		resolvedContact = await fetchContactInfo(chosenContactId);
 	}
 
 	return {
