@@ -146,9 +146,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 		}
 
 		try {
-			// Use auth.request() directly to ensure proper authentication
+			// Use makeRequest to ensure proper authentication and error handling
 			const url = `https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1`;
-			await this.auth.request({ url, method: 'GET' });
+			await this.makeRequest({ url, method: 'GET' });
 			return true;
 		} catch (error) {
 			console.error('Google Calendar connection validation failed:', error);
@@ -189,10 +189,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 				queryParams.append('timeMax', futureYears.toISOString());
 			}
 
-			// Use auth.request() directly to ensure proper authentication
 			const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events?${queryParams.toString()}`;
 
-			const response = await this.auth.request<calendar_v3.Schema$Events>({
+			const response = await this.makeRequest<calendar_v3.Schema$Events>({
 				url,
 				method: 'GET'
 			});
@@ -219,12 +218,6 @@ export class GoogleCalendarProvider implements SyncProvider {
 				return this.pullEvents(); // Retry without sync token
 			}
 
-			// Handle authentication errors
-			if (error.code === 401 || error.code === 403) {
-				console.error('[GoogleCalendarProvider] Authentication error - token may be expired or revoked');
-				throw new Error(`Google Calendar authentication failed: ${error.message}. Please re-authenticate.`);
-			}
-
 			throw error;
 		}
 	}
@@ -236,11 +229,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 
 		const gcalEvent = this.mapToGoogleEvent(event);
 
-		// Make the request directly using the auth client
-		// This ensures the Authorization header is properly set
 		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events?sendUpdates=all`;
 
-		const response = await this.auth.request<{
+		const response = await this.makeRequest<{
 			id: string;
 			etag?: string;
 		}>({
@@ -262,10 +253,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 
 		const gcalEvent = this.mapToGoogleEvent(event);
 
-		// Use auth.request() directly to ensure proper authentication
 		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events/${encodeURIComponent(externalId)}?sendUpdates=all`;
 
-		const response = await this.auth.request<{
+		const response = await this.makeRequest<{
 			etag?: string;
 		}>({
 			url,
@@ -283,10 +273,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 			throw new Error('Provider not initialized');
 		}
 
-		// Use auth.request() directly to ensure proper authentication
 		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events/${encodeURIComponent(externalId)}`;
 
-		await this.auth.request({
+		await this.makeRequest({
 			url,
 			method: 'DELETE'
 		});
@@ -300,11 +289,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 		const channelId = crypto.randomUUID();
 		const resourceId = crypto.randomUUID();
 
-		// OAuth2 credentials are sufficient for the Calendar API - no API key needed
-		// Use auth.request() directly to ensure proper authentication
 		const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(this.calendarId)}/events/watch`;
 
-		const response = await this.auth.request<{
+		const response = await this.makeRequest<{
 			resourceId?: string;
 			expiration?: string;
 		}>({
@@ -349,10 +336,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 		}
 
 		try {
-			// Use auth.request() directly to ensure proper authentication
 			const url = 'https://www.googleapis.com/calendar/v3/channels/stop';
 
-			await this.auth.request({
+			await this.makeRequest({
 				url,
 				method: 'POST',
 				data: {
@@ -366,6 +352,63 @@ export class GoogleCalendarProvider implements SyncProvider {
 		}
 	}
 
+	private async makeRequest<T = any>(opts: any, retry = true): Promise<{ data: T }> {
+		if (!this.auth) throw new Error('Provider not initialized');
+
+		try {
+			return await this.auth.request<T>(opts);
+		} catch (error: any) {
+			// Handle authentication errors
+			if (retry && (error.code === 401 || error.code === 403)) {
+				console.warn('[GoogleCalendarProvider] Request failed with 401/403. Attempting token refresh...');
+
+				try {
+					// Force refresh access token
+					const { credentials } = await this.auth.refreshAccessToken();
+					this.auth.setCredentials(credentials);
+
+					// Update DB with new tokens
+					if (credentials.access_token && this.config) {
+						const providerIdMap: Record<string, string> = {
+							'google-calendar': 'google',
+							'microsoft-calendar': 'microsoft'
+						};
+						const oauthProviderId = providerIdMap[this.config.providerType];
+
+						await db
+							.update(account)
+							.set({
+								accessToken: credentials.access_token,
+								accessTokenExpiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : undefined,
+								refreshToken: credentials.refresh_token || undefined,
+								updatedAt: new Date()
+							})
+							.where(
+								and(
+									eq(account.userId, this.config.userId),
+									eq(account.providerId, oauthProviderId)
+								)
+							);
+						console.log(`[GoogleCalendarProvider] Manually refreshed and saved tokens for user ${this.config.userId}`);
+					}
+
+					// Retry request with new token
+					return await this.auth.request<T>(opts);
+				} catch (refreshError: any) {
+					console.error('[GoogleCalendarProvider] Token refresh failed:', refreshError);
+					throw new Error(`Google Calendar authentication failed: ${refreshError.message}. Please re-authenticate.`);
+				}
+			}
+
+			// If it wasn't an auth error or retry failed, throw original or wrapped error
+			if (error.code === 401 || error.code === 403) {
+				throw new Error(`Google Calendar authentication failed: ${error.message}. Please re-authenticate.`);
+			}
+
+			throw error;
+		}
+	}
+
 	async processWebhook(payload: any): Promise<{
 		changes: Array<{ externalId: string; changeType: 'created' | 'updated' | 'deleted' }>;
 	}> {
@@ -375,6 +418,8 @@ export class GoogleCalendarProvider implements SyncProvider {
 		const { events } = await this.pullEvents(this.config?.syncToken);
 
 		// Map events to changes (all treated as updated for simplicity)
+		// We need to fetch all events because we don't know which one changed
+		// Realistically we should use sync tokens properly to get deltas
 		const changes = events.map((event) => ({
 			externalId: event.externalId,
 			changeType: 'updated' as const
