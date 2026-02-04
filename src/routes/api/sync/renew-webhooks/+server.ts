@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { syncService } from '$lib/server/sync/service';
+import { env } from '$env/dynamic/private';
 
 /**
  * API endpoint to renew expiring webhooks
@@ -16,7 +17,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// Authentication: Support Authorization header OR query param (?token=)
 		const authHeader = request.headers.get('authorization');
 		const queryToken = url.searchParams.get('token');
-		const expectedToken = process.env.CRON_SECRET;
+		const expectedToken = env.CRON_SECRET;
 
 		if (expectedToken) {
 			const bearer = authHeader?.startsWith('Bearer ')
@@ -44,7 +45,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 export const GET: RequestHandler = async ({ request, url }) => {
 	try {
 		const cronHeader = request.headers.get('x-vercel-cron');
-		const expectedToken = process.env.CRON_SECRET;
+		const expectedToken = env.CRON_SECRET;
 		const authHeader = request.headers.get('authorization');
 		const queryToken = url.searchParams.get('token');
 

@@ -196,37 +196,14 @@
 		}}
 	>
 		<!-- Hidden Inputs required for form submission -->
-		<input
-			{...getField("providerType").as("hidden", selectedProvider ?? "")}
-		/>
+		{#if selectedProvider}
+			<input
+				{...getField("providerType").as("hidden", selectedProvider)}
+			/>
+		{/if}
 		<!-- providerId is handled by the text input below -->
 
 		<!-- Settings as JSON string to avoid dot-notation parsing issues -->
-		<input
-			{...getField("settings").as(
-				"hidden",
-				JSON.stringify({
-					calendarId: calendarId || "primary",
-					syncIntervalMinutes,
-					company:
-						selectedProvider === "berlin-de-main-calendar"
-							? company
-							: undefined,
-					baseUrl:
-						selectedProvider === "wp-the-events-calendar"
-							? wpBaseUrl
-							: undefined,
-					username:
-						selectedProvider === "wp-the-events-calendar"
-							? wpUsername
-							: undefined,
-					applicationPassword:
-						selectedProvider === "wp-the-events-calendar"
-							? wpAppPassword
-							: undefined,
-				}),
-			)}
-		/>
 
 		<!-- Provider Selection -->
 		<div class="bg-white shadow rounded-lg p-6 space-y-4">
@@ -320,7 +297,7 @@
 								Calendar ID
 							</label>
 							<input
-								type="text"
+								{...getField("settings.calendarId").as("text")}
 								id="calendarId"
 								bind:value={calendarId}
 								placeholder="primary"
@@ -342,7 +319,7 @@
 								Company (Firma)
 							</label>
 							<input
-								type="text"
+								{...getField("settings.company").as("text")}
 								id="company"
 								bind:value={company}
 								placeholder="Your organization name"
@@ -363,7 +340,7 @@
 								WordPress Site URL
 							</label>
 							<input
-								type="url"
+								{...getField("settings.baseUrl").as("url")}
 								id="wpBaseUrl"
 								bind:value={wpBaseUrl}
 								placeholder="https://yoursite.com"
@@ -381,7 +358,7 @@
 								WordPress Username
 							</label>
 							<input
-								type="text"
+								{...getField("settings.username").as("text")}
 								id="wpUsername"
 								bind:value={wpUsername}
 								placeholder="admin"
@@ -399,7 +376,9 @@
 								Application Password
 							</label>
 							<input
-								type="password"
+								{...getField("settings.applicationPassword").as(
+									"password",
+								)}
 								id="wpAppPassword"
 								bind:value={wpAppPassword}
 								placeholder="abcd 1234 efgh 5678 ijkl"
@@ -420,7 +399,9 @@
 							Sync Interval (minutes)
 						</label>
 						<input
-							type="number"
+							{...getField("settings.syncIntervalMinutes").as(
+								"number",
+							)}
 							id="syncInterval"
 							bind:value={syncIntervalMinutes}
 							min="15"

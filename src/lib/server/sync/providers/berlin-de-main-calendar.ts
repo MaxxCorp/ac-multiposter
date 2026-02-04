@@ -9,6 +9,7 @@ import { db } from '$lib/server/db';
 import { user, eventResource } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { resolveEventContact } from '$lib/server/contact-resolution';
+import { env } from '$env/dynamic/private';
 
 /**
  * Berlin.de Main Calendar sync provider implementation
@@ -48,7 +49,8 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 		this.config = config;
 
 		// Set form URL based on environment
-		const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
+		const isDevelopment = env.NODE_ENV === 'development' || !env.NODE_ENV;
 		if (isDevelopment) {
 			// In development, use internal testing endpoint
 			this.formUrl = 'http://localhost:5173/testing/api/berlin-de';

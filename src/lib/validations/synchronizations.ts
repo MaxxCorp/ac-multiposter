@@ -6,7 +6,14 @@ export const synchronizationBaseSchema = v.object({
     direction: v.picklist(['pull', 'push', 'bidirectional']),
     enabled: v.optional(v.union([v.boolean(), v.string()])),
     credentials: v.optional(v.any()),
-    settings: v.optional(v.any()),
+    settings: v.optional(v.object({
+        calendarId: v.optional(v.string()),
+        syncIntervalMinutes: v.optional(v.number()),
+        company: v.optional(v.string()),
+        baseUrl: v.optional(v.string()),
+        username: v.optional(v.string()),
+        applicationPassword: v.optional(v.string()),
+    })),
 });
 
 export const createSynchronizationSchema = synchronizationBaseSchema;

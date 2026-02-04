@@ -5,6 +5,7 @@ import type {
 	ProviderType,
 	SyncDirection
 } from '../types';
+import { env } from '$env/dynamic/private';
 
 /**
  * WordPress The Events Calendar sync provider implementation
@@ -27,9 +28,9 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 		this.config = config;
 
 		// Get WordPress credentials from environment variables
-		this.baseUrl = process.env.WP_EVENTS_CALENDAR_BASE_URL || '';
-		this.username = process.env.WP_EVENTS_CALENDAR_USERNAME || '';
-		this.applicationPassword = process.env.WP_EVENTS_CALENDAR_APP_PASSWORD || '';
+		this.baseUrl = env.WP_EVENTS_CALENDAR_BASE_URL || '';
+		this.username = env.WP_EVENTS_CALENDAR_USERNAME || '';
+		this.applicationPassword = env.WP_EVENTS_CALENDAR_APP_PASSWORD || '';
 
 		if (!this.baseUrl) {
 			throw new Error('WP_EVENTS_CALENDAR_BASE_URL environment variable is required');
