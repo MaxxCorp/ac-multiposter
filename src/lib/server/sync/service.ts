@@ -420,6 +420,37 @@ export class SyncService {
 			}
 
 		} else {
+			// Check if this is an "echo" of an event we created/pushed
+			const appEventId = externalEvent.metadata?.app_event_id;
+
+			if (appEventId) {
+				const [existingEvent] = await db
+					.select()
+					.from(eventTable)
+					.where(eq(eventTable.id, appEventId));
+
+				if (existingEvent) {
+					console.log(`[SyncService] Identified echo for event ${appEventId} via metadata. Healing mapping.`);
+
+					await db.insert(syncMappingTable).values({
+						syncConfigId: config.id,
+						eventId: existingEvent.id,
+						externalId: externalEvent.externalId,
+						providerId: config.providerId,
+						etag: externalEvent.etag ?? null,
+						lastSyncedAt: new Date()
+					});
+
+					return;
+				} else {
+					// We created it, but we can't find it locally. 
+					// Limit: 5. It must have been deleted locally.
+					// Ignorance is bliss - prevent resurrection.
+					console.log(`[SyncService] Detected echo for deleted event ${appEventId}. Ignoring to prevent resurrection.`);
+					return;
+				}
+			}
+
 			// Before creating a new event, check if we already have a local event with similar properties
 			// that was just created (within last 30 seconds). This prevents duplicates when:
 			// 1. User creates event locally → pushes to Google → webhook fires → tries to pull back
@@ -824,7 +855,8 @@ export class SyncService {
 			recurrence: (internal.recurrence as any) ?? undefined,
 			reminders: (internal.reminders as any) ?? undefined,
 			metadata: {
-				eventId: internal.id
+				eventId: internal.id,
+				app_event_id: internal.id // Pass internal ID to provider for loop prevention
 			}
 		};
 	}

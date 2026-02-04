@@ -463,7 +463,9 @@ export class GoogleCalendarProvider implements SyncProvider {
 				htmlLink: gcalEvent.htmlLink,
 				colorId: gcalEvent.colorId,
 				visibility: gcalEvent.visibility,
-				transparency: gcalEvent.transparency
+				transparency: gcalEvent.transparency,
+				// Extract our internal ID if present to prevent echoes
+				app_event_id: gcalEvent.extendedProperties?.private?.app_event_id
 			}
 		};
 	}
@@ -504,6 +506,15 @@ export class GoogleCalendarProvider implements SyncProvider {
 			gcalEvent.colorId = event.metadata.colorId;
 			gcalEvent.visibility = event.metadata.visibility;
 			gcalEvent.transparency = event.metadata.transparency;
+
+			// Store our internal ID in private extended properties
+			if (event.metadata.app_event_id) {
+				gcalEvent.extendedProperties = {
+					private: {
+						app_event_id: event.metadata.app_event_id
+					}
+				};
+			}
 		}
 
 		// Ensure proper reminders format
