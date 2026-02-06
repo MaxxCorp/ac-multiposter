@@ -18,7 +18,9 @@ import {
 	tag as tagTable,
 	contactTag as contactTagTable,
 	user as userTable,
-	contactEmail as contactEmailTable
+	contactEmail as contactEmailTable,
+	location as locationTable,
+	eventLocation as eventLocationTable
 } from '../db/schema';
 import { getEntityContacts } from '../contacts';
 import { resolveEventContact } from '../contact-resolution';
@@ -839,6 +841,59 @@ export class SyncService {
 			}
 		}
 
+		// Resolve Venue (Location)
+		let venue: ExternalEvent['venue'] | undefined;
+		if (internal.location) {
+			// Try to find structured location data
+			const [locationMapping] = await db
+				.select({ location: locationTable })
+				.from(eventLocationTable)
+				.innerJoin(locationTable, eq(eventLocationTable.locationId, locationTable.id))
+				.where(eq(eventLocationTable.eventId, internal.id))
+				.limit(1);
+
+			if (locationMapping) {
+				venue = {
+					name: locationMapping.location.name,
+					address: locationMapping.location.street ? `${locationMapping.location.street} ${locationMapping.location.houseNumber || ''}`.trim() : undefined,
+					city: locationMapping.location.city ?? undefined,
+					country: locationMapping.location.country ?? undefined,
+					zip: locationMapping.location.zip ?? undefined,
+					// Province/State not strictly typed in location schema but often part of address
+					province: locationMapping.location.state ?? undefined,
+				};
+			} else {
+				// Fallback to text location if no structured location is linked
+				venue = {
+					name: internal.location
+				};
+			}
+		}
+
+		// Resolve Organizer (Contact with "Employee" tag)
+		let organizer: ExternalEvent['organizer'] | undefined;
+
+		// Find associated contacts who are employees
+		for (const contact of associatedContacts) {
+			const contactTags = (contact as any).tags || [];
+			const isEmployee = contactTags.some((ct: any) => ct.tag.name.toLowerCase() === 'employee' || ct.tag.name.toLowerCase() === 'employees');
+
+			if (isEmployee) {
+				// Use the first employee found as organizer
+				const email = (contact as any).emails?.find((e: any) => e.primary)?.value ||
+					(contact as any).emails?.[0]?.value;
+				const phone = (contact as any).phones?.find((p: any) => p.primary)?.value ||
+					(contact as any).phones?.[0]?.value;
+
+				organizer = {
+					name: contact.displayName || `${contact.givenName || ''} ${contact.familyName || ''}`.trim(),
+					email: email,
+					phone: phone
+				};
+				break; // Only one organizer
+			}
+		}
+
 		return {
 			externalId: '',
 			providerId,
@@ -854,6 +909,10 @@ export class SyncService {
 			attendees: attendees.length > 0 ? attendees : undefined,
 			recurrence: (internal.recurrence as any) ?? undefined,
 			reminders: (internal.reminders as any) ?? undefined,
+			source: (internal.source as any) ?? undefined,
+			ticketPrice: internal.ticketPrice ?? undefined,
+			venue,
+			organizer,
 			metadata: {
 				eventId: internal.id,
 				app_event_id: internal.id // Pass internal ID to provider for loop prevention

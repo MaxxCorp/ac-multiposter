@@ -58,6 +58,29 @@ export interface ExternalEvent {
 	metadata?: Record<string, any>;
 	etag?: string;
 	updatedAt?: Date;
+	source?: {
+		url?: string;
+		title?: string;
+	};
+	ticketPrice?: string;
+
+	// Enhanced sync fields
+	venue?: {
+		name: string;
+		address?: string;
+		city?: string;
+		country?: string;
+		province?: string;
+		zip?: string;
+		phone?: string;
+		website?: string;
+	};
+	organizer?: {
+		name: string;
+		email?: string;
+		phone?: string;
+		website?: string;
+	};
 }
 
 /**
