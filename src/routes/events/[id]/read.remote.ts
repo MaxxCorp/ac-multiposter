@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { event, eventResource, eventContact, contact, contactEmail, contactPhone, eventLocation, contactTag, tag, locationContact } from '$lib/server/db/schema';
+import { event, eventResource, eventContact, contact, contactEmail, contactPhone, eventLocation, contactTag, tag, locationContact, eventTag } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import type { Event } from '../list.remote';
 import { getOptionalUser, hasAccess } from '$lib/authorization';
@@ -147,6 +147,13 @@ export const readEvent = query(v.string(), async (eventId: string): Promise<Even
 		resolvedContact = await fetchContactInfo(chosenContactId);
 	}
 
+	// Fetch tags
+	const tags = await db
+		.select({ name: tag.name })
+		.from(eventTag)
+		.innerJoin(tag, eq(eventTag.tagId, tag.id))
+		.where(eq(eventTag.eventId, eventId));
+
 	return {
 		...result,
 		createdAt: result.createdAt.toISOString(),
@@ -158,6 +165,7 @@ export const readEvent = query(v.string(), async (eventId: string): Promise<Even
 		resourceIds: resources.map(r => r.id),
 		contactIds: contacts.map(c => c.id),
 		locationIds: locations.map(l => l.id),
+		tags: tags.map(t => t.name),
 		resolvedContact,
 	} as Event;
 });

@@ -5,7 +5,7 @@
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-	import { Megaphone } from "@lucide/svelte";
+	import { Megaphone, Pencil, Trash2 } from "@lucide/svelte";
 	import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
 	import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
@@ -126,15 +126,16 @@
 											href={`/campaigns/${campaign.id}`}
 											variant="default"
 											size="default"
-											class="text-center"
+											class="flex items-center gap-2 w-[120px] justify-center"
 										>
-											Edit
+											<Pencil size={16} /> Edit
 										</Button>
 										<AsyncButton
 											variant="destructive"
 											size="default"
 											loading={false}
 											loadingLabel="Deleting..."
+											class="flex items-center gap-2 w-[120px] justify-center"
 											onclick={async () => {
 												const success =
 													await handleDelete({
@@ -148,7 +149,7 @@
 												}
 											}}
 										>
-											Delete
+											<Trash2 size={16} /> Delete
 										</AsyncButton>
 									</div>
 								</div>

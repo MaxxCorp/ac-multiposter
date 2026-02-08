@@ -20,6 +20,10 @@
     import ContactManager from "$lib/components/contacts/ContactManager.svelte";
     import LocationSelector from "$lib/components/locations/LocationSelector.svelte";
     import RichTextEditor from "$lib/components/cms/RichTextEditor.svelte";
+    import RecurrenceDialog from "$lib/components/events/RecurrenceDialog.svelte";
+    import TagInput from "$lib/components/ui/TagInput.svelte";
+    import { RRule } from "$lib/utils/rrule-compat";
+    import { CalendarClock } from "@lucide/svelte";
 
     let {
         remoteFunction,
@@ -39,6 +43,7 @@
             ? !initialData.startDateTime && !!initialData.startDate
             : false,
     );
+
     let hasEndTime = $state(
         initialData?.endDateTime || initialData?.endDate
             ? !!(initialData.endDateTime || initialData.endDate)
@@ -59,6 +64,33 @@
         initialData?.guestsCanSeeOtherGuests ?? false,
     );
     let isPublic = $state(initialData?.isPublic ?? false);
+
+    // Recurrence State
+    let recurrence = $state<string[]>(initialData?.recurrence || []);
+    // We only support creating single rule recurrences in UI for now
+    let recurrenceRule = $state<string | null>(recurrence[0] || null);
+    let showRecurrenceDialog = $state(false);
+
+    // Tags State
+    // Initial tags are string[] from read.remote.ts
+    let tags = $state<string[]>(initialData?.tags || []);
+    let tagsString = $state(tags.join(", "));
+
+    // Helper to format RRule text
+    let recurrenceText = $derived(
+        recurrenceRule
+            ? (() => {
+                  try {
+                      return RRule.fromString(recurrenceRule).toText();
+                  } catch {
+                      return "Custom Recurrence";
+                  }
+              })()
+            : "Does not repeat",
+    );
+
+    const hiddenRecurrenceRule = $derived(recurrenceRule ?? "");
+    const hiddenTagsString = $derived(tagsString ?? "");
 
     // Resource and location state
     let resourcesPromise = listResourcesWithHierarchy();
@@ -125,6 +157,7 @@
     let descriptionValue = $state(
         getField("description").value() ?? initialData?.description ?? "",
     );
+    const hiddenDescription = $derived(descriptionValue ?? "");
 
     // Date/Time handling
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -168,8 +201,34 @@
     let startTimeInput = $state(
         startParsed.time || new Date().toTimeString().slice(0, 5),
     );
-    let endDateInput = $state(endParsed.date || "");
-    let endTimeInput = $state(endParsed.time || "");
+
+    // Initialize end date/time: if no initial data, set to 1 hour after start
+    function getInitialEndDateTime() {
+        // If we have initial end data, use it
+        if (endParsed.date)
+            return { date: endParsed.date, time: endParsed.time || "" };
+
+        // Otherwise, calculate 1 hour after start
+        const startDate =
+            startParsed.date || new Date().toISOString().split("T")[0];
+        const startTime =
+            startParsed.time || new Date().toTimeString().slice(0, 5);
+        const start = new Date(`${startDate}T${startTime}:00`);
+        if (isNaN(start.getTime())) return { date: "", time: "" };
+
+        const end = new Date(start.getTime() + 60 * 60000);
+        const year = end.getFullYear();
+        const month = String(end.getMonth() + 1).padStart(2, "0");
+        const day = String(end.getDate()).padStart(2, "0");
+        const hours = String(end.getHours()).padStart(2, "0");
+        const minutes = String(end.getMinutes()).padStart(2, "0");
+
+        return { date: `${year}-${month}-${day}`, time: `${hours}:${minutes}` };
+    }
+
+    const initialEnd = getInitialEndDateTime();
+    let endDateInput = $state(initialEnd.date);
+    let endTimeInput = $state(initialEnd.time);
 
     // Sync default end time when start time changes if end time is empty
     function updateEndDateTime() {
@@ -378,6 +437,18 @@
             )}
         />
 
+        <!-- Recurrence Hidden Input -->
+        {#if recurrenceRule}
+            <input
+                {...getField("recurrence").as("hidden", hiddenRecurrenceRule)}
+            />
+        {/if}
+
+        <!-- Tags Hidden Input -->
+        {#if hiddenTagsString}
+            <input {...getField("tags").as("hidden", hiddenTagsString)} />
+        {/if}
+
         <div class="bg-white shadow rounded-lg p-6 space-y-4">
             <h2 class="text-xl font-semibold mb-4 border-b pb-2">
                 Basic Information
@@ -417,13 +488,23 @@
                 >
                 <div class="prose max-w-none">
                     <RichTextEditor bind:value={descriptionValue} />
-                    <input
-                        {...getField("description").as(
-                            "hidden",
-                            descriptionValue,
-                        )}
-                    />
+                    {#if hiddenDescription}
+                        <input
+                            {...getField("description").as(
+                                "hidden",
+                                hiddenDescription,
+                            )}
+                        />
+                    {/if}
                 </div>
+            </div>
+
+            <div>
+                <TagInput
+                    bind:value={tagsString}
+                    label="Tags"
+                    placeholder="e.g. Series, Workshop, Marketing"
+                />
             </div>
 
             <div>
@@ -561,7 +642,9 @@
                     {...getField("locationIds").as(
                         "hidden",
                         JSON.stringify(
-                            useFreeTextLocation ? [] : selectedLocationIds,
+                            useFreeTextLocation
+                                ? []
+                                : (selectedLocationIds ?? []),
                         ),
                     )}
                 />
@@ -667,7 +750,24 @@
                     {/if}
                 </div>
             {/if}
+
+            <!-- Recurrence Button -->
+            <div class="pt-4 border-t">
+                <button
+                    type="button"
+                    class="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
+                    onclick={() => (showRecurrenceDialog = true)}
+                >
+                    <CalendarClock size={16} />
+                    <span>{recurrenceText}</span>
+                </button>
+            </div>
         </div>
+
+        <RecurrenceDialog
+            bind:open={showRecurrenceDialog}
+            bind:value={recurrenceRule}
+        />
 
         <div class="bg-white shadow rounded-lg p-6 space-y-4">
             <h2 class="text-xl font-semibold mb-4 border-b pb-2">
@@ -735,7 +835,7 @@
                 <input
                     {...getField("reminders.useDefault").as(
                         "hidden",
-                        useDefaultReminders.toString(),
+                        useDefaultReminders?.toString() ?? "true",
                     )}
                 />
 
@@ -802,7 +902,7 @@
             <input
                 {...getField("contactIds").as(
                     "hidden",
-                    JSON.stringify(selectedContactIds),
+                    JSON.stringify(selectedContactIds ?? []),
                 )}
             />
         </div>

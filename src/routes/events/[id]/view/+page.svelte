@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from "$app/state";
     import { readEvent } from "../read.remote";
+    import { deleteSeries } from "../delete-series.remote";
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
@@ -19,8 +20,13 @@
         Phone,
         Mail,
         Share2,
+        Trash2,
+        RefreshCw,
+        ChevronDown,
     } from "@lucide/svelte";
     import Button from "$lib/components/ui/button/button.svelte";
+    import { deleteEvents } from "../delete.remote";
+    import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
 
     const eventId = page.params.id || "";
     let dataPromise = $state(readEvent(eventId));
@@ -70,6 +76,64 @@
             }
         }
     }
+
+    // Check if event is part of a series
+    function isSeriesEvent(event: any): boolean {
+        return !!(
+            event.seriesId ||
+            event.recurringEventId ||
+            (event.recurrence && event.recurrence.length > 0)
+        );
+    }
+
+    let deletingSeriesId = $state<string | null>(null);
+
+    async function handleDeleteSeries(event: any) {
+        const seriesName = event.summary || "this series";
+        const confirmed = confirm(
+            `Are you sure you want to delete the entire series "${seriesName}"?\n\nThis will delete ALL events in this series. This action cannot be undone.`,
+        );
+
+        if (!confirmed) return;
+
+        deletingSeriesId = event.id;
+        try {
+            await deleteSeries(event.id);
+            await goto("/events");
+        } catch (err) {
+            console.error("Delete series error:", err);
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : "An error occurred while deleting the series",
+            );
+        } finally {
+            deletingSeriesId = null;
+        }
+    }
+
+    async function handleDeleteInstance(event: any) {
+        const confirmed = confirm(
+            `Are you sure you want to delete this event instance?\n\nOnly this single occurrence will be deleted.`,
+        );
+
+        if (!confirmed) return;
+
+        deletingSeriesId = event.id;
+        try {
+            await deleteEvents([event.id]);
+            await goto("/events");
+        } catch (err) {
+            console.error("Delete instance error:", err);
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : "An error occurred while deleting",
+            );
+        } finally {
+            deletingSeriesId = null;
+        }
+    }
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -105,6 +169,16 @@
                                     >
                                         {event.status}
                                     </span>
+                                {/if}
+                                {#if event.tags && event.tags.length > 0}
+                                    {#each event.tags as tag}
+                                        <span
+                                            class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full border border-indigo-100 flex items-center gap-1"
+                                        >
+                                            <TagIcon size={12} />
+                                            {tag}
+                                        </span>
+                                    {/each}
                                 {/if}
                             </div>
                         </div>
@@ -205,6 +279,7 @@
                                             >
                                         </li>
                                     {/if}
+
                                     {#if event.ticketPrice}
                                         <li
                                             class="flex items-center gap-3 text-gray-700"
@@ -332,13 +407,86 @@
                         {/if}
 
                         {#if checkCanEdit(event)}
-                            <Button
-                                variant="default"
-                                class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                                onclick={() => goto(`/events/${event.id}`)}
-                            >
-                                <Pencil size={18} /> Edit Event
-                            </Button>
+                            {#if isSeriesEvent(event)}
+                                <!-- Edit dropdown for series events -->
+                                <DropdownMenu.Root>
+                                    <DropdownMenu.Trigger>
+                                        <Button
+                                            variant="default"
+                                            class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            <Pencil size={18} /> Edit
+                                            <ChevronDown size={16} />
+                                        </Button>
+                                    </DropdownMenu.Trigger>
+                                    <DropdownMenu.Content align="end">
+                                        <DropdownMenu.Item
+                                            onclick={() =>
+                                                goto(`/events/${event.id}`)}
+                                        >
+                                            <Pencil size={16} class="mr-2" /> Edit
+                                            Instance
+                                        </DropdownMenu.Item>
+                                        <DropdownMenu.Item
+                                            onclick={() =>
+                                                goto(
+                                                    `/events/${event.id}?editSeries=true`,
+                                                )}
+                                        >
+                                            <RefreshCw size={16} class="mr-2" />
+                                            Edit Series
+                                        </DropdownMenu.Item>
+                                    </DropdownMenu.Content>
+                                </DropdownMenu.Root>
+
+                                <!-- Delete dropdown for series events -->
+                                <DropdownMenu.Root>
+                                    <DropdownMenu.Trigger>
+                                        <Button
+                                            variant="outline"
+                                            class="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+                                            disabled={deletingSeriesId ===
+                                                event.id}
+                                        >
+                                            {#if deletingSeriesId === event.id}
+                                                <RefreshCw
+                                                    size={18}
+                                                    class="animate-spin"
+                                                /> Deleting...
+                                            {:else}
+                                                <Trash2 size={18} /> Delete
+                                                <ChevronDown size={16} />
+                                            {/if}
+                                        </Button>
+                                    </DropdownMenu.Trigger>
+                                    <DropdownMenu.Content align="end">
+                                        <DropdownMenu.Item
+                                            onclick={() =>
+                                                handleDeleteInstance(event)}
+                                        >
+                                            <Trash2 size={16} class="mr-2" /> Delete
+                                            Instance
+                                        </DropdownMenu.Item>
+                                        <DropdownMenu.Item
+                                            class="text-red-600"
+                                            onclick={() =>
+                                                handleDeleteSeries(event)}
+                                        >
+                                            <Trash2 size={16} class="mr-2" /> Delete
+                                            Series
+                                        </DropdownMenu.Item>
+                                    </DropdownMenu.Content>
+                                </DropdownMenu.Root>
+                            {:else}
+                                <!-- Simple buttons for non-series events -->
+                                <Button
+                                    variant="default"
+                                    class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                                    onclick={() => goto(`/events/${event.id}`)}
+                                >
+                                    <Pencil size={18} /> Edit Event
+                                </Button>
+                            {/if}
                         {/if}
                     </div>
                 </div>

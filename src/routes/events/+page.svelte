@@ -2,6 +2,7 @@
 	import { listEvents } from "./list.remote";
 	import type { Event } from "./list.remote";
 	import { deleteEvents } from "./delete.remote";
+	import { deleteSeries } from "./[id]/delete-series.remote";
 	import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
@@ -10,10 +11,21 @@
 	import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
 	import { handleDelete } from "$lib/hooks/handleDelete.svelte";
 	import EmptyState from "$lib/components/ui/EmptyState.svelte";
-	import { Calendar, MapPin, Earth } from "@lucide/svelte";
+	import {
+		Calendar,
+		MapPin,
+		Earth,
+		Tag as TagIcon,
+		Pencil,
+		Trash2,
+		ChevronDown,
+		RefreshCw,
+	} from "@lucide/svelte";
+	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
 
 	import { onMount } from "svelte";
 	import { browser } from "$app/environment";
+	import { goto } from "$app/navigation";
 	// import * as Ably from "ably"; // Removing static import
 	import { toast } from "svelte-sonner";
 
@@ -101,6 +113,15 @@
 		return "Time not specified";
 	}
 
+	// Check if an event is part of a recurring series
+	function isSeriesEvent(event: Event): boolean {
+		return !!(
+			(event as any).seriesId ||
+			(event.recurrence && event.recurrence.length > 0) ||
+			(event as any).recurringEventId
+		);
+	}
+
 	$effect(() => {
 		itemsPromise
 			.then((items) => {
@@ -119,9 +140,7 @@
 			<div
 				class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4"
 			>
-				<h1 class="text-3xl font-bold flex-shrink-0">
-					Calendar Events
-				</h1>
+				<h1 class="text-3xl font-bold flex-shrink-0">Events</h1>
 				<div class="flex-1 flex justify-end w-full md:w-auto">
 					<BulkActionToolbar
 						selectedCount={selectedIds.size}
@@ -213,51 +232,174 @@
 													>
 												</div>
 											{/if}
-											{#if event.isPublic}
-												<div
-													class="flex items-center gap-2"
-												>
-													<Earth
-														size={14}
-														class="text-green-500"
-													/>
-
-													<span
-														class="text-xs text-green-600 font-medium"
-														>Public</span
+											<div
+												class="flex flex-wrap items-center gap-2 mt-1"
+											>
+												{#if event.isPublic}
+													<div
+														class="flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-full border border-green-100"
 													>
-												</div>
-											{/if}
+														<Earth
+															size={12}
+															class="text-green-600"
+														/>
+														<span
+															class="text-[10px] text-green-700 font-medium"
+															>Public</span
+														>
+													</div>
+												{/if}
+												{#if event.tags && event.tags.length > 0}
+													{#each event.tags as tag}
+														<span
+															class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-medium rounded-full border border-indigo-100 flex items-center gap-1"
+														>
+															<TagIcon
+																size={12}
+															/>
+															{tag}
+														</span>
+													{/each}
+												{/if}
+											</div>
 										</div>
 									</div>
-									<div class="flex flex-col gap-2 shrink-0">
-										<Button
-											href={`/events/${event.id}`}
-											variant="default"
-											size="default"
-											class="text-center"
-										>
-											Edit
-										</Button>
-										<AsyncButton
-											variant="destructive"
-											size="default"
-											loading={false}
-											loadingLabel="Deleting..."
-											onclick={async () => {
-												const success =
-													await handleDelete({
-														ids: [event.id],
-														deleteFn: deleteEvents,
-														itemName: "event",
-													});
-												if (success) {
-													deselectAll();
-												}
-											}}
-										>
-											Delete
-										</AsyncButton>
+									<div
+										class="flex flex-col gap-2 shrink-0 items-end"
+									>
+										{#if isSeriesEvent(event)}
+											<DropdownMenu.Root>
+												<DropdownMenu.Trigger>
+													<Button
+														variant="default"
+														size="default"
+														class="flex items-center gap-2 w-[120px] justify-start"
+														><Pencil size={16} />
+														<span class="ml-auto"
+															>Edit</span
+														>
+														<ChevronDown
+															size={14}
+															class="ml-auto"
+														/></Button
+													>
+												</DropdownMenu.Trigger>
+												<DropdownMenu.Content
+													align="end"
+												>
+													<DropdownMenu.Item
+														onclick={() =>
+															goto(
+																`/events/${event.id}`,
+															)}
+														><Pencil
+															size={14}
+															class="mr-2"
+														/> Edit Instance</DropdownMenu.Item
+													>
+													<DropdownMenu.Item
+														onclick={() =>
+															goto(
+																`/events/${event.recurringEventId || event.id}?editSeries=true`,
+															)}
+														><RefreshCw
+															size={14}
+															class="mr-2"
+														/> Edit Series</DropdownMenu.Item
+													>
+												</DropdownMenu.Content>
+											</DropdownMenu.Root>
+											<DropdownMenu.Root>
+												<DropdownMenu.Trigger>
+													<Button
+														variant="destructive"
+														size="default"
+														class="flex items-center gap-2 w-[120px] justify-start"
+														><Trash2 size={16} />
+														<span class="ml-auto"
+															>Delete</span
+														>
+														<ChevronDown
+															size={14}
+															class="ml-auto"
+														/></Button
+													>
+												</DropdownMenu.Trigger>
+												<DropdownMenu.Content
+													align="end"
+												>
+													<DropdownMenu.Item
+														onclick={async () => {
+															await handleDelete({
+																ids: [event.id],
+																deleteFn:
+																	deleteEvents,
+																itemName:
+																	"event",
+															});
+															deselectAll();
+														}}
+														><Trash2
+															size={14}
+															class="mr-2"
+														/> Delete Instance</DropdownMenu.Item
+													>
+													<DropdownMenu.Item
+														onclick={async () => {
+															if (
+																!confirm(
+																	"Delete all events in this series?",
+																)
+															)
+																return;
+															await deleteSeries(
+																event.id,
+															);
+															toast.success(
+																"Series deleted",
+															);
+															itemsPromise =
+																listEvents();
+															deselectAll();
+														}}
+														><RefreshCw
+															size={14}
+															class="mr-2"
+														/> Delete Series</DropdownMenu.Item
+													>
+												</DropdownMenu.Content>
+											</DropdownMenu.Root>
+										{:else}
+											<Button
+												href={`/events/${event.id}`}
+												variant="default"
+												size="default"
+												class="flex items-center gap-2 w-[120px] justify-center"
+											>
+												<Pencil size={16} /> Edit
+											</Button>
+											<AsyncButton
+												variant="destructive"
+												size="default"
+												loading={false}
+												loadingLabel="Deleting..."
+												class="flex items-center gap-2 w-[120px] justify-center"
+												onclick={async () => {
+													const success =
+														await handleDelete({
+															ids: [event.id],
+															deleteFn:
+																deleteEvents,
+															itemName: "event",
+														});
+													if (success) {
+														deselectAll();
+													}
+												}}
+											>
+												<Trash2 size={16} /> Delete
+											</AsyncButton>
+										{/if}
 									</div>
 								</div>
 							</div>

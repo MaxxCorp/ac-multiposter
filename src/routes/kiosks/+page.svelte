@@ -4,7 +4,7 @@
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import Button from "$lib/components/ui/button/button.svelte";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-    import { Monitor, Trash2, Edit, ExternalLink } from "@lucide/svelte";
+    import { Monitor, Trash2, Pencil, ExternalLink } from "@lucide/svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import EmptyState from "$lib/components/ui/EmptyState.svelte";
@@ -102,17 +102,17 @@
                                     <div class="flex gap-2">
                                         <Button
                                             href={`/kiosks/${kiosk.id}`}
-                                            variant="outline"
-                                            size="icon"
-                                            class="h-8 w-8"
+                                            variant="default"
+                                            size="sm"
+                                            class="flex items-center gap-2 w-[120px] justify-center"
                                         >
-                                            <Edit class="w-4 h-4" />
+                                            <Pencil class="w-4 h-4" /> Edit
                                         </Button>
                                         <AsyncButton
                                             variant="destructive"
-                                            size="icon"
-                                            class="h-8 w-8"
-                                            loadingLabel=""
+                                            size="sm"
+                                            class="flex items-center gap-2 w-[120px] justify-center"
+                                            loadingLabel="Deleting..."
                                             onclick={async () => {
                                                 const success =
                                                     await handleDelete({
@@ -122,8 +122,9 @@
                                                     });
                                                 if (success) refresh();
                                             }}
+                                            }}
                                         >
-                                            <Trash2 class="w-4 h-4" />
+                                            <Trash2 class="w-4 h-4" /> Delete
                                         </AsyncButton>
                                     </div>
                                 </div>

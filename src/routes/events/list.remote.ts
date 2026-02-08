@@ -18,6 +18,7 @@ export type Event = Omit<DbEvent, 'createdAt' | 'updatedAt' | 'startDateTime' | 
 	resourceIds?: string[];
 	contactIds?: string[];
 	locationIds?: string[];
+	tags?: string[];
 	participationStatuses?: Record<string, string>;
 	maxOccupancy?: number | null;
 	resolvedContact?: {
@@ -29,6 +30,13 @@ export type Event = Omit<DbEvent, 'createdAt' | 'updatedAt' | 'startDateTime' | 
 	qrCodePath?: string | null;
 	iCalPath?: string | null;
 };
+
+/**
+ * List all events for the authenticated user
+ */
+import { inArray, eq } from 'drizzle-orm';
+import { eventTag, tag } from '$lib/server/db/schema';
+import { db } from '$lib/server/db';
 
 /**
  * List all events for the authenticated user
@@ -46,5 +54,35 @@ export const listEvents = query(async (): Promise<Event[]> => {
 		}),
 	});
 
-	return results;
+	if (results.length === 0) {
+		return [];
+	}
+
+	// Fetch tags for all events
+	const eventIds = results.map((e) => e.id);
+	const tagsForEvents = await db
+		.select({
+			eventId: eventTag.eventId,
+			tagName: tag.name,
+		})
+		.from(eventTag)
+		.innerJoin(tag, eq(eventTag.tagId, tag.id))
+		.where(inArray(eventTag.eventId, eventIds));
+
+	// Map tags to events
+	const tagsMap = new Map<string, string[]>();
+	for (const { eventId, tagName } of tagsForEvents) {
+		if (!tagsMap.has(eventId)) {
+			tagsMap.set(eventId, []);
+		}
+		if (tagName) {
+			tagsMap.get(eventId)?.push(tagName);
+		}
+	}
+
+	// Attach tags to results
+	return results.map((event) => ({
+		...event,
+		tags: tagsMap.get(event.id) || [],
+	}));
 });

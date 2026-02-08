@@ -20,7 +20,8 @@ import {
 	user as userTable,
 	contactEmail as contactEmailTable,
 	location as locationTable,
-	eventLocation as eventLocationTable
+	eventLocation as eventLocationTable,
+	recurringSeries as recurringSeries
 } from '../db/schema';
 import { getEntityContacts } from '../contacts';
 import { resolveEventContact } from '../contact-resolution';
@@ -807,6 +808,22 @@ export class SyncService {
 		internal: typeof eventTable.$inferSelect,
 		providerId: ProviderType
 	): Promise<ExternalEvent> {
+		// Fetch recurrence from series table if seriesId is present
+		let recurrenceRules: string[] | undefined = undefined;
+		if ((internal as any).seriesId) {
+			const [series] = await db
+				.select()
+				.from(recurringSeries)
+				.where(eq(recurringSeries.id, (internal as any).seriesId));
+			if (series?.rrule) {
+				recurrenceRules = [series.rrule];
+			}
+		}
+		// Fallback to legacy recurrence field if no series
+		if (!recurrenceRules && internal.recurrence) {
+			recurrenceRules = internal.recurrence as string[];
+		}
+
 		// Fetch associated contacts
 		const associatedContacts = await getEntityContacts('event', internal.id);
 
@@ -907,7 +924,7 @@ export class SyncService {
 			endDateTime: internal.endDateTime ?? undefined,
 			endTimeZone: internal.endTimeZone ?? undefined,
 			attendees: attendees.length > 0 ? attendees : undefined,
-			recurrence: (internal.recurrence as any) ?? undefined,
+			recurrence: recurrenceRules,
 			reminders: (internal.reminders as any) ?? undefined,
 			source: (internal.source as any) ?? undefined,
 			ticketPrice: internal.ticketPrice ?? undefined,
@@ -915,6 +932,7 @@ export class SyncService {
 			organizer,
 			metadata: {
 				eventId: internal.id,
+				seriesId: (internal as any).seriesId ?? undefined,
 				app_event_id: internal.id // Pass internal ID to provider for loop prevention
 			}
 		};

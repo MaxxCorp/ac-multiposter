@@ -2,7 +2,31 @@ import { pgTable, text, timestamp, boolean, jsonb, integer, index, uuid, primary
 import { relations } from 'drizzle-orm';
 import { user } from "./auth";
 import { eventResource, location } from './resources';
-import { eventContact } from './contacts';
+import { eventContact, tag } from './contacts';
+
+/**
+ * Recurring series table - single source of truth for recurrence rules
+ * All events in a series link to this table via seriesId
+ */
+export const recurringSeries = pgTable("recurring_series", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    rrule: text("rrule").notNull(), // RFC 5545 RRULE string, e.g., "FREQ=WEEKLY;COUNT=10"
+    anchorDate: timestamp("anchor_date").notNull(), // Start date for rule expansion
+    anchorEndDate: timestamp("anchor_end_date"), // Optional end date reference for duration calculation
+    userId: text("user_id")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+        .defaultNow()
+        .$onUpdate(() => new Date())
+        .notNull(),
+}, (table) => [
+    index("recurring_series_user_id_idx").on(table.userId),
+]);
+
+export type RecurringSeries = typeof recurringSeries.$inferSelect;
+export type NewRecurringSeries = typeof recurringSeries.$inferInsert;
 
 /**
  * Events table supporting Google Calendar API v3 event model
@@ -47,7 +71,12 @@ export const event = pgTable("event", {
     endTimeZone: text("end_time_zone"), // IANA timezone name
     endTimeUnspecified: boolean("end_time_unspecified").default(false),
 
-    // Recurrence
+    // Recurrence - New series-based model
+    seriesId: uuid("series_id")
+        .references(() => recurringSeries.id, { onDelete: "set null" }), // Link to recurring_series
+    isException: boolean("is_exception").default(false), // True if this instance was modified from the series
+
+    // Legacy recurrence fields (kept for backward compatibility during migration)
     recurrence: jsonb("recurrence").$type<string[]>(), // Array of RRULE, EXRULE, RDATE, EXDATE
     recurringEventId: text("recurring_event_id"), // ID of the recurring event if this is an instance
     originalStartTime: jsonb("original_start_time").$type<{
@@ -205,6 +234,7 @@ export const event = pgTable("event", {
     iCalPath: text("ical_path"),
 }, (table) => [
     index("event_user_id_idx").on(table.userId),
+    index("event_series_id_idx").on(table.seriesId),
 ]);
 
 export const eventLocation = pgTable("event_location", {
@@ -220,10 +250,19 @@ export const eventLocation = pgTable("event_location", {
     index("event_location_location_idx").on(table.locationId),
 ]);
 
-export const eventRelations = relations(event, ({ many }) => ({
+export const recurringSeriesRelations = relations(recurringSeries, ({ many }) => ({
+    events: many(event),
+}));
+
+export const eventRelations = relations(event, ({ many, one }) => ({
     resources: many(eventResource),
     contacts: many(eventContact),
     locations: many(eventLocation),
+    tags: many(eventTag),
+    series: one(recurringSeries, {
+        fields: [event.seriesId],
+        references: [recurringSeries.id],
+    }),
 }));
 
 export const eventLocationRelations = relations(eventLocation, ({ one }) => ({
@@ -234,6 +273,30 @@ export const eventLocationRelations = relations(eventLocation, ({ one }) => ({
     location: one(location, {
         fields: [eventLocation.locationId],
         references: [location.id],
+    }),
+}));
+
+export const eventTag = pgTable("event_tag", {
+    eventId: uuid("event_id")
+        .notNull()
+        .references(() => event.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+        .notNull()
+        .references(() => tag.id, { onDelete: "cascade" }),
+}, (table) => [
+    primaryKey({ columns: [table.eventId, table.tagId] }),
+    index("event_tag_event_idx").on(table.eventId),
+    index("event_tag_tag_idx").on(table.tagId),
+]);
+
+export const eventTagRelations = relations(eventTag, ({ one }) => ({
+    event: one(event, {
+        fields: [eventTag.eventId],
+        references: [event.id],
+    }),
+    tag: one(tag, {
+        fields: [eventTag.tagId],
+        references: [tag.id],
     }),
 }));
 

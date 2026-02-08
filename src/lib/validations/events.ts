@@ -1,6 +1,6 @@
 import * as v from 'valibot';
 
-const recurrenceSchema = v.array(v.string());
+const recurrenceSchema = v.union([v.array(v.string()), v.string()]);
 const attendeesSchema = v.array(v.object({
 	id: v.optional(v.string()),
 	email: v.pipe(v.string(), v.email()),
@@ -46,6 +46,7 @@ export const eventBaseSchema = v.object({
 	contactIds: v.optional(v.string()),
 	categoryBerlinDotDe: v.optional(v.string()),
 	ticketPrice: v.optional(v.string()),
+	tags: v.optional(v.string()),
 });
 
 /**

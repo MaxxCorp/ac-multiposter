@@ -10,7 +10,7 @@
     import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
     import EmptyState from "$lib/components/ui/EmptyState.svelte";
-    import { Megaphone, Calendar, Earth } from "@lucide/svelte";
+    import { Megaphone, Calendar, Earth, Pencil, Trash2 } from "@lucide/svelte";
 
     let itemsPromise = $state<Promise<Announcement[]>>(listAnnouncements());
     let resolvedItems = $state<Announcement[]>([]);
@@ -162,15 +162,16 @@
                                             href={`/announcements/${announcement.id}`}
                                             variant="default"
                                             size="default"
-                                            class="text-center"
+                                            class="flex items-center gap-2 w-[120px] justify-center"
                                         >
-                                            Edit
+                                            <Pencil size={16} /> Edit
                                         </Button>
                                         <AsyncButton
                                             variant="destructive"
                                             size="default"
                                             loading={false}
                                             loadingLabel="Deleting..."
+                                            class="flex items-center gap-2 w-[120px] justify-center"
                                             onclick={async () => {
                                                 const success =
                                                     await handleDelete({
@@ -185,7 +186,7 @@
                                                 }
                                             }}
                                         >
-                                            Delete
+                                            <Trash2 size={16} /> Delete
                                         </AsyncButton>
                                     </div>
                                 </div>
