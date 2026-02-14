@@ -44,3 +44,10 @@ src/routes/test1
 
 # scripts
 scripts
+
+# rolldown
+.rolldown
+
+# paraglide
+.paraglide
+project.inlang/cache

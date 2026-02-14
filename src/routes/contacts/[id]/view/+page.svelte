@@ -125,7 +125,7 @@
                                 {/if}
                                 {#if contact.notes}
                                     <p class="mt-4 text-gray-600 italic">
-                                        "{contact.notes}"
+                                        {contact.notes}
                                     </p>
                                 {/if}
                             </div>
