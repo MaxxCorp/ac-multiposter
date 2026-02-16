@@ -50,4 +50,4 @@ scripts
 
 # paraglide
 .paraglide
-project.inlang/cache
+project.inlang/cache/*

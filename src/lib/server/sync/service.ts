@@ -259,12 +259,18 @@ export class SyncService {
 		const result = { pushed: 0, errors: [] as SyncResult['errors'] };
 
 		try {
-			// Find local events that need to be pushed (no mapping exists)
+			// Find local events that need to be pushed (no mapping exists for THIS config)
 			const unmappedEvents = await db
 				.select({ event: eventTable })
 				.from(eventTable)
-				.leftJoin(syncMappingTable, eq(eventTable.id, syncMappingTable.eventId))
-				.where(isNull(syncMappingTable.eventId));
+				.leftJoin(
+					syncMappingTable,
+					and(
+						eq(eventTable.id, syncMappingTable.eventId),
+						eq(syncMappingTable.syncConfigId, config.id)
+					)
+				)
+				.where(isNull(syncMappingTable.id));
 
 			for (const { event } of unmappedEvents) {
 				try {
@@ -277,7 +283,9 @@ export class SyncService {
 						externalId: externalId,
 						providerId: config.providerId,
 						etag: etag ?? null,
-						lastSyncedAt: new Date()
+						lastSyncedAt: new Date(),
+						announcementId: null,
+						metadata: null
 					});
 
 					result.pushed++;
@@ -441,7 +449,9 @@ export class SyncService {
 						externalId: externalEvent.externalId,
 						providerId: config.providerId,
 						etag: externalEvent.etag ?? null,
-						lastSyncedAt: new Date()
+						lastSyncedAt: new Date(),
+						announcementId: null,
+						metadata: null
 					});
 
 					return;
@@ -521,7 +531,9 @@ export class SyncService {
 						externalId: externalEvent.externalId,
 						providerId: config.providerId,
 						etag: externalEvent.etag ?? null,
-						lastSyncedAt: new Date()
+						lastSyncedAt: new Date(),
+						announcementId: null,
+						metadata: null
 					});
 
 					return; // Don't create duplicate
@@ -539,7 +551,9 @@ export class SyncService {
 			externalId: externalEvent.externalId,
 			providerId: config.providerId,
 			etag: externalEvent.etag ?? null,
-			lastSyncedAt: new Date()
+			lastSyncedAt: new Date(),
+			announcementId: null,
+			metadata: null
 		});
 
 		await publishEventChange('create', [newEvent.id]);
