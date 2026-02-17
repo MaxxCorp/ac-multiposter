@@ -92,6 +92,50 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 		const wpEventData = this.mapEventToWpFormat(event);
 
 		try {
+			// Check for existing event to prevent duplication
+			// Search by title
+			const searchParams = new URLSearchParams();
+			searchParams.set('search', event.summary);
+			// Also filter by start date if possible to narrow down results
+			if (wpEventData.start_date) {
+				searchParams.set('start_date', wpEventData.start_date);
+			}
+
+			const searchUrl = `${this.baseUrl}/wp-json/tribe/events/v1/events?${searchParams.toString()}`;
+			const searchResponse = await fetch(searchUrl, {
+				method: 'GET',
+				headers: {
+					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+					'Content-Type': 'application/json',
+				},
+			});
+
+			if (searchResponse.ok) {
+				const searchResult = await searchResponse.json();
+				if (searchResult.events && searchResult.events.length > 0) {
+					// We intentionally only check for title match here because the search param already filtered by title
+					// We additionally check date match if multiple results came back or to be sure
+					const match = searchResult.events.find((e: any) => {
+						// Double check title similarity or exactness if needed
+						// API search is fuzzy, so we should check exact title match
+						return e.title === event.summary;
+					});
+
+					if (match) {
+						console.log(`Found existing WordPress event for "${event.summary}", linking instead of creating.`);
+						// Determine if we should update it. 
+						// For now, let's just return the ID so the mapping is established.
+						// The next sync cycle will trigger updateEvent if content differs and etags don't match (if logic supports it).
+						// But to be safe and ensure the remote is current, we should probably update it now.
+						const updateResult = await this.updateEvent(match.id.toString(), event);
+						return {
+							externalId: match.id.toString(),
+							etag: updateResult.etag
+						};
+					}
+				}
+			}
+
 			// Ensure venue exists if provided
 			if (event.venue) {
 				const venueId = await this.ensureVenue(event.venue);
@@ -351,36 +395,52 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			status: 'publish', // Publish immediately
 		};
 
+		// Format date helper
+		const formatDate = (date: Date, timeZone: string | undefined): { date: string, time: string } => {
+			// Use provided timezone or UTC as fallback
+			const tz = timeZone || 'UTC';
+
+			// Format date part (YYYY-MM-DD)
+			const datePart = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
+				timeZone: tz,
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit'
+			}).format(date);
+
+			// Format time part (HH:MM:SS) - The Events Calendar expects seconds
+			const timePart = new Intl.DateTimeFormat('en-GB', { // en-GB gives HH:MM:SS (24h)
+				timeZone: tz,
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+				hour12: false
+			}).format(date);
+
+			return { date: datePart, time: timePart };
+		};
+
 		// Handle start date/time
 		if (event.startDateTime) {
-			wpEvent.start_date = event.startDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
-			wpEvent.start_time = event.startDateTime.toTimeString().substring(0, 5); // HH:MM
+			const { date, time } = formatDate(event.startDateTime, event.startTimeZone);
+			// The Events Calendar expects full datetime string YYYY-MM-DD HH:MM:SS
+			wpEvent.start_date = `${date} ${time}`;
+			// We can also send explicit GMT if helpful, but start_date + timezone should suffice
+			// wpEvent.start_date_gmt = ...
 		} else if (event.startDate) {
-			wpEvent.start_date = event.startDate;
+			wpEvent.start_date = `${event.startDate} 00:00:00`;
 			wpEvent.all_day = true;
 		}
 
 		// Handle end date/time
 		if (event.endDateTime) {
-			wpEvent.end_date = event.endDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
-			wpEvent.end_time = event.endDateTime.toTimeString().substring(0, 5); // HH:MM
+			const { date, time } = formatDate(event.endDateTime, event.endTimeZone || event.startTimeZone);
+			wpEvent.end_date = `${date} ${time}`;
 		} else if (event.endDate) {
-			wpEvent.end_date = event.endDate;
+			wpEvent.end_date = `${event.endDate} 23:59:59`;
 		}
 
 		// Location/Venue is handled separately via ensureVenue and ID reference
-		// But fallback to embedded venue data if ensureVenue fails or for simple string locations is preserved?
-		// Actually, standard WP API expects 'venue' to be an ID or structured data for creation
-		// But we are now using ID reference strategy.
-		// Old code:
-		/*
-		if (event.location) {
-			wpEvent.venue = {
-				venue: event.location,
-			};
-		}
-		*/
-		// We will rely on the ensureVenue ID injection in pushEvent/updateEvent.
 
 		// Handle timezone
 		if (event.startTimeZone) {
@@ -389,8 +449,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 		// Handle recurrence if present
 		if (event.recurrence && event.recurrence.length > 0) {
-			// The Events Calendar supports RRULE format
-			// For simplicity, we'll handle basic recurrence patterns
+			// The Events Calendar supports RRULE format or specific fields
+			// API documentation suggests using 'recurrence' object for simple patterns
 			const rrule = event.recurrence[0];
 			if (rrule.includes('FREQ=WEEKLY')) {
 				wpEvent.recurrence = {
@@ -421,14 +481,18 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			// Skipping for now unless requested.
 		}
 
-		if (event.source?.url) {
+		// Map Website URL
+		// Prefer linking to the internal Multiposter event view
+		if (event.metadata?.eventId && env.BETTER_AUTH_URL) {
+			wpEvent.website = `${env.BETTER_AUTH_URL}/events/${event.metadata.eventId}`;
+		} else if (event.source?.url) {
+			// Fallback to source URL
 			wpEvent.website = event.source.url;
 		}
 
-		if (event.ticketPrice) { // We added ticketPrice to Internal event schema but not External yet?
-			// Need to check if ExternalEvent has cost/price field.
-			// If added to external event, map it here.
-			// wpEvent.cost = event.price;
+		// Map Cost/Price
+		if (event.ticketPrice) {
+			wpEvent.cost = event.ticketPrice;
 		}
 
 		return wpEvent;
