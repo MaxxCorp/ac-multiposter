@@ -21,6 +21,7 @@ import {
 	contactEmail as contactEmailTable,
 	location as locationTable,
 	eventLocation as eventLocationTable,
+	eventTag as eventTag,
 	recurringSeries as recurringSeries
 } from '../db/schema';
 import { getEntityContacts } from '../contacts';
@@ -874,6 +875,8 @@ export class SyncService {
 
 		// Resolve Venue (Location)
 		let venue: ExternalEvent['venue'] | undefined;
+		let venueId: string | undefined;
+
 		if (internal.location) {
 			// Try to find structured location data
 			const [locationMapping] = await db
@@ -884,6 +887,7 @@ export class SyncService {
 				.limit(1);
 
 			if (locationMapping) {
+				venueId = locationMapping.location.id; // Store internal ID
 				venue = {
 					name: locationMapping.location.name,
 					address: locationMapping.location.street ? `${locationMapping.location.street} ${locationMapping.location.houseNumber || ''}`.trim() : undefined,
@@ -903,6 +907,7 @@ export class SyncService {
 
 		// Resolve Organizer (Contact with "Employee" tag)
 		let organizer: ExternalEvent['organizer'] | undefined;
+		let organizerId: string | undefined;
 
 		// Find associated contacts who are employees
 		for (const contact of associatedContacts) {
@@ -911,6 +916,7 @@ export class SyncService {
 
 			if (isEmployee) {
 				// Use the first employee found as organizer
+				organizerId = contact.id;
 				const email = (contact as any).emails?.find((e: any) => e.primary)?.value ||
 					(contact as any).emails?.[0]?.value;
 				const phone = (contact as any).phones?.find((p: any) => p.primary)?.value ||
@@ -922,6 +928,31 @@ export class SyncService {
 					phone: phone
 				};
 				break; // Only one organizer
+			}
+		}
+
+		// Resolve Tags
+		const tags: Array<{ id: string; name: string }> = [];
+		// Fetch tags linked to this event
+		const eventTags = await db
+			.select({ tag: tagTable })
+			.from(eventTag) // Assuming eventTag is imported (might need to check imports)
+			.innerJoin(tagTable, eq(eventTag.tagId, tagTable.id))
+			.where(eq(eventTag.eventId, internal.id));
+
+		if (eventTags.length > 0) {
+			tags.push(...eventTags.map(t => ({ id: t.tag.id, name: t.tag.name })));
+		}
+
+		// Map Image (First Attachment)
+		let image: ExternalEvent['image'] | undefined;
+		if (internal.attachments && internal.attachments.length > 0) {
+			const firstAttachment = internal.attachments[0];
+			if (firstAttachment.fileUrl) {
+				image = {
+					url: firstAttachment.fileUrl,
+					title: firstAttachment.title
+				};
 			}
 		}
 
@@ -943,11 +974,16 @@ export class SyncService {
 			source: (internal.source as any) ?? undefined,
 			ticketPrice: internal.ticketPrice ?? undefined,
 			venue,
+			venueId,
 			organizer,
+			tags,
+			image,
 			metadata: {
 				eventId: internal.id,
 				seriesId: (internal as any).seriesId ?? undefined,
-				app_event_id: internal.id // Pass internal ID to provider for loop prevention
+				app_event_id: internal.id, // Pass internal ID to provider for loop prevention
+				organizerId: organizerId,
+				locationId: venueId
 			}
 		};
 	}

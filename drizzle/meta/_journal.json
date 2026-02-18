@@ -57,6 +57,13 @@
       "when": 1770548994119,
       "tag": "0007_add_recurring_series",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771345988794,
+      "tag": "0008_familiar_raider",
+      "breakpoints": true
     }
   ]
 }

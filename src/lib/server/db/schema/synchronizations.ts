@@ -69,8 +69,14 @@ export const syncMapping = pgTable("sync_mapping", {
     lastSyncedAt: timestamp("last_synced_at").defaultNow().notNull(),
     etag: text("etag"), // For conflict detection
     metadata: jsonb("metadata"), // Provider-specific metadata
+    locationId: uuid("location_id"), // Linked location/venue
+    contactId: uuid("contact_id"), // Linked contact/organizer
+    tagId: uuid("tag_id"), // Linked tag
 }, (table) => [
     index("sync_mapping_event_id_idx").on(table.eventId),
+    index("sync_mapping_location_id_idx").on(table.locationId),
+    index("sync_mapping_contact_id_idx").on(table.contactId),
+    index("sync_mapping_tag_id_idx").on(table.tagId),
     index('sync_mapping_announcement_id_idx').on(table.announcementId),
     index('sync_mapping_sync_config_id_idx').on(table.syncConfigId),
     index("sync_mapping_lookup_index").on(

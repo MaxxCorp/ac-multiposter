@@ -6,6 +6,9 @@ import type {
 	SyncDirection
 } from '../types';
 import { env } from '$env/dynamic/private';
+import { db } from '../../db';
+import { syncMapping } from '../../db/schema';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * WordPress The Events Calendar sync provider implementation
@@ -123,10 +126,6 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 					if (match) {
 						console.log(`Found existing WordPress event for "${event.summary}", linking instead of creating.`);
-						// Determine if we should update it. 
-						// For now, let's just return the ID so the mapping is established.
-						// The next sync cycle will trigger updateEvent if content differs and etags don't match (if logic supports it).
-						// But to be safe and ensure the remote is current, we should probably update it now.
 						const updateResult = await this.updateEvent(match.id.toString(), event);
 						return {
 							externalId: match.id.toString(),
@@ -138,7 +137,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 			// Ensure venue exists if provided
 			if (event.venue) {
-				const venueId = await this.ensureVenue(event.venue);
+				const venueId = await this.ensureVenue(event.venue, event.metadata?.locationId || event.venueId);
 				if (venueId) {
 					wpEventData.venue = venueId;
 				}
@@ -146,9 +145,29 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 			// Ensure organizer exists if provided
 			if (event.organizer) {
-				const organizerId = await this.ensureOrganizer(event.organizer);
+				const organizerId = await this.ensureOrganizer(event.organizer, event.metadata?.organizerId); // organizerId passed in metadata
 				if (organizerId) {
 					wpEventData.organizer = organizerId;
+				}
+			}
+
+			// Ensure tags
+			if (event.tags && event.tags.length > 0) {
+				const tagIds: number[] = [];
+				for (const tag of event.tags) {
+					const tagId = await this.ensureTag(tag);
+					if (tagId) tagIds.push(tagId);
+				}
+				if (tagIds.length > 0) {
+					wpEventData.tags = tagIds;
+				}
+			}
+
+			// Ensure image
+			if (event.image) {
+				const mediaId = await this.ensureImage(event.image);
+				if (mediaId) {
+					wpEventData.featured_media = mediaId;
 				}
 			}
 
@@ -189,7 +208,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 		try {
 			// Ensure venue exists if provided
 			if (event.venue) {
-				const venueId = await this.ensureVenue(event.venue);
+				const venueId = await this.ensureVenue(event.venue, event.metadata?.locationId || event.venueId);
 				if (venueId) {
 					wpEventData.venue = venueId;
 				}
@@ -197,9 +216,29 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 			// Ensure organizer exists if provided
 			if (event.organizer) {
-				const organizerId = await this.ensureOrganizer(event.organizer);
+				const organizerId = await this.ensureOrganizer(event.organizer, event.metadata?.organizerId); // organizerId passed in metadata
 				if (organizerId) {
 					wpEventData.organizer = organizerId;
+				}
+			}
+
+			// Ensure tags
+			if (event.tags && event.tags.length > 0) {
+				const tagIds: number[] = [];
+				for (const tag of event.tags) {
+					const tagId = await this.ensureTag(tag);
+					if (tagId) tagIds.push(tagId);
+				}
+				if (tagIds.length > 0) {
+					wpEventData.tags = tagIds;
+				}
+			}
+
+			// Ensure image
+			if (event.image) {
+				const mediaId = await this.ensureImage(event.image);
+				if (mediaId) {
+					wpEventData.featured_media = mediaId;
 				}
 			}
 
@@ -255,11 +294,29 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 	/**
 	 * Ensure valid venue exists in WordPress
 	 * @param venue Venue data
+	 * @param internalId Internal Location ID
 	 * @returns Venue ID
 	 */
-	private async ensureVenue(venue: NonNullable<ExternalEvent['venue']>): Promise<number | undefined> {
+	private async ensureVenue(venue: NonNullable<ExternalEvent['venue']>, internalId?: string): Promise<number | undefined> {
+		if (!this.config) return undefined;
+
 		try {
-			// Search for existing venue by name
+			// 1. Check mapping
+			if (internalId) {
+				const [mapping] = await db
+					.select()
+					.from(syncMapping)
+					.where(and(
+						eq(syncMapping.syncConfigId, this.config.id),
+						eq(syncMapping.locationId, internalId)
+					));
+
+				if (mapping) {
+					return parseInt(mapping.externalId, 10);
+				}
+			}
+
+			// 2. Search for existing venue by name
 			const searchParams = new URLSearchParams();
 			searchParams.set('search', venue.name);
 
@@ -272,45 +329,63 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 				},
 			});
 
+			let externalId: string | undefined;
+
 			if (searchResponse.ok) {
 				const searchResult = await searchResponse.json();
 				if (searchResult.venues && searchResult.venues.length > 0) {
-					// Use the first match
-					// Optionally: Check for exact match or update details if needed
-					return searchResult.venues[0].id;
+					externalId = searchResult.venues[0].id.toString();
 				}
 			}
 
-			// Create new venue
-			const venueData: any = {
-				venue: venue.name,
-				address: venue.address,
-				city: venue.city,
-				country: venue.country,
-				province: venue.province,
-				zip: venue.zip,
-				phone: venue.phone,
-				website: venue.website,
-				show_map: true,
-				show_map_link: true,
-			};
+			// 3. Create new venue if not found
+			if (!externalId) {
+				const venueData: any = {
+					venue: venue.name,
+					address: venue.address,
+					city: venue.city,
+					country: venue.country,
+					province: venue.province,
+					zip: venue.zip,
+					phone: venue.phone,
+					website: venue.website,
+					show_map: true,
+					show_map_link: true,
+				};
 
-			const createResponse = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/venues`, {
-				method: 'POST',
-				headers: {
-					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(venueData),
-			});
+				const createResponse = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/venues`, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(venueData),
+				});
 
-			if (createResponse.ok) {
-				const createdVenue = await createResponse.json();
-				return createdVenue.id;
-			} else {
-				const errorText = await createResponse.text();
-				console.error(`Failed to create venue in WordPress: ${createResponse.status} - ${errorText}`);
+				if (createResponse.ok) {
+					const createdVenue = await createResponse.json();
+					externalId = createdVenue.id.toString();
+				} else {
+					const errorText = await createResponse.text();
+					console.error(`Failed to create venue in WordPress: ${createResponse.status} - ${errorText}`);
+				}
 			}
+
+			// 4. Save mapping
+			if (externalId && internalId) {
+				// Check again if mapping was created concurrently (safe guard)
+				// Or just insert
+				await db.insert(syncMapping).values({
+					syncConfigId: this.config.id,
+					externalId: externalId,
+					providerId: this.config.providerId,
+					locationId: internalId,
+					lastSyncedAt: new Date()
+				});
+			}
+
+			return externalId ? parseInt(externalId, 10) : undefined;
+
 		} catch (error) {
 			console.error('Error ensuring venue in WordPress:', error);
 		}
@@ -321,12 +396,29 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 	/**
 	 * Ensure valid organizer exists in WordPress
 	 * @param organizer Organizer data
+	 * @param internalId Internal Contact ID
 	 * @returns Organizer ID
 	 */
-	private async ensureOrganizer(organizer: NonNullable<ExternalEvent['organizer']>): Promise<number | undefined> {
+	private async ensureOrganizer(organizer: NonNullable<ExternalEvent['organizer']>, internalId?: string): Promise<number | undefined> {
+		if (!this.config) return undefined;
+
 		try {
-			// Search for existing organizer by email (more reliable than name) or name
-			// The Events Calendar API allows searching by string
+			// 1. Check mapping
+			if (internalId) {
+				const [mapping] = await db
+					.select()
+					.from(syncMapping)
+					.where(and(
+						eq(syncMapping.syncConfigId, this.config.id),
+						eq(syncMapping.contactId, internalId)
+					));
+
+				if (mapping) {
+					return parseInt(mapping.externalId, 10);
+				}
+			}
+
+			// 2. Search
 			const searchParams = new URLSearchParams();
 			searchParams.set('search', organizer.email || organizer.name);
 
@@ -339,51 +431,205 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 				},
 			});
 
+			let externalId: string | undefined;
+
 			if (searchResponse.ok) {
 				const searchResult = await searchResponse.json();
 				if (searchResult.organizers && searchResult.organizers.length > 0) {
-					// Check for exact email match if email is provided
 					if (organizer.email) {
 						const match = searchResult.organizers.find((o: any) => o.email === organizer.email);
-						if (match) return match.id;
+						if (match) externalId = match.id.toString();
 					}
-					// Check for exact name match
-					const match = searchResult.organizers.find((o: any) => o.organizer === organizer.name);
-					if (match) return match.id;
-
-					// If strictly searching, we might not want to return a fuzzy match, but for now lets try to be helpful
-					// return searchResult.organizers[0].id;
+					if (!externalId) {
+						const match = searchResult.organizers.find((o: any) => o.organizer === organizer.name);
+						if (match) externalId = match.id.toString();
+					}
 				}
 			}
 
-			// Create new organizer
-			const organizerData: any = {
-				organizer: organizer.name,
-				email: organizer.email,
-				phone: organizer.phone,
-				website: organizer.website,
-			};
+			// 3. Create
+			if (!externalId) {
+				const organizerData: any = {
+					organizer: organizer.name,
+					email: organizer.email,
+					phone: organizer.phone,
+					website: organizer.website,
+				};
 
-			const createResponse = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/organizers`, {
-				method: 'POST',
-				headers: {
-					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(organizerData),
-			});
+				const createResponse = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/organizers`, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(organizerData),
+				});
 
-			if (createResponse.ok) {
-				const createdOrganizer = await createResponse.json();
-				return createdOrganizer.id;
-			} else {
-				const errorText = await createResponse.text();
-				console.error(`Failed to create organizer in WordPress: ${createResponse.status} - ${errorText}`);
+				if (createResponse.ok) {
+					const createdOrganizer = await createResponse.json();
+					externalId = createdOrganizer.id.toString();
+				} else {
+					console.error(`Failed to create organizer in WordPress: ${createResponse.status}`);
+				}
 			}
+
+			// 4. Save mapping
+			if (externalId && internalId) {
+				await db.insert(syncMapping).values({
+					syncConfigId: this.config.id,
+					externalId: externalId,
+					providerId: this.config.providerId,
+					contactId: internalId,
+					lastSyncedAt: new Date()
+				});
+			}
+
+			return externalId ? parseInt(externalId, 10) : undefined;
 		} catch (error) {
 			console.error('Error ensuring organizer in WordPress:', error);
 		}
 
+		return undefined;
+	}
+
+	/**
+	 * Ensure valid tag exists in WordPress
+	 * @param tag Tag data
+	 * @returns Tag ID
+	 */
+	private async ensureTag(tag: { id: string; name: string }): Promise<number | undefined> {
+		if (!this.config) return undefined;
+
+		try {
+			// 1. Check mapping
+			const [mapping] = await db
+				.select()
+				.from(syncMapping)
+				.where(and(
+					eq(syncMapping.syncConfigId, this.config.id),
+					eq(syncMapping.tagId, tag.id)
+				));
+
+			if (mapping) {
+				return parseInt(mapping.externalId, 10);
+			}
+
+			// 2. Search
+			const searchParams = new URLSearchParams();
+			searchParams.set('search', tag.name);
+			const searchUrl = `${this.baseUrl}/wp-json/wp/v2/tags?${searchParams.toString()}`;
+			const searchResponse = await fetch(searchUrl, {
+				method: 'GET',
+				headers: {
+					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+					'Content-Type': 'application/json',
+				},
+			});
+
+			let externalId: string | undefined;
+
+			if (searchResponse.ok) {
+				const tags = await searchResponse.json();
+				if (tags && tags.length > 0) {
+					const match = tags.find((t: any) => t.name.toLowerCase() === tag.name.toLowerCase());
+					if (match) externalId = match.id.toString();
+				}
+			}
+
+			// 3. Create
+			if (!externalId) {
+				const createResponse = await fetch(`${this.baseUrl}/wp-json/wp/v2/tags`, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ name: tag.name }),
+				});
+
+				if (createResponse.ok) {
+					const createdTag = await createResponse.json();
+					externalId = createdTag.id.toString();
+				}
+			}
+
+			// 4. Save mapping
+			if (externalId) {
+				await db.insert(syncMapping).values({
+					syncConfigId: this.config.id,
+					externalId: externalId,
+					providerId: this.config.providerId,
+					tagId: tag.id,
+					lastSyncedAt: new Date()
+				});
+			}
+
+			return externalId ? parseInt(externalId, 10) : undefined;
+		} catch (error) {
+			console.error('Error ensuring tag in WordPress:', error);
+		}
+		return undefined;
+	}
+
+	/**
+	 * Ensure image exists in WordPress
+	 * @param image Image data
+	 * @returns Media ID
+	 */
+	private async ensureImage(image: { url: string; title?: string }): Promise<number | undefined> {
+		try {
+			const filename = image.url.split('/').pop() || 'image.jpg';
+			const title = image.title || filename.split('.')[0];
+
+			// 1. Search by title/slug logic (dedup)
+			const searchParams = new URLSearchParams();
+			searchParams.set('search', title);
+			searchParams.set('media_type', 'image');
+
+			const searchUrl = `${this.baseUrl}/wp-json/wp/v2/media?${searchParams.toString()}`;
+			const searchResponse = await fetch(searchUrl, {
+				method: 'GET',
+				headers: {
+					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+				},
+			});
+
+			if (searchResponse.ok) {
+				const media = await searchResponse.json();
+				// Strict check? Or loose?
+				// Reuse if found
+				if (media.length > 0) {
+					return media[0].id;
+				}
+			}
+
+			// 2. Upload
+			const imageResponse = await fetch(image.url);
+			if (!imageResponse.ok) return undefined;
+
+			const arrayBuffer = await imageResponse.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+
+			const uploadResponse = await fetch(`${this.baseUrl}/wp-json/wp/v2/media`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+					'Content-Disposition': `attachment; filename="${filename}"`,
+					'Content-Type': imageResponse.headers.get('content-type') || 'image/jpeg',
+				},
+				body: buffer,
+			});
+
+			if (uploadResponse.ok) {
+				const uploadedMedia = await uploadResponse.json();
+				return uploadedMedia.id;
+			} else {
+				console.error('Failed to upload image to WordPress:', await uploadResponse.text());
+			}
+
+		} catch (error) {
+			console.error('Error ensuring image in WordPress:', error);
+		}
 		return undefined;
 	}
 
@@ -393,6 +639,9 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			title: event.summary,
 			content: event.description || '',
 			status: 'publish', // Publish immediately
+			hide_from_listings: false,
+			show_map: true,
+			show_map_link: true,
 		};
 
 		// Format date helper
@@ -423,10 +672,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 		// Handle start date/time
 		if (event.startDateTime) {
 			const { date, time } = formatDate(event.startDateTime, event.startTimeZone);
-			// The Events Calendar expects full datetime string YYYY-MM-DD HH:MM:SS
 			wpEvent.start_date = `${date} ${time}`;
-			// We can also send explicit GMT if helpful, but start_date + timezone should suffice
-			// wpEvent.start_date_gmt = ...
 		} else if (event.startDate) {
 			wpEvent.start_date = `${event.startDate} 00:00:00`;
 			wpEvent.all_day = true;
@@ -440,8 +686,6 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			wpEvent.end_date = `${event.endDate} 23:59:59`;
 		}
 
-		// Location/Venue is handled separately via ensureVenue and ID reference
-
 		// Handle timezone
 		if (event.startTimeZone) {
 			wpEvent.timezone = event.startTimeZone;
@@ -449,13 +693,11 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 		// Handle recurrence if present
 		if (event.recurrence && event.recurrence.length > 0) {
-			// The Events Calendar supports RRULE format or specific fields
-			// API documentation suggests using 'recurrence' object for simple patterns
 			const rrule = event.recurrence[0];
 			if (rrule.includes('FREQ=WEEKLY')) {
 				wpEvent.recurrence = {
 					type: 'weekly',
-					end_type: 'never', // Could be enhanced to parse UNTIL
+					end_type: 'never',
 				};
 			} else if (rrule.includes('FREQ=DAILY')) {
 				wpEvent.recurrence = {
@@ -475,14 +717,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			wpEvent.meta = event.metadata.customFields;
 		}
 
-		// Map additional available fields
-		if (event.metadata?.image) {
-			// Feature image handling would require uploading media first, which is complex.
-			// Skipping for now unless requested.
-		}
-
 		// Map Website URL
-		// Prefer linking to the internal Multiposter event view
 		if (event.metadata?.eventId && env.BETTER_AUTH_URL) {
 			wpEvent.website = `${env.BETTER_AUTH_URL}/events/${event.metadata.eventId}`;
 		} else if (event.source?.url) {
