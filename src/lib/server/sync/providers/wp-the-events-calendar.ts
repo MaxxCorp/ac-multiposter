@@ -349,8 +349,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 					zip: venue.zip,
 					phone: venue.phone,
 					website: venue.website,
-					show_map: true,
-					show_map_link: true,
+					show_map: 'true',
+					show_map_link: 'true',
 				};
 
 				const createResponse = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/venues`, {
@@ -640,8 +640,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			content: event.description || '',
 			status: 'publish', // Publish immediately
 			hide_from_listings: false,
-			show_map: true,
-			show_map_link: true,
+			show_map: 'true',
+			show_map_link: 'true',
 		};
 
 		// Format date helper

@@ -873,36 +873,35 @@ export class SyncService {
 			}
 		}
 
+
 		// Resolve Venue (Location)
 		let venue: ExternalEvent['venue'] | undefined;
 		let venueId: string | undefined;
 
-		if (internal.location) {
-			// Try to find structured location data
-			const [locationMapping] = await db
-				.select({ location: locationTable })
-				.from(eventLocationTable)
-				.innerJoin(locationTable, eq(eventLocationTable.locationId, locationTable.id))
-				.where(eq(eventLocationTable.eventId, internal.id))
-				.limit(1);
+		// Try to find structured location data first
+		const [locationMapping] = await db
+			.select({ location: locationTable })
+			.from(eventLocationTable)
+			.innerJoin(locationTable, eq(eventLocationTable.locationId, locationTable.id))
+			.where(eq(eventLocationTable.eventId, internal.id))
+			.limit(1);
 
-			if (locationMapping) {
-				venueId = locationMapping.location.id; // Store internal ID
-				venue = {
-					name: locationMapping.location.name,
-					address: locationMapping.location.street ? `${locationMapping.location.street} ${locationMapping.location.houseNumber || ''}`.trim() : undefined,
-					city: locationMapping.location.city ?? undefined,
-					country: locationMapping.location.country ?? undefined,
-					zip: locationMapping.location.zip ?? undefined,
-					// Province/State not strictly typed in location schema but often part of address
-					province: locationMapping.location.state ?? undefined,
-				};
-			} else {
-				// Fallback to text location if no structured location is linked
-				venue = {
-					name: internal.location
-				};
-			}
+		if (locationMapping) {
+			venueId = locationMapping.location.id; // Store internal ID
+			venue = {
+				name: locationMapping.location.name,
+				address: locationMapping.location.street ? `${locationMapping.location.street} ${locationMapping.location.houseNumber || ''}`.trim() : undefined,
+				city: locationMapping.location.city ?? undefined,
+				country: locationMapping.location.country ?? undefined,
+				zip: locationMapping.location.zip ?? undefined,
+				// Province/State not strictly typed in location schema but often part of address
+				province: locationMapping.location.state ?? undefined,
+			};
+		} else if (internal.location) {
+			// Fallback to text location if no structured location is linked
+			venue = {
+				name: internal.location
+			};
 		}
 
 		// Resolve Organizer (Contact with "Employee" tag)
