@@ -943,23 +943,51 @@ export class SyncService {
 			tags.push(...eventTags.map(t => ({ id: t.tag.id, name: t.tag.name })));
 		}
 
+		// Helper to resolve absolute URLs
+		const baseUrl = env.BETTER_AUTH_URL || 'https://localhost:5173';
+		const resolveUrl = (url: string | null | undefined) => {
+			if (!url) return undefined;
+			if (url.startsWith('http')) return url;
+			return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+		};
+
 		// Map Image (First Attachment)
 		let image: ExternalEvent['image'] | undefined;
 		if (internal.attachments && internal.attachments.length > 0) {
 			const firstAttachment = internal.attachments[0];
 			if (firstAttachment.fileUrl) {
 				image = {
-					url: firstAttachment.fileUrl,
+					url: resolveUrl(firstAttachment.fileUrl)!,
 					title: firstAttachment.title
 				};
 			}
+		}
+
+		// Fallback: Extract image from content if no attachment
+		let description = internal.description ?? undefined;
+		if (!image && description) {
+			const imgMatch = description.match(/<img[^>]+src="([^">]+)"/);
+			if (imgMatch && imgMatch[1]) {
+				image = {
+					url: resolveUrl(imgMatch[1])!,
+					title: internal.summary // Use event title as fallback
+				};
+			}
+		}
+
+		// Ensure all content URLs are absolute
+		if (description) {
+			description = description.replace(
+				/(src|href)="(\/[^"]+)"/g,
+				(match, attr, path) => `${attr}="${resolveUrl(path)}"`
+			);
 		}
 
 		return {
 			externalId: '',
 			providerId,
 			summary: internal.summary,
-			description: internal.description ?? undefined,
+			description: description,
 			location: internal.location ?? undefined,
 			startDate: internal.startDate ?? undefined,
 			startDateTime: internal.startDateTime ?? undefined,
