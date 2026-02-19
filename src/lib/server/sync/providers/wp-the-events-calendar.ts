@@ -139,7 +139,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			if (event.venue) {
 				const venueId = await this.ensureVenue(event.venue, event.metadata?.locationId || event.venueId);
 				if (venueId) {
-					wpEventData.venue = [venueId]; // API expects array
+					// API docs seem bugged, reverting to single integer
+					wpEventData.venue = venueId;
 				}
 			}
 
@@ -147,7 +148,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			if (event.organizer) {
 				const organizerId = await this.ensureOrganizer(event.organizer, event.metadata?.organizerId); // organizerId passed in metadata
 				if (organizerId) {
-					wpEventData.organizer = [organizerId]; // API expects array
+					// API expects array of IDs
+					wpEventData.organizer = [organizerId];
 				}
 			}
 
@@ -164,12 +166,13 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			}
 
 			// Ensure image
+			let mediaData: { id: number; url: string } | undefined;
 			if (event.image) {
 				console.log(`[WP-Sync] Ensuring image: ${event.image.url}`);
-				const mediaId = await this.ensureImage(event.image);
-				if (mediaId) {
-					console.log(`[WP-Sync] Image ensured with ID: ${mediaId}`);
-					wpEventData.image = mediaId.toString(); // TEC V1 uses 'image' and requires string ID
+				mediaData = await this.ensureImage(event.image);
+				if (mediaData) {
+					console.log(`[WP-Sync] Image ensured with ID: ${mediaData.id}`);
+					wpEventData.image = mediaData.url; // Use URL as requested
 				} else {
 					console.warn(`[WP-Sync] Failed to ensure image`);
 				}
@@ -177,6 +180,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 			console.log(`[WP-Sync] Posting event to WordPress:`, JSON.stringify(wpEventData, null, 2));
 
+			// POST Event
 			const response = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/events`, {
 				method: 'POST',
 				headers: {
@@ -192,6 +196,19 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			}
 
 			const createdEvent = await response.json();
+
+			// Post-link media if we have it
+			if (mediaData && createdEvent.id) {
+				console.log(`[WP-Sync] Linking media ${mediaData.id} to event ${createdEvent.id}`);
+				await fetch(`${this.baseUrl}/wp-json/wp/v2/media/${mediaData.id}`, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ post: createdEvent.id }),
+				});
+			}
 
 			return {
 				externalId: createdEvent.id.toString(),
@@ -216,7 +233,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			if (event.venue) {
 				const venueId = await this.ensureVenue(event.venue, event.metadata?.locationId || event.venueId);
 				if (venueId) {
-					wpEventData.venue = [venueId]; // API expects array
+					// API docs seem bugged, reverting to single integer
+					wpEventData.venue = venueId;
 				}
 			}
 
@@ -224,7 +242,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			if (event.organizer) {
 				const organizerId = await this.ensureOrganizer(event.organizer, event.metadata?.organizerId); // organizerId passed in metadata
 				if (organizerId) {
-					wpEventData.organizer = [organizerId]; // API expects array
+					// API expects array of IDs
+					wpEventData.organizer = [organizerId];
 				}
 			}
 
@@ -241,10 +260,11 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			}
 
 			// Ensure image
+			let mediaData: { id: number; url: string } | undefined;
 			if (event.image) {
-				const mediaId = await this.ensureImage(event.image);
-				if (mediaId) {
-					wpEventData.image = mediaId.toString();
+				mediaData = await this.ensureImage(event.image);
+				if (mediaData) {
+					wpEventData.image = mediaData.url;
 				}
 			}
 
@@ -265,6 +285,19 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			}
 
 			const updatedEvent = await response.json();
+
+			// Post-link media if we have it
+			if (mediaData) {
+				console.log(`[WP-Sync] Linking media ${mediaData.id} to event ${externalId}`);
+				await fetch(`${this.baseUrl}/wp-json/wp/v2/media/${mediaData.id}`, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ post: externalId }),
+				});
+			}
 
 			return {
 				etag: updatedEvent.modified_gmt,
@@ -585,9 +618,9 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 	/**
 	 * Ensure image exists in WordPress
 	 * @param image Image data
-	 * @returns Media ID
+	 * @returns Media ID and URL
 	 */
-	private async ensureImage(image: { url: string; title?: string }): Promise<number | undefined> {
+	private async ensureImage(image: { url: string; title?: string }): Promise<{ id: number; url: string } | undefined> {
 		try {
 			console.log(`[WP-Sync] ensureImage check for: ${image.url}`);
 			const filename = image.url.split('/').pop() || 'image.jpg';
@@ -608,10 +641,9 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 			if (searchResponse.ok) {
 				const media = await searchResponse.json();
-				// Strict check? Or loose?
 				// Reuse if found
 				if (media.length > 0) {
-					return media[0].id;
+					return { id: media[0].id, url: media[0].source_url };
 				}
 			}
 
@@ -634,7 +666,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 			if (uploadResponse.ok) {
 				const uploadedMedia = await uploadResponse.json();
-				return uploadedMedia.id;
+				return { id: uploadedMedia.id, url: uploadedMedia.source_url };
 			} else {
 				const errorText = await uploadResponse.text();
 				console.error(`[WP-Sync] Failed to upload image to WordPress: ${uploadResponse.status} ${uploadResponse.statusText}`);
