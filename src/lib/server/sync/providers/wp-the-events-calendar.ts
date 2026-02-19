@@ -139,8 +139,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			if (event.venue) {
 				const venueId = await this.ensureVenue(event.venue, event.metadata?.locationId || event.venueId);
 				if (venueId) {
-					// API docs seem bugged, reverting to single integer
-					wpEventData.venue = venueId;
+					// API expects array of IDs
+					wpEventData.venue = [venueId];
 				}
 			}
 
@@ -233,8 +233,8 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			if (event.venue) {
 				const venueId = await this.ensureVenue(event.venue, event.metadata?.locationId || event.venueId);
 				if (venueId) {
-					// API docs seem bugged, reverting to single integer
-					wpEventData.venue = venueId;
+					// API expects array of IDs
+					wpEventData.venue = [venueId];
 				}
 			}
 
@@ -690,10 +690,12 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 			show_map_link: 'true',
 		};
 
+		// Resolve timezone, falling back to Europe/Berlin (since we must provide a timezone to WP to avoid offsets)
+		const resolvedTz = event.startTimeZone || process.env.TZ || 'Europe/Berlin';
+
 		// Format date helper
-		const formatDate = (date: Date, timeZone: string | undefined): { date: string, time: string } => {
-			// Use provided timezone or UTC as fallback
-			const tz = timeZone || 'UTC';
+		const formatDate = (date: Date, timeZone: string): { date: string, time: string } => {
+			const tz = timeZone;
 
 			// Format date part (YYYY-MM-DD)
 			const datePart = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
@@ -717,7 +719,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 		// Handle start date/time
 		if (event.startDateTime) {
-			const { date, time } = formatDate(event.startDateTime, event.startTimeZone);
+			const { date, time } = formatDate(event.startDateTime, resolvedTz);
 			wpEvent.start_date = `${date} ${time}`;
 		} else if (event.startDate) {
 			wpEvent.start_date = `${event.startDate} 00:00:00`;
@@ -726,16 +728,14 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 
 		// Handle end date/time
 		if (event.endDateTime) {
-			const { date, time } = formatDate(event.endDateTime, event.endTimeZone || event.startTimeZone);
+			const { date, time } = formatDate(event.endDateTime, event.endTimeZone || resolvedTz);
 			wpEvent.end_date = `${date} ${time}`;
 		} else if (event.endDate) {
 			wpEvent.end_date = `${event.endDate} 23:59:59`;
 		}
 
-		// Handle timezone
-		if (event.startTimeZone) {
-			wpEvent.timezone = event.startTimeZone;
-		}
+		// Always explicitly include the mapped timezone so WP Events Calendar evaluates the time string properly
+		wpEvent.timezone = resolvedTz;
 
 		// Handle recurrence if present
 		if (event.recurrence && event.recurrence.length > 0) {
