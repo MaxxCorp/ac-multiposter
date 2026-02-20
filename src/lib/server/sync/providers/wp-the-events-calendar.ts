@@ -9,6 +9,7 @@ import { env } from '$env/dynamic/private';
 import { db } from '../../db';
 import { syncMapping } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
+import crypto from 'crypto';
 
 /**
  * WordPress The Events Calendar sync provider implementation
@@ -314,7 +315,7 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 		}
 
 		try {
-			const response = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/events/${externalId}`, {
+			const response = await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/events/${externalId}?force=true`, {
 				method: 'DELETE',
 				headers: {
 					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
@@ -353,6 +354,30 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 					));
 
 				if (mapping) {
+					try {
+						const venueData: any = {
+							venue: venue.name,
+							address: venue.address,
+							city: venue.city,
+							country: venue.country,
+							province: venue.province,
+							zip: venue.zip,
+							phone: venue.phone,
+							website: venue.website,
+						};
+
+						await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/venues/${mapping.externalId}`, {
+							method: 'POST',
+							headers: {
+								'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify(venueData),
+						});
+					} catch (e) {
+						console.error('[WP-Sync] Failed to update venue:', e);
+					}
+
 					return parseInt(mapping.externalId, 10);
 				}
 			}
@@ -457,6 +482,26 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 					));
 
 				if (mapping) {
+					try {
+						const organizerData: any = {
+							organizer: organizer.name,
+							email: organizer.email,
+							phone: organizer.phone,
+							website: organizer.website,
+						};
+
+						await fetch(`${this.baseUrl}/wp-json/tribe/events/v1/organizers/${mapping.externalId}`, {
+							method: 'POST',
+							headers: {
+								'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify(organizerData),
+						});
+					} catch (e) {
+						console.error('[WP-Sync] Failed to update organizer:', e);
+					}
+
 					return parseInt(mapping.externalId, 10);
 				}
 			}
@@ -623,15 +668,31 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 	private async ensureImage(image: { url: string; title?: string }): Promise<{ id: number; url: string } | undefined> {
 		try {
 			console.log(`[WP-Sync] ensureImage check for: ${image.url}`);
+
+			// 1. Download the image first so we can hash it for deduplication
+			const imageResponse = await fetch(image.url);
+			if (!imageResponse.ok) return undefined;
+
+			const arrayBuffer = await imageResponse.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+
+			// 2. Hash the image buffer
+			const hash = crypto.createHash('sha256').update(buffer).digest('hex').substring(0, 16);
+
 			const filename = image.url.split('/').pop() || 'image.jpg';
-			const title = image.title || filename.split('.')[0];
+			const safeFilename = filename.toLowerCase().replace(/[^a-z0-9.]/g, '-').replace(/-+/g, '-');
 
-			// 1. Search by title/slug logic (dedup)
-			const searchParams = new URLSearchParams();
-			searchParams.set('search', title);
-			searchParams.set('media_type', 'image');
+			// Create a precise slug based on the hash to guarantee finding it later
+			const nameWithoutExt = safeFilename.split('.')[0];
+			const uniqueSlug = `${hash}-${nameWithoutExt}`.substring(0, 100); // WP slugs have length limits
+			const uploadFilename = `${hash}-${safeFilename}`;
 
-			const searchUrl = `${this.baseUrl}/wp-json/wp/v2/media?${searchParams.toString()}`;
+			// 3. Search WordPress by this exact hash-slug
+			const slugParams = new URLSearchParams();
+			slugParams.set('slug', uniqueSlug);
+			slugParams.set('media_type', 'image');
+
+			const searchUrl = `${this.baseUrl}/wp-json/wp/v2/media?${slugParams.toString()}`;
 			const searchResponse = await fetch(searchUrl, {
 				method: 'GET',
 				headers: {
@@ -643,22 +704,18 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 				const media = await searchResponse.json();
 				// Reuse if found
 				if (media.length > 0) {
+					console.log(`[WP-Sync] Image hash match found! Reusing media ID: ${media[0].id}`);
 					return { id: media[0].id, url: media[0].source_url };
 				}
 			}
 
-			// 2. Upload
-			const imageResponse = await fetch(image.url);
-			if (!imageResponse.ok) return undefined;
-
-			const arrayBuffer = await imageResponse.arrayBuffer();
-			const buffer = Buffer.from(arrayBuffer);
-
+			// 4. Upload if not found
+			console.log(`[WP-Sync] Image hash not found, uploading as: ${uploadFilename}`);
 			const uploadResponse = await fetch(`${this.baseUrl}/wp-json/wp/v2/media`, {
 				method: 'POST',
 				headers: {
 					'Authorization': `Basic ${Buffer.from(`${this.username}:${this.applicationPassword}`).toString('base64')}`,
-					'Content-Disposition': `attachment; filename="${filename}"`,
+					'Content-Disposition': `attachment; filename="${uploadFilename}"`,
 					'Content-Type': imageResponse.headers.get('content-type') || 'image/jpeg',
 				},
 				body: buffer,

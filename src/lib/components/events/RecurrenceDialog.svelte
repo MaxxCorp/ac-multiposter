@@ -139,9 +139,9 @@
 
             <div class="border-t pt-4">
                 <div class="grid grid-cols-4 gap-4">
-                    <label
+                    <span
                         class="text-right mt-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >End</label
+                        >End</span
                     >
                     <div class="col-span-3 space-y-3">
                         <div class="flex items-center space-x-2">
