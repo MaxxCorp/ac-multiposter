@@ -6,9 +6,7 @@ export interface EmailTemplateData {
   event: {
     summary: string;
     description?: string;
-    startDate?: string;
     startDateTime?: Date;
-    endDate?: string;
     endDateTime?: Date;
     location?: string;
     recurrence?: string[];
@@ -30,8 +28,8 @@ export async function renderEmailTemplates(data: EmailTemplateData): Promise<{ h
   let text = readFileSync(textTemplatePath, 'utf-8');
 
   // Replace template variables
-  const startDate = formatDate(data.event.startDate, data.event.startDateTime);
-  const endDate = formatDate(data.event.endDate, data.event.endDateTime);
+  const startDate = formatDate(data.event.startDateTime);
+  const endDate = formatDate(data.event.endDateTime);
 
   text = text
     .replace('{event.summary}', data.event.summary)
@@ -47,7 +45,7 @@ export async function renderEmailTemplates(data: EmailTemplateData): Promise<{ h
   return { html, text };
 }
 
-function formatDate(dateStr?: string, dateTime?: Date): string {
+function formatDate(dateTime?: Date): string {
   if (dateTime) {
     return dateTime.toLocaleDateString('de-DE', {
       weekday: 'long',
@@ -56,14 +54,6 @@ function formatDate(dateStr?: string, dateTime?: Date): string {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
-  }
-  if (dateStr) {
-    return new Date(dateStr).toLocaleDateString('de-DE', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
     });
   }
   return 'Nicht angegeben';
@@ -78,8 +68,8 @@ function renderSvelteComponent(Component: any, props: any): string {
   const event = props.event;
   const contactInfo = props.contactInfo;
 
-  const startDate = formatDate(event.startDate, event.startDateTime);
-  const endDate = formatDate(event.endDate, event.endDateTime);
+  const startDate = formatDate(event.startDateTime);
+  const endDate = formatDate(event.endDateTime);
 
   return `
 <!DOCTYPE html>

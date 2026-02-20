@@ -720,18 +720,22 @@ export class WpTheEventsCalendarProvider implements SyncProvider {
 		// Handle start date/time
 		if (event.startDateTime) {
 			const { date, time } = formatDate(event.startDateTime, resolvedTz);
-			wpEvent.start_date = `${date} ${time}`;
-		} else if (event.startDate) {
-			wpEvent.start_date = `${event.startDate} 00:00:00`;
-			wpEvent.all_day = true;
+			if (event.isAllDay) {
+				wpEvent.start_date = `${date} 00:00:00`;
+				wpEvent.all_day = true;
+			} else {
+				wpEvent.start_date = `${date} ${time}`;
+			}
 		}
 
 		// Handle end date/time
 		if (event.endDateTime) {
 			const { date, time } = formatDate(event.endDateTime, event.endTimeZone || resolvedTz);
-			wpEvent.end_date = `${date} ${time}`;
-		} else if (event.endDate) {
-			wpEvent.end_date = `${event.endDate} 23:59:59`;
+			if (event.isAllDay) {
+				wpEvent.end_date = `${date} 23:59:59`;
+			} else {
+				wpEvent.end_date = `${date} ${time}`;
+			}
 		}
 
 		// Always explicitly include the mapped timezone so WP Events Calendar evaluates the time string properly

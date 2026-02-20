@@ -293,18 +293,19 @@ export class MeetupProvider implements SyncProvider {
 			groupUrlname: this.config?.settings?.groupUrlname || '',
 			title: event.summary,
 			description: event.description || event.summary,
-			startDateTime: event.startDateTime?.toISOString() || `${event.startDate}T00:00:00Z`,
+			startDateTime: event.startDateTime?.toISOString(),
 			publishStatus: 'PUBLISHED' // Create events as published by default
 		};
 
 		// Handle duration
 		if (event.endDateTime && event.startDateTime) {
-			const durationMs = event.endDateTime.getTime() - event.startDateTime.getTime();
-			const durationMinutes = Math.floor(durationMs / (1000 * 60));
-			meetupEvent.duration = `PT${durationMinutes}M`;
-		} else if (event.endDate && event.startDate) {
-			// All-day event - set duration to 24 hours
-			meetupEvent.duration = 'PT1440M';
+			if (event.isAllDay) {
+				meetupEvent.duration = 'PT1440M';
+			} else {
+				const durationMs = event.endDateTime.getTime() - event.startDateTime.getTime();
+				const durationMinutes = Math.floor(durationMs / (1000 * 60));
+				meetupEvent.duration = `PT${durationMinutes}M`;
+			}
 		} else {
 			meetupEvent.duration = 'PT60M'; // Default 1 hour
 		}

@@ -241,12 +241,9 @@ export class BewegungsatlasBerlinProvider implements SyncProvider {
 		}
 
 		// Date and time
-		if (event.startDate) {
-			const startDate = new Date(event.startDate);
-			formData['event_start_date'] = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
-		}
-
 		if (event.startDateTime) {
+			const startDate = new Date(event.startDateTime);
+			formData['event_start_date'] = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
 			const startTime = event.startDateTime.toLocaleTimeString('de-DE', {
 				hour: '2-digit',
 				minute: '2-digit'
@@ -254,12 +251,9 @@ export class BewegungsatlasBerlinProvider implements SyncProvider {
 			formData['event_start_time'] = startTime;
 		}
 
-		if (event.endDate) {
-			const endDate = new Date(event.endDate);
-			formData['event_end_date'] = endDate.toISOString().split('T')[0];
-		}
-
 		if (event.endDateTime) {
+			const endDate = new Date(event.endDateTime);
+			formData['event_end_date'] = endDate.toISOString().split('T')[0];
 			const endTime = event.endDateTime.toLocaleTimeString('de-DE', {
 				hour: '2-digit',
 				minute: '2-digit'

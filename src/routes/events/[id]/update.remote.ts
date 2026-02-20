@@ -10,6 +10,7 @@ import { error } from '@sveltejs/kit';
 import { generateEventAssets } from '$lib/server/events/assets';
 import { publishEventChange } from '$lib/server/realtime';
 import { syncService } from '$lib/server/sync/service';
+import { parseDateTime, toZoned } from '@internationalized/date';
 
 // Complete rewrite to support recurrence and use helper
 export const updateExistingEvent = form(updateEventSchema, async (data) => {
@@ -44,31 +45,56 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 		if (data.categoryBerlinDotDe !== undefined) updateData.categoryBerlinDotDe = data.categoryBerlinDotDe;
 		if (data.ticketPrice !== undefined) updateData.ticketPrice = data.ticketPrice;
 
-		if (data.start !== undefined) {
-			if (!data.start) {
-				console.error('Start date explicitly cleared (empty string) prohibited?');
+		if (data.startDate !== undefined) {
+			const startTimeZone = data.startTimeZone || 'UTC';
+			updateData.startTimeZone = data.startTimeZone || null;
+			try {
+				if (data.startTime) {
+					// Timed event (has time and timezone)
+					const dString = `${data.startDate}T${data.startTime}`;
+					const calendarDate = parseDateTime(dString);
+					const zonedDate = toZoned(calendarDate, startTimeZone);
+					updateData.startDateTime = zonedDate.toDate();
+				} else if (data.startDate) {
+					// All-day event (only date, no time)
+					const dString = `${data.startDate}T00:00:00`;
+					const calendarDate = parseDateTime(dString);
+					const zonedDate = toZoned(calendarDate, startTimeZone);
+					updateData.startDateTime = zonedDate.toDate();
+				}
+				console.log('Parsed Start Date:', updateData.startDateTime);
+			} catch (e: any) {
+				console.error('Invalid start date/time', data.startDate, data.startTime, e);
+			}
+		}
+
+		if (data.endDate !== undefined) {
+			const endTimeZone = data.endTimeZone || data.startTimeZone || 'UTC';
+			updateData.endTimeZone = data.endTimeZone || null;
+			if (!data.endDate) {
+				updateData.endDateTime = null;
 			} else {
-				const start = new Date(data.start);
-				console.log('Parsed Start Date:', start);
-				if (!isNaN(start.getTime())) {
-					updateData.startDateTime = start;
+				try {
+					if (data.endTime) {
+						const dString = `${data.endDate}T${data.endTime}`;
+						const calendarDate = parseDateTime(dString);
+						const zonedDate = toZoned(calendarDate, endTimeZone);
+						updateData.endDateTime = zonedDate.toDate();
+					} else {
+						const dString = `${data.endDate}T00:00:00`;
+						const calendarDate = parseDateTime(dString);
+						const zonedDate = toZoned(calendarDate, endTimeZone);
+						updateData.endDateTime = zonedDate.toDate();
+					}
+					console.log('Parsed End Date:', updateData.endDateTime);
+				} catch (e: any) {
+					console.warn(`Invalid end date/time provided, setting to null: ${e.message}`);
+					updateData.endDateTime = null;
 				}
 			}
 		}
 
-		if (data.end !== undefined) {
-			if (!data.end) {
-				updateData.endDateTime = null;
-			} else {
-				const end = new Date(data.end);
-				console.log('Parsed End Date:', end);
-				if (!isNaN(end.getTime())) {
-					updateData.endDateTime = end;
-				} else {
-					console.warn(`Invalid end date provided: ${data.end}`);
-				}
-			}
-		}
+		if (data.isAllDay !== undefined) updateData.isAllDay = data.isAllDay === 'true' || data.isAllDay === true;
 
 		if (data.recurrence !== undefined) {
 			// If empty string, treat as null (clearing recurrence)
@@ -190,8 +216,19 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 
 				// 3. Expand and create new instances
 				const { expandRecurrence } = await import('$lib/server/events/recurrence');
-				const start2 = updatedEvent.startDateTime ? new Date(updatedEvent.startDateTime) : new Date();
-				const end2 = updatedEvent.endDateTime ? new Date(updatedEvent.endDateTime) : null;
+
+				let start2: Date;
+				if (updatedEvent.startDateTime) {
+					start2 = new Date(updatedEvent.startDateTime as string | number | Date);
+				} else {
+					start2 = new Date();
+				}
+
+				let end2: Date | null = null;
+				if (updatedEvent.endDateTime) {
+					end2 = new Date(updatedEvent.endDateTime as string | number | Date);
+				}
+
 				const instances = expandRecurrence(newRecurrenceRule, start2, end2);
 
 				for (const { date, end: instanceEnd } of instances) {
@@ -206,8 +243,11 @@ export const updateExistingEvent = form(updateEventSchema, async (data) => {
 						location: updatedEvent.location,
 						categoryBerlinDotDe: updatedEvent.categoryBerlinDotDe,
 						ticketPrice: updatedEvent.ticketPrice,
+						isAllDay: updatedEvent.isAllDay,
 						startDateTime: date,
-						endDateTime: instanceEnd,
+						startTimeZone: updatedEvent.startTimeZone,
+						endDateTime: updatedEvent.endDateTime && instanceEnd ? instanceEnd : null,
+						endTimeZone: updatedEvent.endTimeZone,
 						// New series-based recurrence
 						seriesId: seriesId,
 						isException: false,

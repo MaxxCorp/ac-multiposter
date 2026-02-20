@@ -37,16 +37,10 @@ export const listPublicEvents = query(async (): Promise<PublicEvent[]> => {
         .where(
             and(
                 eq(event.isPublic, true),
-                or(
-                    gte(event.endDateTime, now),
-                    and(
-                        isNull(event.endDateTime),
-                        gte(event.endDate, today)
-                    )
-                )
+                gte(event.endDateTime, now)
             )
         )
-        .orderBy(desc(event.startDateTime), desc(event.startDate));
+        .orderBy(desc(event.startDateTime));
 
     if (results.length === 0) return [];
 
@@ -76,18 +70,12 @@ export const listKioskEvents = query(v.string(), async (kioskId: string): Promis
     // 2. Build Filter Criteria
     const conditions = [
         eq(event.isPublic, true),
-        or(
-            gte(event.endDateTime, lookPastDate),
-            and(
-                isNull(event.endDateTime),
-                gte(event.endDate, lookPastDateStr)
-            )
-        )
+        gte(event.endDateTime, lookPastDate)
     ];
 
     // 3. Apply Location Filtering if Kiosk has locations
     if (kioskLocationIds.length > 0) {
-        conditions.push(or(
+        const locCondition = or(
             // Event matches one of the kiosk locations via join table
             inArray(
                 event.id,
@@ -102,11 +90,11 @@ export const listKioskEvents = query(v.string(), async (kioskId: string): Promis
                     .from(eventResource)
                     .innerJoin(resource, eq(eventResource.resourceId, resource.id))
                     .where(inArray(resource.locationId, kioskLocationIds))
-            ),
-            // Fallback: Location Name text match (optional, can remove if strictly ID based now)
-            // Keeping it simple: removed legacy text match to enforce strict ID linking, 
-            // or we need to fetch location names to do ilike.
-        ));
+            )
+        );
+        if (locCondition) {
+            conditions.push(locCondition);
+        }
     }
 
     const results = await db
@@ -121,7 +109,7 @@ export const listKioskEvents = query(v.string(), async (kioskId: string): Promis
         .select()
         .from(event)
         .where(inArray(event.id, eventIds))
-        .orderBy(desc(event.startDateTime), desc(event.startDate));
+        .orderBy(desc(event.startDateTime));
 
     return hydrateEvents(fullEvents);
 });

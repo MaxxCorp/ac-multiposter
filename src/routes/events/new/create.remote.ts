@@ -9,6 +9,7 @@ import { createEventSchema } from '$lib/validations/events';
 import { generateEventAssets } from '$lib/server/events/assets';
 import { publishEventChange } from '$lib/server/realtime';
 import { syncService } from '$lib/server/sync/service';
+import { parseDateTime, toZoned } from '@internationalized/date';
 
 export const createNewEvent = form(createEventSchema, async (data) => {
 	console.log('--- createNewEvent START ---');
@@ -32,25 +33,53 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 		}
 
 		// Convert and type-safety check start/end dates
-		if (!data.start) {
+		if (!data.startDate) {
 			console.error('Missing start date');
 			error(400, 'Start date is required');
 		}
-		const start = new Date(data.start);
-		console.log('Parsed Start Date:', start);
 
-		if (isNaN(start.getTime())) {
-			console.error('Invalid start date', data.start);
-			error(400, `Invalid start date: ${data.start}`);
+		let start: Date;
+		const startTimeZone = data.startTimeZone || 'UTC';
+
+		try {
+			if (data.startTime) {
+				// Timed event (has time and timezone)
+				const dString = `${data.startDate}T${data.startTime}`;
+				const calendarDate = parseDateTime(dString);
+				const zonedDate = toZoned(calendarDate, startTimeZone);
+				start = zonedDate.toDate();
+			} else {
+				// All-day event (only date, no time)
+				const dString = `${data.startDate}T00:00:00`;
+				const calendarDate = parseDateTime(dString);
+				const zonedDate = toZoned(calendarDate, startTimeZone);
+				start = zonedDate.toDate();
+			}
+			console.log('Parsed Start Date:', start);
+		} catch (e: any) {
+			console.error('Invalid start date/time', data.startDate, data.startTime, e);
+			error(400, `Invalid start date/time format: ${e.message}`);
 		}
 
 		// End date
 		let end: Date | null = null;
-		if (data.end) {
-			end = new Date(data.end);
-			console.log('Parsed End Date:', end);
-			if (isNaN(end.getTime())) {
-				console.warn(`Invalid end date provided: ${data.end}, setting to null`);
+		if (data.endDate) {
+			const endTimeZone = data.endTimeZone || startTimeZone;
+			try {
+				if (data.endTime) {
+					const dString = `${data.endDate}T${data.endTime}`;
+					const calendarDate = parseDateTime(dString);
+					const zonedDate = toZoned(calendarDate, endTimeZone);
+					end = zonedDate.toDate();
+				} else {
+					const dString = `${data.endDate}T00:00:00`;
+					const calendarDate = parseDateTime(dString);
+					const zonedDate = toZoned(calendarDate, endTimeZone);
+					end = zonedDate.toDate();
+				}
+				console.log('Parsed End Date:', end);
+			} catch (e: any) {
+				console.warn(`Invalid end date/time provided, setting to null: ${e.message}`);
 				end = null;
 			}
 		}
@@ -104,8 +133,11 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 			location: data.location || null,
 			categoryBerlinDotDe: data.categoryBerlinDotDe || null,
 			ticketPrice: data.ticketPrice || null,
+			isAllDay: data.isAllDay === 'true' || data.isAllDay === true,
 			startDateTime: start,
+			startTimeZone: data.startTimeZone || null,
 			endDateTime: end,
+			endTimeZone: data.endTimeZone || null,
 			// New series-based recurrence
 			seriesId: seriesId,
 			isException: false,
@@ -192,8 +224,11 @@ export const createNewEvent = form(createEventSchema, async (data) => {
 						location: data.location || null,
 						categoryBerlinDotDe: data.categoryBerlinDotDe || null,
 						ticketPrice: data.ticketPrice || null,
+						isAllDay: data.isAllDay === 'true' || data.isAllDay === true,
 						startDateTime: date,
-						endDateTime: instanceEnd,
+						startTimeZone: data.startTimeZone || null,
+						endDateTime: data.endTime && instanceEnd ? instanceEnd : null,
+						endTimeZone: data.endTimeZone || null,
 						// New series-based recurrence
 						seriesId: seriesId,
 						isException: false,

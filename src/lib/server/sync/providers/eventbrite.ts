@@ -219,16 +219,7 @@ export class EventbriteProvider implements SyncProvider {
 			}
 		};
 
-		// Handle all-day events
-		if (event.startDate && !event.startDateTime) {
-			eventbriteEvent.start.utc = `${event.startDate}T00:00:00Z`;
-			eventbriteEvent.start.timezone = 'UTC';
-		}
-
-		if (event.endDate && !event.endDateTime) {
-			eventbriteEvent.end.utc = `${event.endDate}T23:59:59Z`;
-			eventbriteEvent.end.timezone = 'UTC';
-		}
+		// Handle all-day events natively through startDateTime overrides where the time ranges from 00:00 to 23:59 in local time converted to UTC by toISOString()
 
 		// Add location if provided
 		if (event.location) {

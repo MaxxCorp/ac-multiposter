@@ -36,10 +36,9 @@ export interface ExternalEvent {
 	status?: 'confirmed' | 'tentative' | 'cancelled';
 	description?: string;
 	location?: string;
-	startDate?: string;
+	isAllDay?: boolean;
 	startDateTime?: Date;
 	startTimeZone?: string;
-	endDate?: string;
 	endDateTime?: Date;
 	endTimeZone?: string;
 	attendees?: Array<{

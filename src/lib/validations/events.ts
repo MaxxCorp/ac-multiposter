@@ -32,8 +32,13 @@ export const eventBaseSchema = v.object({
 	locationIds: v.optional(v.union([v.array(v.string()), v.string()])),
 	// RemoteFormInput only allows string | number | boolean | File | ...
 	// So we use string and parse to Date manually where needed.
-	start: v.optional(v.string()),
-	end: v.optional(v.string()),
+	isAllDay: v.optional(v.union([v.boolean(), v.string()])),
+	startDate: v.optional(v.string()),
+	startTime: v.optional(v.string()),
+	startTimeZone: v.optional(v.string()),
+	endDate: v.optional(v.string()),
+	endTime: v.optional(v.string()),
+	endTimeZone: v.optional(v.string()),
 	recurrence: v.optional(recurrenceSchema),
 	attendees: v.optional(attendeesSchema),
 	reminders: v.optional(remindersSchema),

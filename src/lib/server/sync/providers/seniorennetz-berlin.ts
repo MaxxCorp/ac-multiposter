@@ -138,16 +138,11 @@ export class SeniorennetzBerlinProvider implements SyncProvider {
 			const startTime = event.startDateTime.toTimeString().substring(0, 5); // HH:MM
 			formData['start_date'] = startDate;
 			formData['start_time'] = startTime;
-		} else if (event.startDate) {
-			formData['start_date'] = event.startDate;
-			formData['start_time'] = '00:00'; // Default to start of day for all-day events
 		}
 
 		if (event.endDateTime) {
 			const endTime = event.endDateTime.toTimeString().substring(0, 5); // HH:MM
 			formData['end_time'] = endTime;
-		} else if (event.endDate) {
-			formData['end_time'] = '23:59'; // Default to end of day for all-day events
 		}
 
 		// Location

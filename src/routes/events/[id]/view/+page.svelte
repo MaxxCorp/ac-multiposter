@@ -220,29 +220,33 @@
                                         />
                                         <div>
                                             <span class="font-medium block">
-                                                {event.startDateTime
-                                                    ? `${formatDate(event.startDateTime)} at ${formatTime(event.startDateTime)}`
-                                                    : formatDate(
-                                                          event.startDate,
-                                                      )}
+                                                {event.isAllDay &&
+                                                event.startDateTime
+                                                    ? formatDate(
+                                                          event.startDateTime,
+                                                      )
+                                                    : event.startDateTime
+                                                      ? `${formatDate(event.startDateTime)} at ${formatTime(event.startDateTime)}`
+                                                      : ""}
                                             </span>
-                                            {#if (event.startDateTime && event.endDateTime && new Date(event.startDateTime).getDate() !== new Date(event.endDateTime).getDate()) || (event.startDate && event.endDate && event.startDate !== event.endDate)}
+                                            {#if event.endDateTime && event.startDateTime && new Date(event.startDateTime).toDateString() !== new Date(event.endDateTime).toDateString()}
                                                 <span
                                                     class="text-sm text-gray-500 block"
                                                 >
-                                                    to {event.endDateTime
-                                                        ? `${formatDate(event.endDateTime)} at ${formatTime(event.endDateTime)}`
-                                                        : formatDate(
-                                                              event.endDate,
-                                                          )}
+                                                    to {event.isAllDay
+                                                        ? formatDate(
+                                                              event.endDateTime,
+                                                          )
+                                                        : `${formatDate(event.endDateTime)} at ${formatTime(event.endDateTime)}`}
                                                 </span>
-                                            {:else if event.endDateTime}
+                                            {:else if event.endDateTime && !event.isAllDay}
                                                 <span
                                                     class="text-sm text-gray-500 block"
-                                                    >until {formatTime(
-                                                        event.endDateTime,
-                                                    )}</span
                                                 >
+                                                    until {formatTime(
+                                                        event.endDateTime,
+                                                    )}
+                                                </span>
                                             {/if}
                                         </div>
                                     </li>

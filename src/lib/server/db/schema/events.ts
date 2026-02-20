@@ -62,12 +62,11 @@ export const event = pgTable("event", {
     status: text("status").default("confirmed").notNull(), // confirmed, tentative, cancelled
 
     // Time information
-    startDate: text("start_date"), // For all-day events: "yyyy-mm-dd"
-    startDateTime: timestamp("start_date_time"), // For timed events
+    isAllDay: boolean("is_all_day").default(false).notNull(), // Unified flag for full day events
+    startDateTime: timestamp("start_date_time").notNull(), // Unified
     startTimeZone: text("start_time_zone"), // IANA timezone name
 
-    endDate: text("end_date"), // For all-day events: "yyyy-mm-dd"
-    endDateTime: timestamp("end_date_time"), // For timed events
+    endDateTime: timestamp("end_date_time"), // Unified
     endTimeZone: text("end_time_zone"), // IANA timezone name
     endTimeUnspecified: boolean("end_time_unspecified").default(false),
 

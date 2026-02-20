@@ -163,9 +163,9 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 		}
 
 		// Date and time
-		if (event.startDate) {
+		if (event.startDateTime) {
 			// Convert YYYY-MM-DD to MM/DD/YYYY for Berlin.de
-			const date = new Date(event.startDate);
+			const date = new Date(event.startDateTime);
 			const mm = String(date.getMonth() + 1).padStart(2, '0');
 			const dd = String(date.getDate()).padStart(2, '0');
 			const yyyy = date.getFullYear();
@@ -181,8 +181,8 @@ export class BerlinDeMainCalendarProvider implements SyncProvider {
 		}
 
 		// Additional dates (for multi-day or recurring events)
-		if (event.endDate && event.endDate !== event.startDate) {
-			const endDate = new Date(event.endDate);
+		if (event.endDateTime && event.startDateTime && event.endDateTime.toISOString().split('T')[0] !== event.startDateTime.toISOString().split('T')[0]) {
+			const endDate = new Date(event.endDateTime);
 			const additionalInfo = `bis ${endDate.toLocaleDateString('de-DE')}`;
 			if (event.recurrence && event.recurrence.length > 0) {
 				formData[this.fieldMappings.weitere_termine] = `${additionalInfo}, wiederholend`;

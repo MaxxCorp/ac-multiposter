@@ -200,8 +200,11 @@
                         const e = item as PublicEvent;
                         // Simple check: is endDateTime in future?
                         if (e.endDateTime) return new Date(e.endDateTime) > now;
-                        if (e.endDate)
-                            return new Date(e.endDate + "T23:59:59") > now;
+                        if (e.startDateTime && e.isAllDay) {
+                            const d = new Date(e.startDateTime);
+                            d.setHours(23, 59, 59, 999);
+                            return d > now;
+                        }
                         return false;
                     }
                     // Announcements always valid

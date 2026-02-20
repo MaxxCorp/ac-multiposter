@@ -64,6 +64,13 @@
       "when": 1771345988794,
       "tag": "0008_familiar_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771577133283,
+      "tag": "0009_aberrant_calypso",
+      "breakpoints": true
     }
   ]
 }

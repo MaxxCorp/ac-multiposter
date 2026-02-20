@@ -38,17 +38,9 @@
     } = $props();
 
     // State derived from initialData
-    let isAllDay = $state(
-        initialData?.startDateTime || initialData?.startDate
-            ? !initialData.startDateTime && !!initialData.startDate
-            : false,
-    );
+    let isAllDay = $state(initialData?.isAllDay ?? false);
 
-    let hasEndTime = $state(
-        initialData?.endDateTime || initialData?.endDate
-            ? !!(initialData.endDateTime || initialData.endDate)
-            : true,
-    );
+    let hasEndTime = $state(initialData?.endDateTime ? true : false);
     let useDefaultReminders = $state(
         initialData?.reminders?.useDefault ?? true,
     );
@@ -161,6 +153,18 @@
 
     // Date/Time handling
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timezones = Intl.supportedValuesOf
+        ? Intl.supportedValuesOf("timeZone")
+        : [];
+
+    let startTimeZoneInput = $state(
+        initialData?.startTimeZone || browserTimezone,
+    );
+    let endTimeZoneInput = $state(
+        initialData?.endTimeZone ||
+            initialData?.startTimeZone ||
+            browserTimezone,
+    );
 
     const remindersJson = $derived(
         JSON.stringify({
@@ -188,12 +192,8 @@
         }
     }
 
-    const startParsed = parseDateTime(
-        initialData?.startDateTime || initialData?.startDate,
-    );
-    const endParsed = parseDateTime(
-        initialData?.endDateTime || initialData?.endDate,
-    );
+    const startParsed = parseDateTime(initialData?.startDateTime);
+    const endParsed = parseDateTime(initialData?.endDateTime);
 
     let startDateInput = $state(
         startParsed.date || new Date().toISOString().split("T")[0],
@@ -257,27 +257,6 @@
     }
 
     // Derived values for the hidden fields
-    const computedStart = $derived(
-        isAllDay
-            ? startDateInput
-            : startDateInput && startTimeInput
-              ? new Date(`${startDateInput}T${startTimeInput}:00`).toISOString()
-              : "",
-    );
-    const computedEnd = $derived(
-        hasEndTime
-            ? isAllDay
-                ? endDateInput || startDateInput
-                : endDateInput && endTimeInput
-                  ? new Date(`${endDateInput}T${endTimeInput}:00`).toISOString()
-                  : startDateInput && endTimeInput
-                    ? new Date(
-                          `${startDateInput}T${endTimeInput}:00`,
-                      ).toISOString()
-                    : ""
-            : "",
-    );
-
     function getField(name: string) {
         if (!(remoteFunction as any).fields) return {};
         const parts = name.split(".");
@@ -405,18 +384,17 @@
             })}
         class="space-y-6"
     >
+        <datalist id="timezones">
+            {#each timezones as tz}
+                <option value={tz} />
+            {/each}
+        </datalist>
+
         {#if isUpdating && initialData}
             <input {...getField("id").as("hidden", initialData.id)} />
         {/if}
-
-        {#if computedStart}
-            <input {...getField("start").as("hidden", computedStart)} />
-        {/if}
-        {#if computedEnd}
-            <input {...getField("end").as("hidden", computedEnd)} />
-        {/if}
-
         <input {...getField("remindersJson").as("hidden", remindersJson)} />
+        <input {...getField("isAllDay").as("hidden", isAllDay.toString())} />
         <input {...getField("isPublic").as("hidden", isPublic.toString())} />
         <input
             {...getField("guestsCanInviteOthers").as(
@@ -669,87 +647,124 @@
                 >
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label
-                        for="startDateInput"
-                        class="block text-sm font-medium text-gray-700 mb-1"
-                        >Start Date <span class="text-red-500">*</span></label
-                    >
-                    <input
-                        type="date"
-                        required
-                        bind:value={startDateInput}
-                        onchange={updateEndDateTime}
-                        class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
-                    />
-                </div>
-                {#if !isAllDay}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Start Block -->
+                <div class="space-y-4">
                     <div>
                         <label
-                            for="startTimeInput"
+                            for="startDateInput"
                             class="block text-sm font-medium text-gray-700 mb-1"
-                            >Start Time <span class="text-red-500">*</span
+                            >Start Date <span class="text-red-500">*</span
                             ></label
                         >
                         <input
-                            type="time"
-                            required
-                            bind:value={startTimeInput}
-                            onchange={updateEndDateTime}
-                            class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
-                        />
-                    </div>
-                {/if}
-            </div>
-
-            <div class="flex items-center gap-2">
-                <input
-                    id="hasEndTime"
-                    type="checkbox"
-                    checked={hasEndTime}
-                    onclick={() => (hasEndTime = !hasEndTime)}
-                    class="w-4 h-4 text-blue-600"
-                />
-                <label
-                    for="hasEndTime"
-                    class="text-sm font-medium text-gray-700"
-                    >Add end time</label
-                >
-            </div>
-
-            {#if hasEndTime}
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label
-                            for="endDateInput"
-                            class="block text-sm font-medium text-gray-700 mb-1"
-                            >End Date</label
-                        >
-                        <input
+                            {...getField("startDate").as("text")}
                             type="date"
-                            bind:value={endDateInput}
-                            placeholder={startDateInput}
+                            required
+                            bind:value={startDateInput}
+                            onchange={updateEndDateTime}
                             class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
                         />
                     </div>
                     {#if !isAllDay}
                         <div>
                             <label
-                                for="endTimeInput"
+                                for="startTimeInput"
                                 class="block text-sm font-medium text-gray-700 mb-1"
-                                >End Time</label
+                                >Start Time <span class="text-red-500">*</span
+                                ></label
                             >
                             <input
+                                {...getField("startTime").as("text")}
                                 type="time"
-                                bind:value={endTimeInput}
-                                placeholder={getDefaultEndTime()}
+                                required
+                                bind:value={startTimeInput}
+                                onchange={updateEndDateTime}
+                                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
+                            />
+                        </div>
+                    {/if}
+                    <div>
+                        <label
+                            for="startTimeZoneInput"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Timezone</label
+                        >
+                        <input
+                            {...getField("startTimeZone").as("text")}
+                            list="timezones"
+                            bind:value={startTimeZoneInput}
+                            placeholder={browserTimezone}
+                            class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
+                        />
+                    </div>
+                </div>
+
+                <!-- End Block -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 h-6 md:mb-1">
+                        <input
+                            id="hasEndTime"
+                            type="checkbox"
+                            checked={hasEndTime}
+                            onclick={() => (hasEndTime = !hasEndTime)}
+                            class="w-4 h-4 text-blue-600"
+                        />
+                        <label
+                            for="hasEndTime"
+                            class="text-sm font-medium text-gray-700"
+                            >Add end time</label
+                        >
+                    </div>
+
+                    {#if hasEndTime}
+                        <div>
+                            <label
+                                for="endDateInput"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >End Date</label
+                            >
+                            <input
+                                {...getField("endDate").as("text")}
+                                type="date"
+                                bind:value={endDateInput}
+                                placeholder={startDateInput}
+                                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
+                            />
+                        </div>
+                        {#if !isAllDay}
+                            <div>
+                                <label
+                                    for="endTimeInput"
+                                    class="block text-sm font-medium text-gray-700 mb-1"
+                                    >End Time</label
+                                >
+                                <input
+                                    {...getField("endTime").as("text")}
+                                    type="time"
+                                    bind:value={endTimeInput}
+                                    placeholder={getDefaultEndTime()}
+                                    class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
+                                />
+                            </div>
+                        {/if}
+                        <div>
+                            <label
+                                for="endTimeZoneInput"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >End Timezone</label
+                            >
+                            <input
+                                {...getField("endTimeZone").as("text")}
+                                list="timezones"
+                                bind:value={endTimeZoneInput}
+                                placeholder={startTimeZoneInput}
                                 class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 border-gray-300"
                             />
                         </div>
                     {/if}
                 </div>
-            {/if}
+            </div>
 
             <!-- Recurrence Button -->
             <div class="pt-4 border-t">

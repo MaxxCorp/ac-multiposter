@@ -83,14 +83,19 @@
 	}
 
 	function formatEventTime(event: Event): string {
-		// Check if this is an all-day event (has startDate but no startDateTime)
-		const isAllDay = event.startDate && !event.startDateTime;
-
-		if (isAllDay) {
-			if (event.endDate && event.endDate !== event.startDate) {
-				return `All day: ${event.startDate} - ${event.endDate}`;
+		if (event.isAllDay && event.startDateTime) {
+			const startDateStr = new Date(
+				event.startDateTime,
+			).toLocaleDateString();
+			if (event.endDateTime) {
+				const endDateStr = new Date(
+					event.endDateTime,
+				).toLocaleDateString();
+				if (startDateStr !== endDateStr) {
+					return `All day: ${startDateStr} - ${endDateStr}`;
+				}
 			}
-			return `All day on ${event.startDate}`;
+			return `All day on ${startDateStr}`;
 		}
 
 		if (event.startDateTime) {

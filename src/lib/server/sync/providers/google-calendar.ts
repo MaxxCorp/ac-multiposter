@@ -436,11 +436,10 @@ export class GoogleCalendarProvider implements SyncProvider {
 			status: (gcalEvent.status as 'confirmed' | 'tentative' | 'cancelled') ?? undefined,
 			description: gcalEvent.description ?? undefined,
 			location: gcalEvent.location ?? undefined,
-			startDate: gcalEvent.start?.date ?? undefined,
-			startDateTime: gcalEvent.start?.dateTime ? new Date(gcalEvent.start.dateTime) : undefined,
+			isAllDay: !!gcalEvent.start?.date,
+			startDateTime: gcalEvent.start?.dateTime ? new Date(gcalEvent.start.dateTime) : (gcalEvent.start?.date ? new Date(`${gcalEvent.start.date}T00:00:00Z`) : undefined),
 			startTimeZone: gcalEvent.start?.timeZone ?? undefined,
-			endDate: gcalEvent.end?.date ?? undefined,
-			endDateTime: gcalEvent.end?.dateTime ? new Date(gcalEvent.end.dateTime) : undefined,
+			endDateTime: gcalEvent.end?.dateTime ? new Date(gcalEvent.end.dateTime) : (gcalEvent.end?.date ? new Date(`${gcalEvent.end.date}T00:00:00Z`) : undefined),
 			endTimeZone: gcalEvent.end?.timeZone ?? undefined,
 			attendees: gcalEvent.attendees?.map((a: calendar_v3.Schema$EventAttendee) => ({
 				email: a.email!,
@@ -486,19 +485,20 @@ export class GoogleCalendarProvider implements SyncProvider {
 		};
 
 		// Handle start time
-		if (event.startDateTime) {
+		if (event.isAllDay && event.startDateTime) {
+			// For all-day events, Google expects YYYY-MM-DD
+			gcalEvent.start!.date = event.startDateTime.toISOString().split('T')[0];
+		} else if (event.startDateTime) {
 			gcalEvent.start!.dateTime = event.startDateTime.toISOString();
 			gcalEvent.start!.timeZone = event.startTimeZone;
-		} else if (event.startDate) {
-			gcalEvent.start!.date = event.startDate;
 		}
 
 		// Handle end time
-		if (event.endDateTime) {
+		if (event.isAllDay && event.endDateTime) {
+			gcalEvent.end!.date = event.endDateTime.toISOString().split('T')[0];
+		} else if (event.endDateTime) {
 			gcalEvent.end!.dateTime = event.endDateTime.toISOString();
 			gcalEvent.end!.timeZone = event.endTimeZone;
-		} else if (event.endDate) {
-			gcalEvent.end!.date = event.endDate;
 		}
 
 		// Apply metadata if available

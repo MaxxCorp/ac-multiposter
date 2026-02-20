@@ -313,9 +313,7 @@ export class EmailProvider implements SyncProvider {
 			event: {
 				summary: event.summary,
 				description: event.description,
-				startDate: event.startDate,
 				startDateTime: event.startDateTime,
-				endDate: event.endDate,
 				endDateTime: event.endDateTime,
 				location: event.location,
 				recurrence: event.recurrence

@@ -477,9 +477,6 @@ export class SyncService {
 					gte(eventTable.startDateTime, new Date(t - timeWindow)),
 					lte(eventTable.startDateTime, new Date(t + timeWindow))
 				);
-			} else if (externalEvent.startDate) {
-				// For all-day events, check startDate string
-				startTimeCheck = eq(eventTable.startDate, externalEvent.startDate);
 			}
 
 			const recentEvents = await db
@@ -497,30 +494,19 @@ export class SyncService {
 			// Check if any recent event matches this external event
 			console.log(`[SyncService] No match found for external ${externalEvent.externalId}. Checking ${recentEvents.length} recent events for fuzzy match:`, {
 				externalTitle: externalEvent.summary,
-				externalStart: externalEvent.startDateTime || externalEvent.startDate
+				externalStart: externalEvent.startDateTime
 			});
 
 			for (const recentEvent of recentEvents) {
 				// Compare times more robustly
 				let startTimesMatch = false;
 
-				if (recentEvent.startDate && externalEvent.startDate) {
-					startTimesMatch = recentEvent.startDate === externalEvent.startDate;
-				} else if (recentEvent.startDateTime && externalEvent.startDateTime) {
+				if (recentEvent.startDateTime && externalEvent.startDateTime) {
 					// Compare timestamps to handle timezone differences
 					const t1 = recentEvent.startDateTime.getTime();
 					const t2 = externalEvent.startDateTime.getTime();
 					// Allow 1 second difference
 					startTimesMatch = Math.abs(t1 - t2) < 1000;
-				} else if (recentEvent.startDateTime && externalEvent.startDate) {
-					// Cross-type match: Local is timed, External is all-day
-					// Check if the timed event falls on the all-day date
-					const localDate = recentEvent.startDateTime.toISOString().split('T')[0];
-					startTimesMatch = localDate === externalEvent.startDate;
-				} else if (recentEvent.startDate && externalEvent.startDateTime) {
-					// Cross-type match: Local is all-day, External is timed
-					const externalDate = externalEvent.startDateTime.toISOString().split('T')[0];
-					startTimesMatch = recentEvent.startDate === externalDate;
 				}
 
 				if (startTimesMatch) {
@@ -802,10 +788,8 @@ export class SyncService {
 			summary: external.summary,
 			description: external.description ?? null,
 			location: external.location ?? null,
-			startDate: external.startDate ?? null,
-			startDateTime: external.startDateTime ?? null,
+			startDateTime: external.startDateTime ?? new Date(0),
 			startTimeZone: external.startTimeZone ?? null,
-			endDate: external.endDate ?? null,
 			endDateTime: external.endDateTime ?? null,
 			endTimeZone: external.endTimeZone ?? null,
 			attendees: external.attendees ?? null,
@@ -989,10 +973,8 @@ export class SyncService {
 			summary: internal.summary,
 			description: description,
 			location: internal.location ?? undefined,
-			startDate: internal.startDate ?? undefined,
 			startDateTime: internal.startDateTime ?? undefined,
 			startTimeZone: internal.startTimeZone ?? undefined,
-			endDate: internal.endDate ?? undefined,
 			endDateTime: internal.endDateTime ?? undefined,
 			endTimeZone: internal.endTimeZone ?? undefined,
 			attendees: attendees.length > 0 ? attendees : undefined,

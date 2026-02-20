@@ -38,9 +38,11 @@
     }
 
     const displayDate = $derived(
-        event.startDateTime
-            ? formatDateTime(event.startDateTime)
-            : formatDate(event.startDate),
+        event.isAllDay && event.startDateTime
+            ? formatDate(event.startDateTime)
+            : event.startDateTime
+              ? formatDateTime(event.startDateTime)
+              : "",
     );
 
     let imageLoadError = $state(false);

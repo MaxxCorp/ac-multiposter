@@ -31,18 +31,10 @@ export async function generateEventAssets(eventId: string, origin?: string) {
     // Handle dates
     if (data.startDateTime) {
         vevent.addPropertyWithValue('dtstart', ICAL.Time.fromJSDate(data.startDateTime, true));
-    } else if (data.startDate) {
-        const t = ICAL.Time.fromString(data.startDate);
-        t.isDate = true;
-        vevent.addPropertyWithValue('dtstart', t);
     }
 
     if (data.endDateTime) {
         vevent.addPropertyWithValue('dtend', ICAL.Time.fromJSDate(data.endDateTime, true));
-    } else if (data.endDate) {
-        const t = ICAL.Time.fromString(data.endDate);
-        t.isDate = true;
-        vevent.addPropertyWithValue('dtend', t);
     }
 
     vevent.addPropertyWithValue('dtstamp', ICAL.Time.fromJSDate(new Date(), true));
