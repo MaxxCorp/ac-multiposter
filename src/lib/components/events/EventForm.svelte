@@ -40,7 +40,7 @@
     // State derived from initialData
     let isAllDay = $state(initialData?.isAllDay ?? false);
 
-    let hasEndTime = $state(initialData?.endDateTime ? true : false);
+    let hasEndTime = $state(initialData ? !!initialData.endDateTime : true);
     let useDefaultReminders = $state(
         initialData?.reminders?.useDefault ?? true,
     );
@@ -49,13 +49,13 @@
     );
 
     let guestsCanInviteOthers = $state(
-        initialData?.guestsCanInviteOthers ?? true,
+        initialData?.guestsCanInviteOthers ?? false,
     );
     let guestsCanModify = $state(initialData?.guestsCanModify ?? false);
     let guestsCanSeeOtherGuests = $state(
         initialData?.guestsCanSeeOtherGuests ?? false,
     );
-    let isPublic = $state(initialData?.isPublic ?? false);
+    let isPublic = $state(initialData?.isPublic ?? true);
 
     // Recurrence State
     let recurrence = $state<string[]>(initialData?.recurrence || []);
@@ -195,12 +195,19 @@
     const startParsed = parseDateTime(initialData?.startDateTime);
     const endParsed = parseDateTime(initialData?.endDateTime);
 
-    let startDateInput = $state(
-        startParsed.date || new Date().toISOString().split("T")[0],
-    );
-    let startTimeInput = $state(
-        startParsed.time || new Date().toTimeString().slice(0, 5),
-    );
+    function getLocalNow() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+        return { date: `${year}-${month}-${day}`, time: `${hours}:${minutes}` };
+    }
+    const localNow = getLocalNow();
+
+    let startDateInput = $state(startParsed.date || localNow.date);
+    let startTimeInput = $state(startParsed.time || localNow.time);
 
     // Initialize end date/time: if no initial data, set to 1 hour after start
     function getInitialEndDateTime() {
@@ -209,10 +216,8 @@
             return { date: endParsed.date, time: endParsed.time || "" };
 
         // Otherwise, calculate 1 hour after start
-        const startDate =
-            startParsed.date || new Date().toISOString().split("T")[0];
-        const startTime =
-            startParsed.time || new Date().toTimeString().slice(0, 5);
+        const startDate = startParsed.date || localNow.date;
+        const startTime = startParsed.time || localNow.time;
         const start = new Date(`${startDate}T${startTime}:00`);
         if (isNaN(start.getTime())) return { date: "", time: "" };
 
@@ -647,7 +652,7 @@
                 >
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 gap-6">
                 <!-- Start Block -->
                 <div class="space-y-4">
                     <div>
@@ -658,7 +663,7 @@
                             ></label
                         >
                         <input
-                            {...getField("startDate").as("text")}
+                            name="startDate"
                             type="date"
                             required
                             bind:value={startDateInput}
@@ -675,7 +680,7 @@
                                 ></label
                             >
                             <input
-                                {...getField("startTime").as("text")}
+                                name="startTime"
                                 type="time"
                                 required
                                 bind:value={startTimeInput}
@@ -691,7 +696,7 @@
                             >Timezone</label
                         >
                         <input
-                            {...getField("startTimeZone").as("text")}
+                            name="startTimeZone"
                             list="timezones"
                             bind:value={startTimeZoneInput}
                             placeholder={browserTimezone}
@@ -725,7 +730,7 @@
                                 >End Date</label
                             >
                             <input
-                                {...getField("endDate").as("text")}
+                                name="endDate"
                                 type="date"
                                 bind:value={endDateInput}
                                 placeholder={startDateInput}
@@ -740,7 +745,7 @@
                                     >End Time</label
                                 >
                                 <input
-                                    {...getField("endTime").as("text")}
+                                    name="endTime"
                                     type="time"
                                     bind:value={endTimeInput}
                                     placeholder={getDefaultEndTime()}
@@ -755,7 +760,7 @@
                                 >End Timezone</label
                             >
                             <input
-                                {...getField("endTimeZone").as("text")}
+                                name="endTimeZone"
                                 list="timezones"
                                 bind:value={endTimeZoneInput}
                                 placeholder={startTimeZoneInput}

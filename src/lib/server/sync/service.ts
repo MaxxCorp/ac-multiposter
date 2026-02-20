@@ -1189,16 +1189,13 @@ export class SyncService {
 					}
 				}
 
-				// Delete the mappings from our database
-				await db
-					.delete(syncMappingTable)
-					.where(
-						and(
-							eq(syncMappingTable.syncConfigId, config.id),
-							inArray(syncMappingTable.eventId, eventIds)
-						)
-					);
 			}
+
+			// Delete ALL mappings from our database for these events unconditionally
+			// We do this outside the loop to ensure even orphaned mappings are destroyed
+			await db
+				.delete(syncMappingTable)
+				.where(inArray(syncMappingTable.eventId, eventIds));
 
 
 		} catch (error: any) {
