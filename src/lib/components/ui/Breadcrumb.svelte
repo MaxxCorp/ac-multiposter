@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import type { Feature } from '$lib/authorization';
-	import { FEATURES } from '$lib/features';
+	import { breadcrumbState } from "$lib/stores/breadcrumb.svelte";
+	import type { Feature } from "$lib/authorization";
 
 	interface Props {
 		feature?: Feature;
@@ -11,45 +10,20 @@
 
 	let { feature, current, segments }: Props = $props();
 
-	// Derive segments reactively in Svelte 5
-	const featureMeta = $derived.by(() => (feature ? FEATURES.find((f) => f.key === feature) : null));
-	const breadcrumbSegments = $derived.by(() => segments ?? (featureMeta ? [{ label: featureMeta.title, href: featureMeta.href }] : []));
+	// When this component mounts or its props change, update the store.
+	$effect(() => {
+		breadcrumbState.set({
+			feature,
+			current,
+			segments,
+		});
+
+		// Optional: Clear breadcrumbs when this component unmounts.
+		// Typically, the next page sets its own breadcrumbs, but clearing it ensures no stale data.
+		return () => {
+			breadcrumbState.set({});
+		};
+	});
 </script>
 
-<nav class="mb-4 text-sm" aria-label="Breadcrumb">
-	<ol class="flex items-center space-x-2 text-gray-600">
-		<li>
-			<button 
-				type="button" 
-				onclick={() => goto('/', { invalidateAll: true })} 
-				class="hover:text-blue-600 hover:underline"
-			>
-				Home
-			</button>
-		</li>
-		{#each breadcrumbSegments as segment, i}
-			<li>
-				<span class="text-gray-400">/</span>
-			</li>
-			<li>
-				{#if segment.href && (i < breadcrumbSegments.length - 1 || current)}
-					<button 
-						type="button" 
-						onclick={() => goto(segment.href!, { invalidateAll: true })} 
-						class="hover:text-blue-600 hover:underline"
-					>
-						{segment.label}
-					</button>
-				{:else}
-					<span class="text-gray-900 font-medium">{segment.label}</span>
-				{/if}
-			</li>
-		{/each}
-		{#if current}
-			<li>
-				<span class="text-gray-400">/</span>
-			</li>
-			<li class="text-gray-900 font-medium truncate max-w-xs">{current}</li>
-		{/if}
-	</ol>
-</nav>
+<!-- This component intentionally renders nothing. It acts as a bridge to send route metadata up to the Layout frame. -->

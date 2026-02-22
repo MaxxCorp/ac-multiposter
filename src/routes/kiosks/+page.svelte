@@ -4,21 +4,42 @@
     import Breadcrumb from "$lib/components/ui/Breadcrumb.svelte";
     import Button from "$lib/components/ui/button/button.svelte";
     import AsyncButton from "$lib/components/ui/AsyncButton.svelte";
-    import { Monitor, Trash2, Pencil, ExternalLink } from "@lucide/svelte";
+    import { Monitor, Trash2, Pencil } from "@lucide/svelte";
     import LoadingSection from "$lib/components/ui/LoadingSection.svelte";
     import ErrorSection from "$lib/components/ui/ErrorSection.svelte";
     import EmptyState from "$lib/components/ui/EmptyState.svelte";
+    import BulkActionToolbar from "$lib/components/ui/BulkActionToolbar.svelte";
     import { handleDelete } from "$lib/hooks/handleDelete.svelte";
 
     let itemsPromise = $state<Promise<Kiosk[]>>(listKiosks());
+    let initializedItems = $state<Kiosk[]>([]);
+    let selectedIds = $state<Set<string>>(new Set());
 
     function refresh() {
         itemsPromise = listKiosks();
     }
+
+    function isSelected(id: string) {
+        return selectedIds.has(id);
+    }
+    function toggleSelection(id: string) {
+        if (selectedIds.has(id)) {
+            selectedIds.delete(id);
+        } else {
+            selectedIds.add(id);
+        }
+        selectedIds = new Set(selectedIds);
+    }
+    function selectAll(items: Kiosk[]) {
+        selectedIds = new Set(items.map((item) => item.id));
+    }
+    function deselectAll() {
+        selectedIds = new Set();
+    }
 </script>
 
 <div class="container mx-auto px-4 py-8">
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-4xl mx-auto">
         <Breadcrumb feature="kiosks" />
 
         <div class="bg-white shadow rounded-lg p-6">
@@ -26,93 +47,140 @@
                 class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4"
             >
                 <h1 class="text-3xl font-bold flex-shrink-0">Kiosks</h1>
-                <Button href="/kiosks/new" variant="default">
-                    + New Kiosk
-                </Button>
+                <div class="flex-1 flex justify-end w-full md:w-auto">
+                    <BulkActionToolbar
+                        selectedCount={selectedIds.size}
+                        totalCount={initializedItems.length}
+                        onSelectAll={() => selectAll(initializedItems)}
+                        onDeselectAll={deselectAll}
+                        onDelete={async () => {
+                            await handleDelete({
+                                ids: [...selectedIds],
+                                deleteFn: deleteKiosk,
+                                itemName: "kiosk",
+                            });
+                            deselectAll();
+                            refresh();
+                        }}
+                        newItemHref="/kiosks/new"
+                        newItemLabel="+ New Kiosk"
+                    />
+                </div>
             </div>
 
             {#await itemsPromise}
                 <LoadingSection message="Loading kiosks..." />
             {:then items}
-                {#if items.length === 0}
-                    <EmptyState
-                        icon={Monitor}
-                        title="No Kiosks"
-                        description="Configure your first kiosk location display."
-                        actionLabel="Create Kiosk"
-                        actionHref="/kiosks/new"
-                    />
-                {:else}
-                    <div
-                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    >
-                        {#each items as kiosk (kiosk.id)}
-                            <div
-                                class="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
-                            >
-                                <div class="p-6 flex-1">
-                                    <h3
-                                        class="text-lg font-semibold text-gray-900 mb-1"
-                                    >
-                                        {kiosk.name}
-                                    </h3>
-                                    {#if kiosk.description}
-                                        <p class="text-sm text-gray-500 mb-4">
-                                            {kiosk.description}
-                                        </p>
-                                    {/if}
+                {@html (() => {
+                    initializedItems = items;
+                    return "";
+                })()}
 
-                                    <div
-                                        class="space-y-2 text-sm text-gray-600"
-                                    >
-                                        <div class="flex justify-between">
-                                            <span>Loop:</span>
-                                            <span class="font-medium"
-                                                >{kiosk.loopDuration}s</span
-                                            >
+                <div class="grid gap-4">
+                    {#if items.length === 0}
+                        <EmptyState
+                            icon={Monitor}
+                            title="No Kiosks"
+                            description="Configure your first kiosk location display."
+                            actionLabel="Create Kiosk"
+                            actionHref="/kiosks/new"
+                        />
+                    {:else}
+                        {#each items as kiosk (kiosk.id)}
+                            <div class="mb-6 last:mb-0">
+                                <div
+                                    class="bg-white shadow border rounded-lg p-6 flex flex-col sm:flex-row items-start gap-4 transition-shadow"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected(kiosk.id)}
+                                        onchange={() =>
+                                            toggleSelection(kiosk.id)}
+                                        class="mt-1 w-4 h-4 text-blue-600"
+                                    />
+
+                                    <div class="flex-1">
+                                        <div
+                                            class="flex items-start gap-3 mb-2"
+                                        >
+                                            <div class="flex-1">
+                                                <h2
+                                                    class="text-xl font-semibold"
+                                                >
+                                                    <a
+                                                        href={`/kiosks/${kiosk.id}/view`}
+                                                        target="_blank"
+                                                        class="hover:underline text-blue-600"
+                                                    >
+                                                        {kiosk.name}
+                                                    </a>
+                                                </h2>
+                                            </div>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span>Look Ahead:</span>
-                                            <span class="font-medium"
-                                                >{Math.round(
-                                                    kiosk.lookAhead / 86400,
-                                                )} days</span
-                                            >
+
+                                        {#if kiosk.description}
+                                            <div class="mt-2 text-gray-600">
+                                                <p>{kiosk.description}</p>
+                                            </div>
+                                        {/if}
+
+                                        <div
+                                            class="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600"
+                                        >
+                                            <div>
+                                                <span class="text-gray-500 mr-1"
+                                                    >Loop:</span
+                                                >
+                                                <span class="font-medium"
+                                                    >{kiosk.loopDuration}s</span
+                                                >
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500 mr-1"
+                                                    >Look Ahead:</span
+                                                >
+                                                <span class="font-medium"
+                                                    >{Math.round(
+                                                        kiosk.lookAhead / 86400,
+                                                    )} days</span
+                                                >
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500 mr-1"
+                                                    >Look Past:</span
+                                                >
+                                                <span class="font-medium"
+                                                    >{Math.round(
+                                                        kiosk.lookPast / 86400,
+                                                    )} days</span
+                                                >
+                                            </div>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span>Look Past:</span>
-                                            <span class="font-medium"
-                                                >{Math.round(
-                                                    kiosk.lookPast / 86400,
-                                                )} days</span
-                                            >
+
+                                        <div class="mt-4">
+                                            <p class="text-xs text-gray-400">
+                                                Created: {new Date(
+                                                    kiosk.createdAt,
+                                                ).toLocaleString()}
+                                            </p>
                                         </div>
                                     </div>
-                                </div>
-                                <div
-                                    class="bg-gray-50 px-6 py-4 flex items-center justify-between border-t gap-2"
-                                >
-                                    <a
-                                        href={`/kiosks/${kiosk.id}/view`}
-                                        target="_blank"
-                                        class="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm font-medium"
-                                    >
-                                        <ExternalLink class="w-4 h-4" /> View
-                                    </a>
-                                    <div class="flex gap-2">
+
+                                    <div class="flex flex-col gap-2 shrink-0">
                                         <Button
                                             href={`/kiosks/${kiosk.id}`}
                                             variant="default"
-                                            size="sm"
+                                            size="default"
                                             class="flex items-center gap-2 w-[120px] justify-center"
                                         >
-                                            <Pencil class="w-4 h-4" /> Edit
+                                            <Pencil size={16} /> Edit
                                         </Button>
                                         <AsyncButton
                                             variant="destructive"
-                                            size="sm"
-                                            class="flex items-center gap-2 w-[120px] justify-center"
+                                            size="default"
+                                            loading={false}
                                             loadingLabel="Deleting..."
+                                            class="flex items-center gap-2 w-[120px] justify-center"
                                             onclick={async () => {
                                                 const success =
                                                     await handleDelete({
@@ -122,16 +190,15 @@
                                                     });
                                                 if (success) refresh();
                                             }}
-                                            }}
                                         >
-                                            <Trash2 class="w-4 h-4" /> Delete
+                                            <Trash2 size={16} /> Delete
                                         </AsyncButton>
                                     </div>
                                 </div>
                             </div>
                         {/each}
-                    </div>
-                {/if}
+                    {/if}
+                </div>
             {:catch error}
                 <ErrorSection
                     headline="Failed to load kiosks"

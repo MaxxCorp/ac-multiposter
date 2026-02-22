@@ -133,6 +133,10 @@
 
             items = enrichedItems;
 
+            if (items.length > 1) {
+                startLoop();
+            }
+
             const storageKey = `kiosk_items_${kioskId}`;
             localStorage.setItem(storageKey, JSON.stringify(enrichedItems));
 
@@ -212,6 +216,9 @@
                 });
 
                 items = validItems;
+                if (items.length > 1) {
+                    startLoop();
+                }
                 // Update storage to remove old ones
                 localStorage.setItem(storageKey, JSON.stringify(validItems));
                 isOffline = true;
@@ -257,10 +264,6 @@
         // initCache will be called by fetchData on failure, or we can look for basic cache first
         // await initCache();
         // Let's rely on fetchData to drive this.
-
-        if (items.length > 0) {
-            startLoop();
-        }
 
         if (browser) {
             // @ts-ignore
